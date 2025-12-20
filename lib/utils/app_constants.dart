@@ -31,5 +31,12 @@ class AppConstants {
   static String getGifAsset(String image) {
     return 'assets/gifs/$image.gif';
   }
+  static String getBadgeAsset(String image) {
+    return 'assets/badges/$image.png';
+  }
+
+  static String getBaseAsset(String image) {
+    return 'assets/base/$image.png';
+  }
 
 }

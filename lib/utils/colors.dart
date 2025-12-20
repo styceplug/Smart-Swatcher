@@ -30,6 +30,9 @@ class AppColors {
   static const Color accent3 = Color(0xFF4E886F);
 
 
+  static const Color bgColor = Color(0XFFFCF9F8);
+
+
 
 
 

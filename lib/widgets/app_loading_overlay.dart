@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smart_swatcher/utils/colors.dart';
+import 'package:smart_swatcher/utils/dimensions.dart';
 
 import '../utils/app_constants.dart';
 
@@ -41,25 +43,15 @@ class _AppLoadingOverlayState extends State<AppLoadingOverlay>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            const SizedBox(
-              height: 100,
-              width: 100,
+             Container(
+              padding: EdgeInsets.symmetric(horizontal: Dimensions.width20,vertical: Dimensions.height240),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Dimensions.radius20),
+                color: AppColors.black1
+              ),
               child: CircularProgressIndicator(
                 strokeWidth: 4,
                 color: Colors.white,
-              ),
-            ),
-            ScaleTransition(
-              scale: _scaleAnimation,
-              child: Container(
-                height: 60,
-                width: 60,
-                decoration: BoxDecoration(
-                  // image: DecorationImage(
-                  //   image: AssetImage(AppConstants.getPngAsset('logo')),
-                  //   fit: BoxFit.contain,
-                  // ),
-                ),
               ),
             ),
           ],

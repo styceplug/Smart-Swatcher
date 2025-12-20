@@ -9,6 +9,7 @@ class CustomTextField extends StatelessWidget {
   final TextStyle? hintStyle;
   final IconData? prefixIcon;
   final bool obscureText;
+  final List<String>? autofillHints;
   final bool enabled;
   final Widget? suffixIcon;
   final TextInputType keyboardType;
@@ -28,6 +29,7 @@ class CustomTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.maxLines,
     this.onChanged,
+    this.autofillHints,
   });
 
   @override
@@ -49,28 +51,30 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       enabled: enabled,
       maxLines: maxLines,
+      autofillHints: autofillHints,
       keyboardType: keyboardType,
-      style: TextStyle(color: textColor),
+      style: TextStyle(color: textColor,fontFamily: 'Poppins'),
       decoration: InputDecoration(
         filled: true,
         fillColor: fillColor,
         labelText: labelText,
+        labelStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5),fontFamily: 'Poppins'),
         hintText: hintText,
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, color: textColor.withOpacity(0.6))
             : null,
         suffixIcon: suffixIcon,
-        hintStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5)),
+        hintStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5),fontFamily: 'Poppins'),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(Dimensions.radius10),
+          borderRadius: BorderRadius.circular(Dimensions.radius20),
           borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(Dimensions.radius10),
+          borderRadius: BorderRadius.circular(Dimensions.radius20),
           borderSide: BorderSide(color: enabledBorderColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(Dimensions.radius10),
+          borderRadius: BorderRadius.circular(Dimensions.radius20),
           borderSide: BorderSide(color: focusColor),
         ),
       ),

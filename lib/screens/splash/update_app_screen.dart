@@ -17,53 +17,55 @@ class _UpdateAppScreenState extends State<UpdateAppScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: Dimensions.width20,
-          vertical: Dimensions.height20,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Container(
-              height: Dimensions.height10 * 30,
-              width: Dimensions.screenWidth,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(AppConstants.getPngAsset('alien')),
-                  fit: BoxFit.contain,
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: Dimensions.width20,
+            vertical: Dimensions.height20,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Spacer(),
+              Container(
+                height: Dimensions.height10 * 30,
+                width: Dimensions.screenWidth,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(AppConstants.getPngAsset('alien')),
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: Dimensions.height20),
-            Text(
-              'Time to Update!',
-              style: TextStyle(
-                fontSize: Dimensions.font25 + Dimensions.font12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.black1,
+              SizedBox(height: Dimensions.height20),
+              Text(
+                'Time to Update!',
+                style: TextStyle(
+                  fontSize: Dimensions.font25 + Dimensions.font12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.black1,
+                ),
               ),
-            ),
-            SizedBox(height: Dimensions.height10),
-            Text(
-              'We added lots of new features and fixed some bugs to make your experience as smooth as possible',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: Dimensions.font16,
-                fontWeight: FontWeight.w400,
-                color: AppColors.black1,
+              SizedBox(height: Dimensions.height10),
+              Text(
+                'We added lots of new features and fixed some bugs to make your experience as smooth as possible',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: Dimensions.font16,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.black1,
+                ),
               ),
-            ),
-            const Spacer(),
-            CustomButton(
-              text: 'UPDATE APP',
-              onPressed: () {},
-              backgroundColor: AppColors.primary5,
-            ),
-            SizedBox(height: Dimensions.height30),
-          ],
+              const Spacer(),
+              CustomButton(
+                text: 'UPDATE APP',
+                onPressed: () {},
+                backgroundColor: AppColors.primary5,
+              ),
+              SizedBox(height: Dimensions.height30),
+            ],
+          ),
         ),
       ),
     );  }

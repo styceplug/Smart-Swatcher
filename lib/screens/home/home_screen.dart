@@ -83,9 +83,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   Positioned(
-                    left: Dimensions.width10,
-                    right: Dimensions.width10,
-                    bottom: Dimensions.height30,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
                     child: HomeScreenBottomNavBar(),
                   ),
                 ],

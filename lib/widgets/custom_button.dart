@@ -10,6 +10,7 @@ class CustomButton extends StatelessWidget {
   final VoidCallback onPressed;
   final bool isLoading;
   final bool isDisabled;
+  final EdgeInsets? padding;
   final BorderRadius? borderRadius;
   final Color? backgroundColor;
   final Color? borderColor;
@@ -23,10 +24,11 @@ class CustomButton extends StatelessWidget {
     this.isLoading = false,
     this.isDisabled = false,
     this.borderRadius,
-    this.backgroundColor,
+    this.backgroundColor = AppColors.primary4,
     this.borderColor,
     this.textStyle,
     this.icon,
+    this.padding
   });
 
   @override
@@ -46,13 +48,13 @@ class CustomButton extends StatelessWidget {
       borderRadius: borderRadius ?? BorderRadius.circular(Dimensions.radius10),
       child: Container(
         alignment: Alignment.center,
-        padding: EdgeInsets.symmetric(
+        padding: padding ?? EdgeInsets.symmetric(
           vertical: Dimensions.height15,
-          horizontal: Dimensions.width20,
+          horizontal:Dimensions.width20,
         ),
         decoration: BoxDecoration(
           color: effectiveBgColor,
-          borderRadius: borderRadius ?? BorderRadius.circular(Dimensions.radius10),
+          borderRadius: borderRadius ?? BorderRadius.circular(Dimensions.radius30),
           border: Border.all(color: borderColor ?? effectiveBgColor)
         ),
         child: isLoading
@@ -60,7 +62,7 @@ class CustomButton extends StatelessWidget {
           height: 22,
           width: 22,
           child: CircularProgressIndicator(
-            color: Colors.white, // You can theme this too if needed
+            color: Colors.white,
             strokeWidth: 2,
           ),
         )
@@ -83,6 +85,7 @@ class CustomButton extends StatelessWidget {
                       color: effectiveTextColor,
                       fontSize: Dimensions.font16,
                       fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins'
                     ),
               ),
             ),

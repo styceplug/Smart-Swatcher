@@ -10,6 +10,7 @@ class BottomBarItem extends StatefulWidget {
   final String name;
   final bool isActive;
   final Function() onClick;
+  final Function()? onHold;
 
   const BottomBarItem({
     super.key,
@@ -17,6 +18,7 @@ class BottomBarItem extends StatefulWidget {
     required this.name,
     required this.isActive,
     required this.onClick,
+    this.onHold
   });
 
   @override
@@ -33,6 +35,7 @@ class _BottomBarItemState extends State<BottomBarItem> {
           HapticFeedback.selectionClick();
           widget.onClick();
         },
+        onLongPress: widget.onHold,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -40,12 +43,12 @@ class _BottomBarItemState extends State<BottomBarItem> {
             // icon
 
             Image.asset(
-              widget.image,
+              AppConstants.getPngAsset(widget.image),
               width: Dimensions.iconSize16 * 1.65,
               height: Dimensions.iconSize16 * 1.65,
               color: widget.isActive
                   ? AppColors.primary5
-                  : AppColors.grey3,
+                  : AppColors.grey4,
             ),
             // space
             SizedBox(height: Dimensions.height5),
@@ -57,9 +60,10 @@ class _BottomBarItemState extends State<BottomBarItem> {
                 color:
                     widget.isActive
                         ? AppColors.primary5
-                        : AppColors.grey3,
+                        : AppColors.grey4,
                 fontWeight: FontWeight.w400,
                 fontSize: Dimensions.font14,
+                fontFamily: 'Poppins'
               ),
             ),
           ],
