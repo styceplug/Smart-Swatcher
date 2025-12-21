@@ -3,27 +3,25 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:smart_swatcher/utils/app_constants.dart';
-import 'package:smart_swatcher/utils/colors.dart';
-import 'package:smart_swatcher/utils/dimensions.dart';
-import 'package:smart_swatcher/widgets/country_state_dropdown.dart';
-import 'package:smart_swatcher/widgets/custom_appbar.dart';
-import 'package:smart_swatcher/widgets/custom_button.dart';
-import 'package:smart_swatcher/widgets/custom_textfield.dart';
-import 'package:smart_swatcher/widgets/otp_box.dart';
 
 import '../../../routes/routes.dart';
+import '../../../utils/app_constants.dart';
+import '../../../utils/colors.dart';
+import '../../../utils/dimensions.dart';
+import '../../../widgets/country_state_dropdown.dart';
+import '../../../widgets/custom_appbar.dart';
+import '../../../widgets/custom_button.dart';
+import '../../../widgets/custom_textfield.dart';
+import '../../../widgets/otp_box.dart';
 
-class CreateStylistAccountScreen extends StatefulWidget {
-  const CreateStylistAccountScreen({super.key});
+class CreateCompanyAccount extends StatefulWidget {
+  const CreateCompanyAccount({super.key});
 
   @override
-  State<CreateStylistAccountScreen> createState() =>
-      _CreateStylistAccountScreenState();
+  State<CreateCompanyAccount> createState() => _CreateCompanyAccountState();
 }
 
-class _CreateStylistAccountScreenState
-    extends State<CreateStylistAccountScreen> {
+class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
   String? selectedCountry;
   String? selectedState;
   bool passwordVisible = false;
@@ -80,9 +78,9 @@ class _CreateStylistAccountScreenState
                     Text(
                       'Enter OTP',
                       style: TextStyle(
-                        fontSize: Dimensions.font18,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins'
+                          fontSize: Dimensions.font18,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Poppins'
                       ),
                     ),
                     Icon(Icons.cancel, color: Colors.grey,)
@@ -92,9 +90,9 @@ class _CreateStylistAccountScreenState
                 SizedBox(height: Dimensions.height40),
                 Text('Enter the code sent to ${emailController.text}',
                   style: TextStyle(
-                    fontSize: Dimensions.font15,
-                    fontWeight: FontWeight.w400,
-                    fontFamily: 'Poppins'
+                      fontSize: Dimensions.font15,
+                      fontWeight: FontWeight.w400,
+                      fontFamily: 'Poppins'
                   ),
                 ),
                 SizedBox(height: Dimensions.height10),
@@ -173,8 +171,8 @@ class _CreateStylistAccountScreenState
                   ),
                   SizedBox(height: Dimensions.height50),
                   CustomTextField(
-                    hintText: 'Full Name',
-                    labelText: 'Full Name',
+                    hintText: 'Company Name',
+                    labelText: 'Company Name',
                     autofillHints: [AutofillHints.name],
                   ),
                   SizedBox(height: Dimensions.height20),
@@ -244,7 +242,7 @@ class _CreateStylistAccountScreenState
                         ),
                         Text(
                           ' Log in',
-                      
+
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w600,

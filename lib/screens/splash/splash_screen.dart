@@ -224,7 +224,7 @@ class _SplashScreenState extends State<SplashScreen>
                           if (selectedUserType == "stylist") {
                             Get.offAllNamed(AppRoutes.onboardingScreen);
                           } else if (selectedUserType == "company") {
-                            //ADD ROUTE
+                            Get.offAllNamed(AppRoutes.onboardCompany);
                           }
                         },
                       ),

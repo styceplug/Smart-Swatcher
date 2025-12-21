@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:smart_swatcher/screens/auth/company/create_company_account.dart';
 import 'package:smart_swatcher/screens/auth/stylist/create_stylist_account_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/licence_upload_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/pro_registration_screen.dart';
@@ -27,6 +28,7 @@ import 'package:smart_swatcher/screens/posts/comments_screen.dart';
 import 'package:smart_swatcher/screens/posts/create_post_screen.dart';
 import 'package:smart_swatcher/screens/posts/post_drafts_screen.dart';
 import 'package:smart_swatcher/screens/settings/edit_profile.dart';
+import 'package:smart_swatcher/screens/splash/company/onboarding_screen.dart';
 import 'package:smart_swatcher/screens/splash/stylist/onboarding_screen.dart';
 import 'package:smart_swatcher/screens/subscription/plan_overview.dart';
 import 'package:smart_swatcher/screens/subscription/subscription_plans_screen.dart';
@@ -121,6 +123,9 @@ class AppRoutes {
 
 
   //company
+  static const String onboardCompany = '/onboard-company';
+  static const String createCompanyAccount = '/create-company-account';
+
 
 
 
@@ -128,6 +133,27 @@ class AppRoutes {
 
 
   static final routes = [
+
+    //company
+    GetPage(
+      name: onboardCompany,
+      page: () {
+        return const CompanyOnboarding();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: createCompanyAccount,
+      page: () {
+        return const CreateCompanyAccount();
+      },
+      transition: Transition.fadeIn,
+    ),
+
+
+
+
+
 
     GetPage(
       name: splashScreen,
