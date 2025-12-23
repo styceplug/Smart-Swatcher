@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/models/stylist_model.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
@@ -33,6 +35,7 @@ class _CreateStylistAccountScreenState
   TextEditingController passwordController = TextEditingController();
   bool isButtonEnabled = false;
   String otp = "";
+  AuthController authController = Get.find<AuthController>();
 
   late Future<List<CountryData>> _countriesFuture;
 
@@ -64,8 +67,7 @@ class _CreateStylistAccountScreenState
         ),
       ),
       builder:
-          (context) =>
-          Padding(
+          (context) => Padding(
             padding: EdgeInsets.symmetric(
               horizontal: Dimensions.width20,
               vertical: Dimensions.height30,
@@ -82,19 +84,20 @@ class _CreateStylistAccountScreenState
                       style: TextStyle(
                         fontSize: Dimensions.font18,
                         fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins'
+                        fontFamily: 'Poppins',
                       ),
                     ),
-                    Icon(Icons.cancel, color: Colors.grey,)
+                    Icon(Icons.cancel, color: Colors.grey),
                   ],
                 ),
 
                 SizedBox(height: Dimensions.height40),
-                Text('Enter the code sent to ${emailController.text}',
+                Text(
+                  'Enter the code sent to ${emailController.text}',
                   style: TextStyle(
                     fontSize: Dimensions.font15,
                     fontWeight: FontWeight.w400,
-                    fontFamily: 'Poppins'
+                    fontFamily: 'Poppins',
                   ),
                 ),
                 SizedBox(height: Dimensions.height10),
@@ -107,28 +110,50 @@ class _CreateStylistAccountScreenState
                     });
                   },
                 ),
-                SizedBox(height: Dimensions.height20,),
-                Text('Resend Code in 00:32',
+                SizedBox(height: Dimensions.height20),
+                Text(
+                  'Resend Code in 00:32',
                   style: TextStyle(
-                      fontSize: Dimensions.font15,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'Poppins'
+                    fontSize: Dimensions.font15,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Poppins',
                   ),
                 ),
 
-
                 SizedBox(height: Dimensions.height20),
-                CustomButton(text: 'Verify', onPressed: (){
-                  Get.toNamed(AppRoutes.setStylistUsernameScreen);
-                },backgroundColor: AppColors.primary5,),
+                CustomButton(
+                  text: 'Verify',
+                  onPressed: () {
+                    authController.verifyOtp(otp);
+                  },
+                  backgroundColor: AppColors.primary5,
+                ),
                 SizedBox(height: Dimensions.height50),
-
               ],
             ),
           ),
     );
   }
 
+  void signUp() {
+    if (nameController.text.isEmpty ||
+        emailController.text.isEmpty ||
+        phoneController.text.isEmpty ||
+        passwordController.text.isEmpty) {
+      Get.snackbar('Error', 'All fields are required');
+      return;
+    }
+    StylistModel signupData = StylistModel(
+      fullName: nameController.text.trim(),
+      email: emailController.text.trim(),
+      phoneNumber: phoneController.text.trim(),
+      password: passwordController.text.trim(),
+      country: selectedCountry,
+      state: selectedState,
+    );
+    authController.registerStylist(signupData);
+    showOtpModal();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -176,18 +201,21 @@ class _CreateStylistAccountScreenState
                     hintText: 'Full Name',
                     labelText: 'Full Name',
                     autofillHints: [AutofillHints.name],
+                    controller: nameController,
                   ),
                   SizedBox(height: Dimensions.height20),
                   CustomTextField(
                     hintText: 'Email Address',
                     labelText: 'Email Address',
                     autofillHints: [AutofillHints.email],
+                    controller: emailController,
                   ),
                   SizedBox(height: Dimensions.height20),
                   CustomTextField(
                     hintText: 'Phone Number',
                     labelText: 'Phone Number',
                     autofillHints: [AutofillHints.telephoneNumber],
+                    controller: phoneController,
                   ),
                   SizedBox(height: Dimensions.height20),
                   CountryState(
@@ -208,6 +236,7 @@ class _CreateStylistAccountScreenState
                   SizedBox(height: Dimensions.height20),
                   CustomTextField(
                     hintText: 'Password',
+                    controller: passwordController,
                     labelText: 'Password',
                     autofillHints: [AutofillHints.password],
                     obscureText: !passwordVisible,
@@ -219,20 +248,22 @@ class _CreateStylistAccountScreenState
                         });
                       },
                       child:
-                      passwordVisible
-                          ? Icon(Icons.visibility)
-                          : Icon(Icons.visibility_off),
+                          passwordVisible
+                              ? Icon(Icons.visibility)
+                              : Icon(Icons.visibility_off),
                     ),
                   ),
                   SizedBox(height: Dimensions.height20),
                   CustomButton(
                     text: 'Create Account',
-                    onPressed: showOtpModal,
+                    onPressed: (){
+                      signUp();
+                    },
                     backgroundColor: AppColors.primary5,
                   ),
                   SizedBox(height: Dimensions.height20),
                   InkWell(
-                    onTap: (){
+                    onTap: () {
                       Get.toNamed(AppRoutes.stylistLoginScreen);
                     },
                     child: Row(
@@ -244,7 +275,7 @@ class _CreateStylistAccountScreenState
                         ),
                         Text(
                           ' Log in',
-                      
+
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w600,

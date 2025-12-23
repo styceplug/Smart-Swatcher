@@ -26,12 +26,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           alignment: Alignment.center,
           height: Dimensions.height10,
           width: Dimensions.width10,
-
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: AppColors.grey2,
           ),
-          child: Icon(Icons.chevron_left),
+          child: BackButton(),
         ),
       ),
       body: SafeArea(
@@ -58,22 +57,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Text(
                   'Enter the email address associated with your account, and we’ll email you a link.',
                   style: TextStyle(
-                      fontSize: Dimensions.font14,
-                      fontWeight: FontWeight.w300,
-                      fontFamily: 'Poppins'
+                    fontSize: Dimensions.font14,
+                    fontWeight: FontWeight.w300,
+                    fontFamily: 'Poppins',
                   ),
                 ),
-                SizedBox(height: Dimensions.height50,),
+                SizedBox(height: Dimensions.height50),
                 CustomTextField(
                   hintText: 'Email Address',
                   labelText: 'Email Address',
                 ),
-        
-                SizedBox(height: Dimensions.height20,),
-                CustomButton(text: 'Continue', onPressed: (){
-                  Get.toNamed(AppRoutes.stylistLoginScreen);
-                },backgroundColor: AppColors.primary5,),
-                SizedBox(height: Dimensions.height20,),
+
+                SizedBox(height: Dimensions.height20),
+                CustomButton(
+                  text: 'Continue',
+                  onPressed: () {
+                    Get.toNamed(AppRoutes.stylistLoginScreen);
+                  },
+                  backgroundColor: AppColors.primary5,
+                ),
+                SizedBox(height: Dimensions.height20),
               ],
             ),
           ),

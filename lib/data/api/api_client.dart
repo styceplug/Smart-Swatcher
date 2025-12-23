@@ -71,6 +71,28 @@ class ApiClient extends GetConnect implements GetxService {
       }
     }
 
+    Future<Response> patchData(String uri, dynamic body, {Map<String, String>? headers}) async {
+      try {
+        Response response = await post(uri, body, headers: headers ?? _mainHeaders);
+        if (kDebugMode) {
+          print('posting $appBaseUrl$uri $body ${headers ?? _mainHeaders}');
+          print("response body ${response.body}");
+
+          final responseSize = utf8.encode(response.body.toString()).length;
+          print('Response Size for $uri: $responseSize bytes (${(responseSize / 1024).toStringAsFixed(2)} KB)');
+        }
+
+        return response;
+      } catch (e,s) {
+        if (kDebugMode) {
+          print('from api post client');
+          print(s);
+          print(e.toString());
+        }
+        return Response(statusCode: 1, statusText: e.toString());
+      }
+    }
+
     Future<Response> putData(String uri, dynamic body, {Map<String, String>? headers}) async {
       try {
 
@@ -144,5 +166,6 @@ print(e.toString());
         return Response(statusCode: 1, statusText: e.toString());
       }
     }
+
 
 }

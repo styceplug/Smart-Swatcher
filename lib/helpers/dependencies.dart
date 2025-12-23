@@ -1,10 +1,12 @@
 
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_swatcher/data/repo/auth_repo.dart';
 import 'package:smart_swatcher/data/repo/post_repo.dart';
 
 
 import '../controllers/app_controller.dart';
+import '../controllers/auth_controller.dart';
 import '../controllers/post_controller.dart';
 import '../controllers/version_controller.dart';
 import '../data/api/api_client.dart';
@@ -32,7 +34,7 @@ Future<void> init() async {
   Get.lazyPut(() => AppRepo(apiClient: Get.find(), sharedPreferences: Get.find()));
   Get.lazyPut(() => VersionRepo(apiClient: Get.find()));
   Get.lazyPut(() => PostRepo());
-  // Get.lazyPut(() => AuthRepo(apiClient: Get.find(), sharedPreferences: Get.find()),
+  Get.lazyPut(()=>AuthRepo(apiClient: Get.find(), sharedPreferences: Get.find()));
 
 
 
@@ -44,7 +46,7 @@ Future<void> init() async {
   Get.lazyPut(() => VersionController(versionRepo: Get.find()));
   Get.lazyPut(() => GlobalLoaderController());
   Get.lazyPut(()=> PostController());
-  // Get.lazyPut(() => AuthController(authRepo: Get.find()));
+  Get.lazyPut(() => AuthController(authRepo: Get.find()));
 
 
 }

@@ -44,6 +44,8 @@ class _AppLoadingOverlayState extends State<AppLoadingOverlay>
           alignment: Alignment.center,
           children: [
              Container(
+               height: Dimensions.height40,
+              width: Dimensions.width40,
               padding: EdgeInsets.symmetric(horizontal: Dimensions.width20,vertical: Dimensions.height240),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(Dimensions.radius20),

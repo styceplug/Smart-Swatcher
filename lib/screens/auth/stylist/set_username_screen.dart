@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
@@ -15,6 +18,26 @@ class SetUsernameScreen extends StatefulWidget {
 }
 
 class _SetUsernameScreenState extends State<SetUsernameScreen> {
+  AuthController authController = Get.find();
+  TextEditingController usernameController = TextEditingController();
+
+  Timer? debounce;
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    usernameController.dispose();
+    super.dispose();
+  }
+
+  void onSearchChanged(String query) {
+    if (debounce?.isActive ?? false) debounce!.cancel();
+
+    debounce = Timer(Duration(milliseconds: 500), () {
+      authController.checkUsernameAvailability(query);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,25 +82,96 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
                   style: TextStyle(
                     fontSize: Dimensions.font14,
                     fontWeight: FontWeight.w300,
-                    fontFamily: 'Poppins'
+                    fontFamily: 'Poppins',
                   ),
                 ),
-                SizedBox(height: Dimensions.height50,),
+                SizedBox(height: Dimensions.height50),
                 CustomTextField(
                   hintText: 'User Name',
                   labelText: 'User Name',
                   suffixIcon: Icon(Icons.change_circle_outlined),
+                  onChanged: onSearchChanged,
+                  controller: usernameController,
                 ),
                 SizedBox(height: Dimensions.height5),
-                Text('Checking Username availability...',style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: Dimensions.font12
-                ),),
+                Obx(() {
+                  if (authController.usernameCheckStatus.value == 0) {
+                    return SizedBox.shrink();
+                  }
+
+                  Color statusColor;
+                  IconData statusIcon;
+                  String statusText = authController.usernameCheckMessage.value;
+
+                  switch (authController.usernameCheckStatus.value) {
+                    case 1:
+                      return Row(
+                        children: [
+                          SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            "Checking availability...",
+                            style: TextStyle(
+                              fontSize: Dimensions.font12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      );
+                    case 2:
+                      statusColor = Colors.green;
+                      statusIcon = Icons.check_circle;
+                      break;
+                    case 3:
+                      statusColor = Colors.red;
+                      statusIcon = Icons.cancel;
+                      break;
+                    default:
+                      return SizedBox.shrink();
+                  }
+                  return Row(
+                    children: [
+                      Icon(
+                        statusIcon,
+                        color: statusColor,
+                        size: Dimensions.font16,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        statusText,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: Dimensions.font12,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  );
+                }),
                 Spacer(),
-                CustomButton(text: 'Continue', onPressed: (){
-                  Get.toNamed(AppRoutes.experienceScreen);
-                },backgroundColor: AppColors.primary5,),
-                SizedBox(height: Dimensions.height20,),
+                Obx(() {
+                  bool isBtnEnabled =
+                      authController.usernameCheckStatus.value == 2;
+
+                  return CustomButton(
+                    text: 'Continue',
+                    onPressed:
+                        isBtnEnabled
+                            ? () {
+                              authController.patchStylistData({
+                                'username': usernameController.text.trim(),
+                              }, nextRoute: AppRoutes.experienceScreen);
+                            }
+                            : () {},
+                    backgroundColor:
+                        isBtnEnabled ? AppColors.primary5 : AppColors.grey3,
+                  );
+                }),
+                SizedBox(height: Dimensions.height20),
               ],
             ),
           ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/widgets/snackbars.dart';
 
 import '../../../routes/routes.dart';
 import '../../../utils/app_constants.dart';
@@ -8,24 +10,6 @@ import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_textfield.dart';
-
-/// PLS NOTE
-
-// AutofillGroup(
-// child: Column(
-// children: [
-// CustomTextField(
-// labelText: "Email",
-// autofillHints: [AutofillHints.email],
-// ),
-// CustomTextField(
-// labelText: "Password",
-// obscureText: true,
-// autofillHints: [AutofillHints.password],
-// ),
-// ],
-// ),
-// ),
 
 class StylistLoginScreen extends StatefulWidget {
   const StylistLoginScreen({super.key});
@@ -36,11 +20,25 @@ class StylistLoginScreen extends StatefulWidget {
 
 class _StylistLoginScreenState extends State<StylistLoginScreen> {
   bool passwordVisible = false;
+  TextEditingController emailController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+  AuthController authController = Get.find<AuthController>();
 
   void viewPassword() {
     setState(() {
       passwordVisible = !passwordVisible;
     });
+  }
+
+  void login() {
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      return CustomSnackBar.failure(message: 'Pls fill all fields');
+    } else {
+      authController.loginStylist(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+      );
+    }
   }
 
   @override
@@ -84,16 +82,20 @@ class _StylistLoginScreenState extends State<StylistLoginScreen> {
                   ),
                 ),
                 SizedBox(height: Dimensions.height50),
-        
-                CustomTextField(
-                  hintText: 'Email Address',
-                  labelText: 'Email Address',
-                  autofillHints: [AutofillHints.email],
+
+                AutofillGroup(
+                  child: CustomTextField(
+                    controller: emailController,
+                    hintText: 'Email Address',
+                    labelText: 'Email Address',
+                    autofillHints: [AutofillHints.email],
+                  ),
                 ),
                 SizedBox(height: Dimensions.height20),
                 CustomTextField(
                   hintText: 'Password',
                   labelText: 'Password',
+                  controller: passwordController,
                   autofillHints: [AutofillHints.password],
                   obscureText: !passwordVisible,
                   maxLines: 1,
@@ -111,7 +113,7 @@ class _StylistLoginScreenState extends State<StylistLoginScreen> {
                 ),
                 SizedBox(height: Dimensions.height10),
                 InkWell(
-                  onTap: (){
+                  onTap: () {
                     Get.toNamed(AppRoutes.forgotPasswordScreen);
                   },
                   child: Row(
@@ -132,9 +134,7 @@ class _StylistLoginScreenState extends State<StylistLoginScreen> {
                 SizedBox(height: Dimensions.height50),
                 CustomButton(
                   text: 'Log In',
-                  onPressed: () {
-                    Get.toNamed(AppRoutes.homeScreen);
-                  },
+                  onPressed: login,
                   backgroundColor: AppColors.primary5,
                 ),
                 SizedBox(height: Dimensions.height50),
@@ -159,7 +159,7 @@ class _StylistLoginScreenState extends State<StylistLoginScreen> {
                     Expanded(
                       child: Container(
                         margin: EdgeInsets.only(left: Dimensions.width20),
-        
+
                         width: Dimensions.screenWidth,
                         height: Dimensions.height5 / Dimensions.height10,
                         color: AppColors.grey4,
@@ -195,16 +195,25 @@ class _StylistLoginScreenState extends State<StylistLoginScreen> {
                     ),
                   ],
                 ),
-                SizedBox(height: Dimensions.height30,),
+                SizedBox(height: Dimensions.height30),
                 InkWell(
-                  onTap: (){Get.toNamed(AppRoutes.createStylistAccountScreen);},
+                  onTap: () {
+                    Get.toNamed(AppRoutes.createStylistAccountScreen);
+                  },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Don\'t have an account? Sign up',style: TextStyle(fontSize: Dimensions.font14,fontWeight: FontWeight.w600,fontFamily: 'Poppins'),),
+                      Text(
+                        'Don\'t have an account? Sign up',
+                        style: TextStyle(
+                          fontSize: Dimensions.font14,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
                     ],
                   ),
-                )
+                ),
               ],
             ),
           ),

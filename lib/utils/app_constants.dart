@@ -4,7 +4,7 @@ class AppConstants {
   static const String APP_NAME = 'SMART SWATCHER';
 
 
-  static const String BASE_URL = 'https://api.fyndr.ng/api';
+  static const String BASE_URL = 'https://swatcher.thecribbers.ng';
 
   //TOKEN
   static const authToken = 'authToken';
@@ -20,8 +20,18 @@ class AppConstants {
 
 
 
+
   static const String FIRST_INSTALL = 'first-install';
   static const String REMEMBER_KEY = 'remember-me';
+
+
+
+  static const String STYLIST_SIGN_UP = '/api/stylists/signup';
+  static const String PATCH_STYLIST_PROFILE = '/api/stylists/me';
+  static const String LOGIN_STYLIST = '/api/stylists/signin';
+  static const String VERIFY_OTP = '/api/otp/verify';
+  static const String RESEND_OTP = '/api/otp/resend';
+  static const String CHECK_USERNAME = '/api/usernames/availability';
 
 
 
