@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
 
 import '../../../routes/routes.dart';
 import '../../../utils/colors.dart';
@@ -21,6 +22,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
       selectedIndex = index;
     });
   }
+  AuthController authController = Get.find<AuthController>();
 
   @override
   Widget build(BuildContext context) {
@@ -143,13 +145,24 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
               }),
         
               const Spacer(),
-        
+
               CustomButton(
                 text: 'Continue',
-                onPressed: () {
-                  Get.toNamed(AppRoutes.proRegistrationScreen);
-                },
-                backgroundColor: AppColors.primary5,
+                onPressed: selectedIndex != null
+                    ? () {
+                  final selectedMap = experiences[selectedIndex!];
+
+                  final String selectedTitle = selectedMap['title']!;
+
+                  authController.patchStylistData({
+                    'experienceLevel': selectedTitle,
+                  }, nextRoute: AppRoutes.proRegistrationScreen);
+                }
+                    : (){},
+
+                backgroundColor: selectedIndex != null
+                    ? AppColors.primary5
+                    : AppColors.grey3,
               ),
               SizedBox(height: Dimensions.height20),
             ],

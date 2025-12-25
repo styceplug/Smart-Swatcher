@@ -104,18 +104,21 @@ class _LicenceUploadScreenState extends State<LicenceUploadScreen> {
                 backgroundColor: AppColors.primary5,
               ),
               SizedBox(height: Dimensions.height20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Skip, I will do it later',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
+              InkWell(
+                onTap: (){Get.offAllNamed(AppRoutes.homeScreen);},
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Skip, I will do it later',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
         
               SizedBox(height: Dimensions.height50),
