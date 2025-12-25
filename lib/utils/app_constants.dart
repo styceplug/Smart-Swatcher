@@ -23,6 +23,7 @@ class AppConstants {
 
   static const String FIRST_INSTALL = 'first-install';
   static const String REMEMBER_KEY = 'remember-me';
+  static const String STYLIST_KEY = 'stylist-key';
 
 
 
@@ -32,7 +33,7 @@ class AppConstants {
   static const String VERIFY_OTP = '/api/otp/verify';
   static const String RESEND_OTP = '/api/otp/resend';
   static const String CHECK_USERNAME = '/api/usernames/availability';
-
+  static const String STYLIST_PROFILE_URI = '/api/stylists/me';
 
 
   static String getPngAsset(String image) {

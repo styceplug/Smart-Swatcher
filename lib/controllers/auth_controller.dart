@@ -14,9 +14,63 @@ class AuthController extends GetxController {
   final GlobalLoaderController loader = Get.find<GlobalLoaderController>();
 
   StylistModel _tempUserData = StylistModel();
+  Rx<StylistModel?> stylistProfile = Rx<StylistModel?>(null);
 
+  // StylistModel? get stylistProfile => _stylistProfile;
   RxInt usernameCheckStatus = 0.obs;
   RxString usernameCheckMessage = "".obs;
+
+  @override
+  void onInit() {
+    loadStylistProfile();
+    super.onInit();
+  }
+
+  @override
+  void onClose() {
+    super.onClose();
+  }
+
+  Future<void> logout() async {
+    await authRepo.clearSharedData();
+    stylistProfile.value = null;
+    update();
+  }
+
+  Future<void> loadStylistProfile() async {
+    StylistModel? stylistProfile = await authRepo.loadSTypeListerProfile();
+    if (stylistProfile != null) {
+      this.stylistProfile.value = stylistProfile;
+    }
+    getProfile();
+  }
+
+  Future<void> saveStylistProfile(StylistModel stylistProfile) async {
+    await authRepo.saveStylistProfile(stylistProfile);
+    this.stylistProfile.value = stylistProfile;
+    update();
+  }
+
+  Future<void> getProfile() async {
+    loader.showLoader();
+    update();
+
+    try {
+      Response response = await authRepo.getStylistProfile();
+
+      if (response.statusCode == 200) {
+        await saveStylistProfile(StylistModel.fromJson(response.body['stylist']));
+        print("Profile loaded for: ${stylistProfile.value?.fullName}");
+      } else {
+        Get.snackbar("Error", "Failed to load profile");
+      }
+    } catch (e) {
+      print("Profile fetch error: $e");
+    } finally {
+      loader.hideLoader();
+      update();
+    }
+  }
 
   String _getErrorMessage(Response response) {
     if (response.body != null && response.body is Map) {
@@ -75,7 +129,6 @@ class AuthController extends GetxController {
         print('Account Created');
         String token = response.body['token'];
         await authRepo.saveUserToken(token);
-
       } else {
         Get.snackbar("Error", response.statusText.toString());
       }
@@ -87,7 +140,10 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<void> patchStylistData(Map<String, dynamic> data, {String? nextRoute}) async {
+  Future<void> patchStylistData(
+    Map<String, dynamic> data, {
+    String? nextRoute,
+  }) async {
     loader.showLoader();
     update();
 
@@ -101,7 +157,7 @@ class AuthController extends GetxController {
           CustomSnackBar.success(message: "Successfully Updated");
         }
       } else {
-        Get.snackbar("Update Failed",_getErrorMessage(response));
+        Get.snackbar("Update Failed", _getErrorMessage(response));
       }
     } catch (e) {
       Get.snackbar("Error", e.toString());
@@ -127,7 +183,6 @@ class AuthController extends GetxController {
 
         loader.hideLoader();
         // Get.offAllNamed(AppRoutes.homeScreen);
-
       } else {
         loader.hideLoader();
         Get.snackbar("Error", response.statusText ?? "Login failed");
@@ -142,32 +197,28 @@ class AuthController extends GetxController {
   Future<void> verifyOtp(String otp) async {
     loader.showLoader();
     update();
-    try{
-      Response response = await authRepo.verifyOtp({
-        'otp': otp,
-      });
+    try {
+      Response response = await authRepo.verifyOtp({'otp': otp});
 
-      if(response.statusCode == 200){
+      if (response.statusCode == 200) {
         print(response.body);
         CustomSnackBar.success(message: 'Account Verified');
         Get.toNamed(AppRoutes.setStylistUsernameScreen);
-    }
-  } catch (e) {
+      }
+    } catch (e) {
       print(e);
     } finally {
       loader.hideLoader();
       update();
     }
+  }
 
-
-}
-
-  Future<void> resendOtp() async{
+  Future<void> resendOtp() async {
     loader.showLoader();
-    try{
+    try {
       Response response = await authRepo.resendOtp({});
 
-      if(response.statusCode == 200){
+      if (response.statusCode == 200) {
         print(response.body);
         CustomSnackBar.success(message: 'OTP Sent');
       }
@@ -178,5 +229,4 @@ class AuthController extends GetxController {
       update();
     }
   }
-
 }
