@@ -34,6 +34,7 @@ class AuthController extends GetxController {
   Future<void> logout() async {
     await authRepo.clearSharedData();
     stylistProfile.value = null;
+    Get.offAllNamed(AppRoutes.splashScreen);
     update();
   }
 
@@ -182,7 +183,8 @@ class AuthController extends GetxController {
         await authRepo.saveUserToken(token);
 
         loader.hideLoader();
-        // Get.offAllNamed(AppRoutes.homeScreen);
+        Get.offAllNamed(AppRoutes.homeScreen);
+        update();
       } else {
         loader.hideLoader();
         Get.snackbar("Error", response.statusText ?? "Login failed");

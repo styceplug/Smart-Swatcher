@@ -33,7 +33,7 @@ Future<void> init() async {
   // repos
   Get.lazyPut(() => AppRepo(apiClient: Get.find(), sharedPreferences: Get.find()));
   Get.lazyPut(() => VersionRepo(apiClient: Get.find()));
-  Get.lazyPut(() => PostRepo());
+  Get.lazyPut(() => PostRepo(apiClient: Get.find()));
   Get.lazyPut(()=>AuthRepo(apiClient: Get.find(), sharedPreferences: Get.find()));
 
 
@@ -46,7 +46,7 @@ Future<void> init() async {
   Get.lazyPut(() => VersionController(versionRepo: Get.find()));
   Get.lazyPut(() => GlobalLoaderController());
   Get.lazyPut(()=> PostController());
-  Get.lazyPut(() => AuthController(authRepo: Get.find()));
+  Get.lazyPut(() => AuthController(authRepo: Get.find()),fenix: true);
 
 
 }

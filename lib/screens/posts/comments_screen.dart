@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/post_controller.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
@@ -15,62 +17,46 @@ class CommentsScreen extends StatefulWidget {
 }
 
 class _CommentsScreenState extends State<CommentsScreen> {
+  PostController postController = Get.find<PostController>();
+  final TextEditingController commentInputController = TextEditingController();
 
-  PostModel posts (){
-     return PostModel(
-       username: "Jakobjelling",
-       role: "Color Specialist",
-       timeAgo: "2h ago",
-       content:
-       "Lorem ipsum dolor sit amet consectetur. Aenean amet leo viverra feugiat ante. Pellentesque scelerisque malesuada arcu integer sapien.",
-       likes: 124,
-       comments: 65,
-       bookmarks: 32,
-       imageUrl: "https://picsum.photos/200/300",
-  );
-}
+  late PostModel post;
 
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    if (Get.arguments is PostModel) {
+      post = Get.arguments as PostModel;
+    } else {
+      post = PostModel(
+        id: "",
+        caption: "",
+        targetAudience: "",
+        createdAt: "",
+        author: Author(
+          id: "",
+          type: "",
+          name: "Unknown",
+          username: "",
+          isVerified: false,
+        ),
+      );
+    }
 
-  final commentData = [
-    {
-      "username": "Jakobjelling",
-      "timeAgo": "2h ago",
-      "content":
-      "Lorem ipsum dolor sit amet consectetur. Aenean amet leo viverra feugiat ante. Pellentesque scelerisque malesuada arcu integer sapien.",
-      "likes": 124,
-      "comments": 65,
-      "bookmarks": 32,
-    },
-    {
-      "username": "JaneDoe",
-      "timeAgo": "5h ago",
-      "content": "This is another post!",
-      "likes": 90,
-      "comments": 12,
-      "bookmarks": 5,
-    },
-  ];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      postController.loadPostDetails(post.id);
+    });
+  }
 
-
-
-
-
+  @override
+  void dispose() {
+    commentInputController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-
-    final List<CommentModel> comments =
-    commentData.map((item) {
-      return CommentModel(
-        username: item["username"] as String? ?? "",
-        timeAgo: item["timeAgo"] as String? ?? "",
-        content: item["content"] as String? ?? "",
-        likes: item["likes"] as int? ?? 0,
-        comments: item["comments"] as int? ?? 0,
-        bookmarks: item["bookmarks"] as int? ?? 0,
-      );
-    }).toList();
-
     return Scaffold(
       appBar: CustomAppbar(
         leadingIcon: BackButton(),
@@ -80,26 +66,59 @@ class _CommentsScreenState extends State<CommentsScreen> {
       body: Container(
         child: Column(
           children: [
-            PostCard(post: posts()),
+            Obx((){
+              var livePost = postController.postsList.firstWhere(
+                      (p) => p.id == post.id,
+                  orElse: () => post
+              );
+
+
+              return PostCard(post: post);
+            }),
             Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: comments.length,
-                itemBuilder: (context, index) {
-                  final p = comments[index];
-                  return CommentCard(post: p);
-                },
-              ),
+              child: Obx(() {
+                if (postController.isCommentsLoading.value &&
+                    postController.currentPostComments.isEmpty) {
+                  return Center(
+                    child: CircularProgressIndicator(color: AppColors.primary5),
+                  );
+                }
+                return ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: postController.currentPostComments.length,
+                  itemBuilder: (context, index) {
+                    final comment = postController.currentPostComments[index];
+
+                    return CommentCard(comment: comment);
+                  },
+                );
+              }),
             ),
           ],
         ),
       ),
       bottomSheet: Container(
         color: AppColors.white,
-        padding: EdgeInsets.symmetric(horizontal: Dimensions.width20,vertical: Dimensions.height40),
+        padding: EdgeInsets.symmetric(
+          horizontal: Dimensions.width20,
+          vertical: Dimensions.height40,
+        ),
         child: CustomTextField(
           hintText: 'Reply to ...',
-          suffixIcon: Icon(Icons.send),
+          suffixIcon: InkWell(
+            onTap: () {
+              if (commentInputController.text.isNotEmpty) {
+                postController.postComment(
+                  post.id,
+                  commentInputController.text,
+                );
+                commentInputController.clear();
+                FocusScope.of(context).unfocus();
+              }
+            },
+            child: Icon(Icons.send),
+          ),
+          controller: commentInputController,
         ),
       ),
     );

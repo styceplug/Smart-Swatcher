@@ -6,7 +6,6 @@ import '../../routes/routes.dart';
 class ApiChecker {
   static void checkApi(Response response) {
     if (response.statusCode == 401) {
-      // User not authorized
       Get.offAllNamed(AppRoutes.onboardingScreen);
     } else if (response.statusCode == 403) {
       // Forbidden

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_constants.dart';
+import 'api_checker.dart';
 
 class ApiClient extends GetConnect implements GetxService {
     late String token;
@@ -45,6 +47,7 @@ class ApiClient extends GetConnect implements GetxService {
         return response;
       } catch (e) {
         print("❌ ERROR in getData($uri): $e");
+        ApiChecker.checkApi(Response(statusCode: 1, statusText: e.toString()));
         return Response(statusCode: 1, statusText: e.toString());
       }
     }
@@ -59,6 +62,8 @@ class ApiClient extends GetConnect implements GetxService {
           final responseSize = utf8.encode(response.body.toString()).length;
           print('Response Size for $uri: $responseSize bytes (${(responseSize / 1024).toStringAsFixed(2)} KB)');
         }
+        ApiChecker.checkApi(Response(statusCode: 1, statusText: response.toString()));
+
 
         return response;
       } catch (e,s) {
@@ -67,6 +72,7 @@ class ApiClient extends GetConnect implements GetxService {
           print(s);
           print(e.toString());
         }
+
         return Response(statusCode: 1, statusText: e.toString());
       }
     }
@@ -147,6 +153,8 @@ print(e.toString());
       }
     }
 
+
+
     Future<Response> deleteData(String uri, {Map<String, String>? headers}) async {
       try {
         print('🗑️ DELETE: $baseUrl$uri');
@@ -169,4 +177,12 @@ print(e.toString());
     }
 
 
+
+}
+
+class MultipartBody {
+  String key;
+  File file;
+
+  MultipartBody(this.key, this.file);
 }

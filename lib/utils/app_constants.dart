@@ -17,6 +17,15 @@ class AppConstants {
 
 
 
+  //POST
+
+  static const String CREATE_POST = '/api/posts';
+  static const String UPLOAD_MEDIA = '/api/media/upload';
+
+
+  //FOLDER
+  static const String GET_FOLDERS = '/api/folders';
+  static const String CREATE_FOLDERS = '/api/folders';
 
 
 

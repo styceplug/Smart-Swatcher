@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
 import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
@@ -15,6 +16,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+
+  AuthController authController = Get.find<AuthController>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,6 +188,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ProfileOptionTile(
                       leadingIcon: Icons.logout,
                       title: 'Log out',
+                      onTap: (){
+                        authController.logout();
+                      },
                     ),
                   ],
                 ),

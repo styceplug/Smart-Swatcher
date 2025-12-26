@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
 import '../../controllers/post_controller.dart';
@@ -147,15 +148,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 icon: CupertinoIcons.globe,
                 title: 'General Color Club',
                 isSelected:
-                controller.selectedAudience.value == 'General Color Club',
-                onTap: () => controller.setAudience('General Color Club'),
+                controller.selectedAudience.value == 'General',
+                onTap: () => controller.setAudience('General'),
               ),
               SizedBox(height: Dimensions.height20),
               _buildAudienceOption(
                 icon: Iconsax.people,
                 title: 'Elite Only',
-                isSelected: controller.selectedAudience.value == 'Elite Only',
-                onTap: () => controller.setAudience('Elite Only'),
+                isSelected: controller.selectedAudience.value == 'Elite',
+                onTap: () => controller.setAudience('Elite'),
               ),
               SizedBox(height: Dimensions.height20 * 2),
               CustomButton(
@@ -257,57 +258,107 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 ),
               ),
             ),
-            Obx(() => InkWell(
+
+            Obx(() {
+              if (controller.selectedMediaFiles.isEmpty) return SizedBox.shrink();
+              return Container(
+                height: 100,
+                margin: EdgeInsets.only(bottom: 10),
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: controller.selectedMediaFiles.length,
+                  itemBuilder: (context, index) {
+                    return Stack(
+                      children: [
+                        Container(
+                          margin: EdgeInsets.only(right: 10),
+                          width: 100,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            image: DecorationImage(
+                              image: FileImage(controller.selectedMediaFiles[index]),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        // Remove Button
+                        Positioned(
+                          right: 15,
+                          top: 5,
+                          child: InkWell(
+                            onTap: () => controller.removeMedia(index),
+                            child: Container(
+                              padding: EdgeInsets.all(2),
+                              decoration: BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                              child: Icon(Icons.close, size: 16, color: Colors.white),
+                            ),
+                          ),
+                        )
+                      ],
+                    );
+                  },
+                ),
+              );
+            }),
+
+          Obx((){
+
+            String displayText = 'General Color Club';
+            IconData displayIcon = CupertinoIcons.globe;
+
+            if (controller.selectedAudience.value == 'Elite') {
+              displayText = 'Elite Only';
+              displayIcon = Iconsax.people;
+            }
+
+            return InkWell(
               onTap: _showAudienceModal,
               child: Container(
-                padding: EdgeInsets.symmetric(
-                  vertical: Dimensions.height10,
-                ),
+                padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
                 decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: AppColors.grey2),
-                    top: BorderSide(color: AppColors.grey2),
-                  ),
+                  border: Border(bottom: BorderSide(color: AppColors.grey2), top: BorderSide(color: AppColors.grey2)),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      controller.selectedAudience.value == 'General Color Club'
-                          ? CupertinoIcons.globe
-                          : Iconsax.people,
-                    ),
+                    Icon(displayIcon),
                     SizedBox(width: Dimensions.width20),
                     Text(
-                      controller.selectedAudience.value,
-                      style: TextStyle(
-                        fontSize: Dimensions.font15,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w500,
-                      ),
+                      displayText, // Shows "General Color Club" or "Elite Only"
+                      style: TextStyle(fontSize: Dimensions.font15, fontFamily: 'Poppins', fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
               ),
-            )),
+            );
+          }),
+
+
             Container(
               padding: EdgeInsets.symmetric(vertical: Dimensions.height20),
               child: Row(
                 children: [
-                  Icon(CupertinoIcons.photo),
-                  SizedBox(width: Dimensions.width20),
-                  Icon(CupertinoIcons.camera),
-                  Spacer(),
-                  CustomButton(
-                    text: 'Upload',
-                    onPressed: () {
-                      // TODO: Implement post upload
-                    },
-                    backgroundColor: AppColors.primary4,
-                    padding: EdgeInsets.symmetric(
-                      vertical: Dimensions.height10,
-                      horizontal: Dimensions.width10,
-                    ),
+                  // Gallery Picker
+                  InkWell(
+                    onTap: () => controller.pickMedia(ImageSource.gallery),
+                    child: Icon(CupertinoIcons.photo),
                   ),
+                  SizedBox(width: Dimensions.width20),
+                  // Camera Picker
+                  InkWell(
+                    onTap: () => controller.pickMedia(ImageSource.camera),
+                    child: Icon(CupertinoIcons.camera),
+                  ),
+                  Spacer(),
+
+                  // Upload Button (With Loading State)
+                  Obx(() => CustomButton(
+                    text: controller.isLoading.value ? 'Posting...' : 'Upload',
+                    onPressed: controller.isLoading.value
+                        ? () {}
+                        : () => controller.createPost(postController.text),
+                    backgroundColor: controller.isLoading.value ? AppColors.grey4 : AppColors.primary4,
+                    padding: EdgeInsets.symmetric(vertical: Dimensions.height10, horizontal: Dimensions.width20),
+                  )),
                 ],
               ),
             ),
