@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:smart_swatcher/routes/routes.dart';
+import 'package:smart_swatcher/controllers/folder_controller.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
 
-class ChooseNbl extends StatefulWidget {
-  const ChooseNbl({Key? key}) : super(key: key);
+class ChooseCdl extends StatefulWidget {
+  const ChooseCdl({Key? key}) : super(key: key);
 
   @override
-  State<ChooseNbl> createState() => _ChooseNblState();
+  State<ChooseCdl> createState() => _ChooseCdlState();
 }
 
-class _ChooseNblState extends State<ChooseNbl> {
-  Map<String, dynamic>? previousData;
+class _ChooseCdlState extends State<ChooseCdl> {
+  // 1. Inject Controller
+  final ClientFolderController controller = Get.find<ClientFolderController>();
+
+  // 2. Data Pile
+  Map<String, dynamic> wizardData = {};
 
   int selectedLevel = 0;
-  String imageUrl = "";
 
-  final List<Map<String, dynamic>> nblOptions = [
+  // Data List
+  final List<Map<String, dynamic>> cdlOptions = [
     {'level': 1, 'title': '1. Black', 'subtitle': 'Underlying pigment: Black/Blue', 'asset': 'black'},
     {'level': 2, 'title': '2. Dark Brown', 'subtitle': 'Underlying pigment: Dark Red', 'asset': 'dark-brown'},
     {'level': 3, 'title': '3. Medium Brown', 'subtitle': 'Underlying pigment: Red', 'asset': 'medium-brown'},
@@ -38,30 +42,25 @@ class _ChooseNblState extends State<ChooseNbl> {
   @override
   void initState() {
     super.initState();
-    if (Get.arguments != null && Get.arguments is Map) {
-      previousData = Get.arguments;
-      imageUrl = previousData?['imageUrl'] ?? "";
-
-      if (previousData?['suggestion'] != null) {
-        var suggestion = previousData!['suggestion'];
-        int estimated = suggestion['estimatedBaseLevel'] ?? 0;
-
-        if (estimated > 0 && estimated <= 12) {
-          selectedLevel = estimated;
-        }
-      }
+    // Retrieve data from previous steps
+    if (Get.arguments is Map) {
+      wizardData = Get.arguments;
+      // print("Data so far: $wizardData");
     }
   }
 
   void _onNext() {
+    if (selectedLevel == 0) return;
 
-    Map<String, dynamic> wizardData = {
-      'imageUrl': imageUrl,
-      'naturalBaseLevel': selectedLevel,
-      'suggestion': previousData?['suggestion'],
-    };
+    // 1. Add final data point
+    wizardData['desiredLevel'] = selectedLevel;
 
-    Get.toNamed(AppRoutes.selectDesireLevel, arguments: wizardData);
+    // 2. Clean up (remove internal suggestion data not needed by API)
+    wizardData.remove('suggestion');
+
+    // 3. Trigger API Call via Controller
+    // The controller will handle the navigation to the Preview Screen on success
+    controller.getPreview(wizardData);
   }
 
   @override
@@ -79,20 +78,21 @@ class _ChooseNblState extends State<ChooseNbl> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Progress Bar (Adjust fraction as needed, e.g. 6/6)
             Container(
-              width: (Dimensions.screenWidth / 6) * 3,
+              width: Dimensions.screenWidth,
               height: Dimensions.height5,
               color: AppColors.primary4,
             ),
             SizedBox(height: Dimensions.height20),
 
             Text(
-              'Choose Natural Base Color (NBL)',
+              'Choose your client\'s Desired Level ',
               style: TextStyle(fontSize: Dimensions.font20, fontWeight: FontWeight.w500),
             ),
             SizedBox(height: Dimensions.height5),
             Text(
-              'Pick the base color that matches your client’s hair.',
+              'Client\'s desired color outcome',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w400,
@@ -105,10 +105,10 @@ class _ChooseNblState extends State<ChooseNbl> {
             // --- SCROLLABLE LIST ---
             Expanded(
               child: ListView.builder(
-                itemCount: nblOptions.length,
+                itemCount: cdlOptions.length,
                 itemBuilder: (context, index) {
-                  final option = nblOptions[index];
-                  return nblCard(
+                  final option = cdlOptions[index];
+                  return cdlCard(
                     option['title'],
                     option['subtitle'],
                     option['asset'],
@@ -127,19 +127,19 @@ class _ChooseNblState extends State<ChooseNbl> {
                 Expanded(
                   child: CustomButton(
                     text: 'Prev',
-                    onPressed: () => Get.back(), // Go back to upload
+                    onPressed: () => Get.back(),
                     backgroundColor: AppColors.primary1,
                   ),
                 ),
                 SizedBox(width: Dimensions.width20),
                 Expanded(
-                  child: CustomButton(
-                    text: 'Next',
-                    // Disable if nothing selected
-                    isDisabled: selectedLevel == 0,
+                  child: Obx(() => CustomButton(
+                    // Show Loading State
+                    text: controller.isLoading.value ? 'Generating...' : 'Next',
+                    isDisabled: controller.isLoading.value || selectedLevel == 0,
                     onPressed: _onNext,
                     backgroundColor: AppColors.primary4,
-                  ),
+                  )),
                 ),
               ],
             ),
@@ -150,7 +150,7 @@ class _ChooseNblState extends State<ChooseNbl> {
     );
   }
 
-  Widget nblCard(String title, String subtitle, String imageAsset, int level) {
+  Widget cdlCard(String title, String subtitle, String imageAsset, int level) {
     bool isSelected = selectedLevel == level;
 
     return InkWell(
@@ -163,14 +163,12 @@ class _ChooseNblState extends State<ChooseNbl> {
         height: Dimensions.height100,
         width: Dimensions.screenWidth,
         padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
-        margin: EdgeInsets.only(bottom: 2), // Tiny gap or keep logic
+        margin: EdgeInsets.only(bottom: 2),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: Colors.white, width: 2)),
           image: DecorationImage(
             fit: BoxFit.cover,
-            // Assuming your AppConstants.getBaseAsset adds the path/extension
             image: AssetImage(AppConstants.getBaseAsset(imageAsset)),
-            // Optional: Darken non-selected items slightly for focus
             colorFilter: isSelected
                 ? null
                 : ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken),
@@ -180,7 +178,7 @@ class _ChooseNblState extends State<ChooseNbl> {
           children: [
             Icon(
               isSelected ? Icons.circle : Icons.circle_outlined,
-              color: AppColors.primary1, // Or White depending on contrast
+              color: AppColors.primary1,
               size: Dimensions.iconSize20,
             ),
             SizedBox(width: Dimensions.width10),

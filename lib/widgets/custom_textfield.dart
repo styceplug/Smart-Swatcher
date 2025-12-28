@@ -11,9 +11,11 @@ class CustomTextField extends StatelessWidget {
   final bool obscureText;
   final List<String>? autofillHints;
   final bool enabled;
+  final bool readOnly; // <--- ADDED THIS
   final Widget? suffixIcon;
   final TextInputType keyboardType;
   final int? maxLines;
+  final TextInputType? textInputType; // Helper for older code using this name
   final void Function(String)? onChanged;
 
   const CustomTextField({
@@ -25,9 +27,11 @@ class CustomTextField extends StatelessWidget {
     this.prefixIcon,
     this.obscureText = false,
     this.enabled = true,
+    this.readOnly = false, // <--- ADDED THIS (Default false)
     this.suffixIcon,
     this.keyboardType = TextInputType.text,
-    this.maxLines,
+    this.textInputType, // Helper
+    this.maxLines = 1, // Default to 1 line for standard input
     this.onChanged,
     this.autofillHints,
   });
@@ -50,21 +54,23 @@ class CustomTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       enabled: enabled,
+      readOnly: readOnly, // <--- CONNECTED HERE
       maxLines: maxLines,
       autofillHints: autofillHints,
-      keyboardType: keyboardType,
-      style: TextStyle(color: textColor,fontFamily: 'Poppins'),
+      // Support both naming conventions if you had 'textInputType' elsewhere
+      keyboardType: textInputType ?? keyboardType,
+      style: TextStyle(color: textColor, fontFamily: 'Poppins'),
       decoration: InputDecoration(
         filled: true,
         fillColor: fillColor,
         labelText: labelText,
-        labelStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5),fontFamily: 'Poppins'),
+        labelStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5), fontFamily: 'Poppins'),
         hintText: hintText,
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, color: textColor.withOpacity(0.6))
             : null,
         suffixIcon: suffixIcon,
-        hintStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5),fontFamily: 'Poppins'),
+        hintStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5), fontFamily: 'Poppins'),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(Dimensions.radius20),
           borderSide: BorderSide(color: borderColor),

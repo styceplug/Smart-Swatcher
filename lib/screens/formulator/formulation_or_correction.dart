@@ -160,7 +160,7 @@ class _FormulationOrCorrectionScreenState
               text: 'Continue',
               onPressed: () {
                 if (selectedOption == 'formulation') {
-                  Get.toNamed(AppRoutes.clientDetails);
+                  Get.toNamed(AppRoutes.uploadHair);
                 } else {
                   //fix this
                 }

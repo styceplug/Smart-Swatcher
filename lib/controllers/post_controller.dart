@@ -198,6 +198,58 @@ class PostController extends GetxController {
     }
   }
 
+  Future<void> toggleSave(String postId) async {
+    int index = postsList.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+
+    // 1. Optimistic Update
+    var post = postsList[index];
+    bool originalStatus = post.isSaved;
+
+    post.isSaved = !post.isSaved;
+    if (post.metrics != null) {
+      post.metrics!.saves = post.isSaved
+          ? post.metrics!.saves + 1
+          : post.metrics!.saves - 1;
+    }
+    postsList.refresh();
+
+    try {
+      Response response = await postRepo.savePost(postId);
+
+      // 2. Handle Success (Sync with Server)
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // FIX: The API returns { "saved": true, "saves": 1 } directly
+        // We read 'saves' directly from body, NOT body['metrics']['saves']
+
+        var body = response.body;
+        if (body is Map && body['saves'] != null) {
+          post.metrics?.saves = body['saves']; // Sync exact count from server
+          postsList.refresh();
+        }
+      }
+      // 3. Handle Failure (Revert)
+      else {
+        _revertSave(post, originalStatus);
+      }
+    } catch (e) {
+      print("Save Error: $e");
+      _revertSave(post, originalStatus);
+    }
+  }
+
+  void _revertSave(PostModel post, bool originalStatus) {
+    post.isSaved = originalStatus;
+    if (post.metrics != null) {
+      post.metrics!.saves = post.isSaved
+          ? post.metrics!.saves + 1
+          : post.metrics!.saves - 1;
+    }
+    postsList.refresh();
+    Get.snackbar("Error", "Failed to save post");
+  }
+
+
   // --- Draft Logic ---
   Future<void> loadDrafts() async {
     isLoading.value = true;

@@ -5,23 +5,36 @@ import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_textfield.dart';
 
-class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({super.key});
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/utils/colors.dart';
+import 'package:smart_swatcher/utils/dimensions.dart';
+import 'package:smart_swatcher/widgets/custom_appbar.dart';
 
-  @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
-}
+class EditProfileScreen extends StatelessWidget {
+  const EditProfileScreen({Key? key}) : super(key: key);
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
+    AuthController controller = Get.find<AuthController>();
+
     return Scaffold(
       appBar: CustomAppbar(
-        leadingIcon: BackButton(),
+        leadingIcon: const BackButton(),
         title: "Edit Profile",
-        actionIcon: Text(
-          'Done',
-          style: TextStyle(fontSize: Dimensions.font17, fontFamily: 'Poppins'),
+        actionIcon: InkWell(
+          onTap: () => controller.saveChanges(),
+          child: Text(
+            'Done',
+            style: TextStyle(
+              fontSize: Dimensions.font17,
+              fontFamily: 'Poppins',
+              color: AppColors.primary5,
+            ),
+          ),
         ),
       ),
       body: Container(
@@ -36,97 +49,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               InkWell(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
-                    ),
-                    builder: (context) {
-                      return StatefulBuilder(
-                        builder: (context, setModalState) {
-                          return Container(
-                            height: Dimensions.screenHeight / 4,
-                            padding: EdgeInsets.fromLTRB(
-                              Dimensions.width20,
-                              Dimensions.height20,
-                              Dimensions.width20,
-                              Dimensions.height20,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Iconsax.gallery,
-                                      size: Dimensions.iconSize20,
-                                    ),
-                                    SizedBox(width: Dimensions.width10),
-                                    Text(
-                                      'Gallery',
-                                      style: TextStyle(
-                                        fontSize: Dimensions.font17,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'Poppins',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Iconsax.camera,
-                                      size: Dimensions.iconSize20,
-                                    ),
-                                    SizedBox(width: Dimensions.width10),
-                                    Text(
-                                      'Camera',
-                                      style: TextStyle(
-                                        fontSize: Dimensions.font17,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'Poppins',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.delete,
-                                      size: Dimensions.iconSize20,
-                                    ),
-                                    SizedBox(width: Dimensions.width10),
-                                    Text(
-                                      'Remove Image',
-                                      style: TextStyle(
-                                        fontSize: Dimensions.font17,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'Poppins',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: Dimensions.height30),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+                onTap: () => _showImagePickerModal(context, controller),
+                child: Obx(() {
+                  ImageProvider? bgImage;
+                  if (controller.selectedImage.value != null) {
+                    bgImage = FileImage(controller.selectedImage.value!);
+                  } else {
+                    String? networkUrl =
+                        controller.stylistProfile.value?.profileImageUrl;
+                    if (networkUrl != null && networkUrl.isNotEmpty) {
+                      bgImage = NetworkImage(networkUrl);
+                    }
+                  }
 
-                child: Container(
-                  height: Dimensions.height100,
-                  width: Dimensions.width100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.grey2,
-                  ),
-                ),
+                  return Container(
+                    height: Dimensions.height100,
+                    width: Dimensions.width100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.grey2,
+                      image:
+                          bgImage != null
+                              ? DecorationImage(
+                                image: bgImage,
+                                fit: BoxFit.cover,
+                              )
+                              : null,
+                    ),
+                    child:
+                        bgImage == null
+                            ? Icon(
+                              Icons.person,
+                              size: 50,
+                              color: AppColors.grey4,
+                            )
+                            : null,
+                  );
+                }),
               ),
               SizedBox(height: Dimensions.height10),
               Text(
@@ -138,33 +97,129 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               SizedBox(height: Dimensions.height50),
-              CustomTextField(labelText: 'Full Name'),
+
+              // --- FORM FIELDS ---
+              CustomTextField(
+                controller: controller.nameController,
+                labelText: 'Full Name',
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Email Address'),
+
+              // Email is usually read-only
+              CustomTextField(
+                controller: controller.emailController,
+                labelText: 'Email Address',
+                readOnly: true,
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Username'),
+
+              CustomTextField(
+                controller: controller.usernameController,
+                labelText: 'Username',
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Phone number'),
+              CustomTextField(
+                controller: controller.phoneController,
+                labelText: 'Phone number',
+                keyboardType: TextInputType.phone,
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Country'),
+
+              // Location
+              CustomTextField(
+                controller: controller.countryController,
+                labelText: 'Country',
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'State'),
+              CustomTextField(
+                controller: controller.stateController,
+                labelText: 'State',
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Bio'),
+
+              // Professional Details
+              CustomTextField(
+                controller: controller.licenseController,
+                labelText: 'License Number',
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'License Number'),
+              CustomTextField(
+                controller: controller.salonController,
+                labelText: 'Salon Name',
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Salon Name'),
+              CustomTextField(
+                controller: controller.certTypeController,
+                labelText: 'Certification Type',
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Certification Type'),
+              CustomTextField(
+                controller: controller.yearsController,
+                labelText: 'Years of experience',
+                keyboardType: TextInputType.number,
+              ),
               SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Years of experience'),
-              SizedBox(height: Dimensions.height20),
-              CustomTextField(labelText: 'Licencing Country'),
-              SizedBox(height: Dimensions.height20),
+              CustomTextField(
+                controller: controller.licenseCountryController,
+                labelText: 'Licencing Country',
+              ),
+              SizedBox(height: Dimensions.height50), // Bottom padding
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showImagePickerModal(BuildContext context, AuthController controller) {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          height: Dimensions.screenHeight / 4,
+          padding: EdgeInsets.all(Dimensions.width20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _modalItem(Iconsax.gallery, 'Gallery', () {
+                FocusScope.of(context).unfocus();
+                controller.pickImage(ImageSource.gallery);
+              }),
+              _modalItem(Iconsax.camera, 'Camera', () {
+                FocusScope.of(context).unfocus();
+                controller.pickImage(ImageSource.camera);
+              }),
+              _modalItem(Icons.delete, 'Remove Image', () {
+                FocusScope.of(context).unfocus();
+                controller.removeImage();
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _modalItem(IconData icon, String text, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, size: Dimensions.iconSize20),
+          SizedBox(width: Dimensions.width10),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: Dimensions.font17,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:smart_swatcher/helpers/global_loader_controller.dart';
 import 'package:smart_swatcher/widgets/snackbars.dart';
 
@@ -15,13 +19,25 @@ class AuthController extends GetxController {
 
   StylistModel _tempUserData = StylistModel();
   Rx<StylistModel?> stylistProfile = Rx<StylistModel?>(null);
-
-  // StylistModel? get stylistProfile => _stylistProfile;
+  var selectedImage = Rxn<File>();
   RxInt usernameCheckStatus = 0.obs;
   RxString usernameCheckMessage = "".obs;
+  late TextEditingController nameController;
+  late TextEditingController emailController;
+  late TextEditingController usernameController;
+  late TextEditingController phoneController;
+  late TextEditingController countryController;
+  late TextEditingController stateController;
+  // late TextEditingController bioController;
+  late TextEditingController licenseController;
+  late TextEditingController salonController;
+  late TextEditingController certTypeController;
+  late TextEditingController yearsController;
+  late TextEditingController licenseCountryController;
 
   @override
   void onInit() {
+    _initControllers();
     loadStylistProfile();
     super.onInit();
   }
@@ -29,6 +45,111 @@ class AuthController extends GetxController {
   @override
   void onClose() {
     super.onClose();
+  }
+
+  void _initControllers() {
+    nameController = TextEditingController();
+    emailController = TextEditingController();
+    usernameController = TextEditingController();
+    phoneController = TextEditingController();
+    countryController = TextEditingController();
+    stateController = TextEditingController();
+    licenseController = TextEditingController();
+    salonController = TextEditingController();
+    certTypeController = TextEditingController();
+    yearsController = TextEditingController();
+    licenseCountryController = TextEditingController();
+  }
+
+  void _fillUserData() {
+    var user = stylistProfile
+            .value;
+
+    nameController = TextEditingController(text: user?.fullName ?? '');
+    emailController = TextEditingController(
+      text: user?.email ?? '',
+    );
+    usernameController = TextEditingController(text: user?.username ?? '');
+    phoneController = TextEditingController(text: user?.phoneNumber ?? '');
+    countryController = TextEditingController(text: user?.country ?? '');
+    stateController = TextEditingController(text: user?.state ?? '');
+
+    licenseController = TextEditingController(text: user?.licenseNumber ?? '');
+    salonController = TextEditingController(text: user?.saloonName ?? '');
+    certTypeController = TextEditingController(
+      text: user?.certificationType ?? '',
+    );
+    yearsController = TextEditingController(
+      text: user?.yearsOfExperience?.toString() ?? '',
+    );
+    licenseCountryController = TextEditingController(
+      text: user?.licenseCountry ?? '',
+    );
+  }
+
+  Future<void> pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      selectedImage.value = File(pickedFile.path);
+      Get.back();
+    }
+  }
+
+  void removeImage() {
+    selectedImage.value = null;
+    Get.back();
+  }
+
+  Future<void> saveChanges() async {
+    loader.showLoader();
+    try {
+      if (selectedImage.value != null) {
+        Response imgResponse = await authRepo.updateProfilePicture(
+          selectedImage.value!,
+        );
+        if (imgResponse.statusCode != 200 && imgResponse.statusCode != 201) {
+          CustomSnackBar.failure(message: "Failed to upload image");
+          loader.hideLoader();
+          update();
+          return;
+        }
+      }
+
+      Map<String, dynamic> body = {
+        "fullName": nameController.text.trim(),
+        "username": usernameController.text.trim(),
+        "phone": phoneController.text.trim(),
+        "country": countryController.text.trim(),
+        "state": stateController.text.trim(),
+        "licenseNumber": licenseController.text.trim(),
+        "salonName": salonController.text.trim(),
+        "certificationType": certTypeController.text.trim(),
+        "licensingCountry": licenseCountryController.text.trim(),
+      };
+
+      // Handle integer parsing for years
+      if (yearsController.text.isNotEmpty) {
+        body["yearsOfExperience"] = int.tryParse(yearsController.text) ?? 0;
+      }
+
+      // C. Update Text Data
+      Response response = await authRepo.updateProfile(body);
+
+      if (response.statusCode == 200) {
+        await getProfile();
+        Get.back(); // Close screen
+        CustomSnackBar.success(message: "Profile updated successfully");
+      } else {
+        CustomSnackBar.failure(
+          message: response.body['message'] ?? "Update failed",
+        );
+      }
+    } catch (e) {
+      print("Update Error: $e");
+      CustomSnackBar.failure(message: "An error occurred");
+    } finally {
+      loader.hideLoader();
+    }
   }
 
   Future<void> logout() async {
@@ -49,6 +170,7 @@ class AuthController extends GetxController {
   Future<void> saveStylistProfile(StylistModel stylistProfile) async {
     await authRepo.saveStylistProfile(stylistProfile);
     this.stylistProfile.value = stylistProfile;
+    _fillUserData();
     update();
   }
 
@@ -60,7 +182,9 @@ class AuthController extends GetxController {
       Response response = await authRepo.getStylistProfile();
 
       if (response.statusCode == 200) {
-        await saveStylistProfile(StylistModel.fromJson(response.body['stylist']));
+        await saveStylistProfile(
+          StylistModel.fromJson(response.body['stylist']),
+        );
         print("Profile loaded for: ${stylistProfile.value?.fullName}");
       } else {
         Get.snackbar("Error", "Failed to load profile");

@@ -170,10 +170,12 @@ class PostCard extends StatelessWidget {
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
-                    Icons.bookmark_border,
+    post.isSaved ? Icons.bookmark : Icons.bookmark_border,
                     post.saveCount.toString(),
-                    AppColors.grey4,
-                    () {},
+                    post.isSaved ? AppColors.black1 : AppColors.grey4,
+                    () {
+                      postController.toggleSave(post.id);
+                    },
                   ),
                 ],
               ),

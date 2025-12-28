@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_swatcher/data/api/api_client.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
@@ -16,6 +18,16 @@ class AuthRepo extends GetxService {
   Future<void> clearSharedData() async {
     await sharedPreferences.remove(AppConstants.authToken);
     await sharedPreferences.clear();
+  }
+
+  Future<Response> updateProfilePicture(File file) async {
+    final uri = Uri.parse('${AppConstants.BASE_URL}/api/media/profile-picture');
+    var request = http.MultipartRequest('POST', uri);
+
+    var multipartFile = await http.MultipartFile.fromPath('file', file.path);
+    request.files.add(multipartFile);
+
+    return await apiClient.postMultipartData('/api/media/profile-picture', request);
   }
 
   Future<void> saveStylistProfile(StylistModel stylistProfile) async {

@@ -1,3 +1,5 @@
+import '../utils/app_constants.dart';
+
 class StylistModel {
   String? fullName;
   String? username;
@@ -67,5 +69,13 @@ class StylistModel {
       experienceLevel: json['experienceLevel'],
       profileImageUrl: json['profileImageUrl'],
     );
+  }
+
+  String? get fullProfileImageUrl {
+    if (profileImageUrl == null) return null;
+    if (profileImageUrl!.startsWith('/')) {
+      return '${AppConstants.BASE_URL}$profileImageUrl';
+    }
+    return profileImageUrl;
   }
 }

@@ -6,7 +6,7 @@ import 'package:smart_swatcher/screens/auth/stylist/pro_registration_screen.dart
 import 'package:smart_swatcher/screens/auth/stylist/stylist_login_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/update_password_screen.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/add_description.dart';
-import 'package:smart_swatcher/screens/formulator/formulation/client_details.dart';
+import 'package:smart_swatcher/screens/formulator/formulation/choose_cdl.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/grey_exceeds.dart';
 import 'package:smart_swatcher/screens/formulator/formulation_or_correction.dart';
 import 'package:smart_swatcher/screens/home/home_screen.dart';
@@ -105,6 +105,7 @@ class AppRoutes {
   static const String formulationOrCorrection = '/formulation-or-correction';
   static const String addDescription = '/add-description';
   static const String chooseNbl = '/choose-nbl';
+  static const String chooseCdl = '/choose-cdl';
   static const String clientDetails = '/client-details';
   static const String formulationPreview = '/formulation-preview';
   static const String greyCoverage = '/grey-coverage';
@@ -417,13 +418,7 @@ class AppRoutes {
       },
       transition: Transition.fadeIn,
     ),
-    GetPage(
-      name: clientDetails,
-      page: () {
-        return const ClientDetails();
-      },
-      transition: Transition.fadeIn,
-    ),
+
     GetPage(
       name: formulationPreview,
       page: () {
@@ -456,6 +451,13 @@ class AppRoutes {
       name: uploadHair,
       page: () {
         return const UploadHair();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: chooseCdl,
+      page: () {
+        return const ChooseCdl();
       },
       transition: Transition.fadeIn,
     ),

@@ -13,7 +13,7 @@ class PostModel {
   List<String> tags;
   PostMetrics? metrics;
   bool isLiked;
-
+  bool isSaved;
   String? base;
   String? lights;
   String? toner;
@@ -28,12 +28,16 @@ class PostModel {
     this.tags = const [],
     this.metrics,
     this.isLiked = false,
+    this.isSaved = false,
     this.base,
     this.lights,
     this.toner,
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
+
+    var viewer = json['viewer'] ?? {};
+
     return PostModel(
       id: json['id'],
       caption: json['caption'] ?? "",
@@ -44,15 +48,17 @@ class PostModel {
           ? (json['media'] as List).map((e) => MediaItem.fromJson(e)).toList()
           : [],
       tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
+      isLiked: viewer['liked'] ?? false,
+      isSaved: viewer['saved'] ?? false,
       metrics: json['metrics'] != null ? PostMetrics.fromJson(json['metrics']) : null,
       base: null,
       lights: null,
       toner: null,
-      isLiked: json['isLiked'] ?? false,
     );
   }
 
 
+  int get saveCount => metrics?.saves ?? 0;
 
   String get username => author?.username ?? "Unknown";
   String get userRole => author?.type?.capitalizeFirst ?? "Stylist"; // e.g., "Stylist"
@@ -71,7 +77,7 @@ class PostModel {
 
   int get likeCount => metrics?.likes ?? 0;
   int get commentCount => metrics?.comments ?? 0;
-  int get saveCount => metrics?.saves ?? 0;
+
 
   String get timeAgo {
     if (createdAt.isEmpty) return "";

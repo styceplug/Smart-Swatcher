@@ -67,6 +67,11 @@ class PostRepo {
     return await apiClient.postData('/api/posts/$postId/like', {});
   }
 
+  Future<Response> savePost(String postId) async {
+    return await apiClient.postData('/api/posts/$postId/save', {});
+  }
+
+
   Future<Response> addComment(String postId, String body) async {
     return await apiClient.postData('/api/posts/$postId/comments', {"body": body});
   }
