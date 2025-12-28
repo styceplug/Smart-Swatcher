@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_swatcher/controllers/app_controller.dart';
+import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
@@ -21,6 +23,8 @@ class CreateFolderScreen extends StatefulWidget {
 class _CreateFolderScreenState extends State<CreateFolderScreen> {
   // 1. Initialize Controller
   final ClientFolderController controller = Get.put(ClientFolderController());
+
+  AppController appController = Get.find<AppController>();
 
   // 2. Text Controllers
   final TextEditingController nameController = TextEditingController();
@@ -111,6 +115,7 @@ class _CreateFolderScreenState extends State<CreateFolderScreen> {
       shouldSendConsent: sendConsent,
       // Pass reminder if your backend supports it (add to controller if needed)
     );
+    Get.back();
   }
 
   @override

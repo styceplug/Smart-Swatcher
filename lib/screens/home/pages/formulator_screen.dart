@@ -9,6 +9,7 @@ import 'package:smart_swatcher/widgets/empty_state_widget.dart';
 import 'package:smart_swatcher/widgets/folder_card.dart';
 
 import '../../../controllers/folder_controller.dart';
+import '../../../models/folder_model.dart';
 import '../../../routes/routes.dart';
 import '../../../widgets/custom_button.dart';
 
@@ -21,7 +22,6 @@ class FormulatorScreen extends StatefulWidget {
 
 class _FormulatorScreenState extends State<FormulatorScreen>
     with AutomaticKeepAliveClientMixin {
-
   // 1. Inject Controller
   final ClientFolderController controller = Get.put(ClientFolderController());
 
@@ -78,20 +78,29 @@ class _FormulatorScreenState extends State<FormulatorScreen>
                           // A. LOADING STATE
                           if (controller.isFetching.value) {
                             return Center(
-                              child: CircularProgressIndicator(color: AppColors.primary5),
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary5,
+                              ),
                             );
                           }
 
                           // Filter Logic: Search Filter
-                          final filteredList = controller.foldersList.where((folder) {
-                            return folder.clientName.toLowerCase().contains(searchQuery.value.toLowerCase());
-                          }).toList();
+                          final filteredList =
+                              controller.foldersList.where((folder) {
+                                return folder.clientName!
+                                    .toLowerCase()
+                                    .contains(searchQuery.value.toLowerCase());
+                              }).toList();
 
                           // B. EMPTY STATE (No Clients or No Search Results)
                           if (filteredList.isEmpty) {
                             // If user is searching and finds nothing
                             if (searchQuery.value.isNotEmpty) {
-                              return Center(child: Text("No clients found matching '${searchQuery.value}'"));
+                              return Center(
+                                child: Text(
+                                  "No clients found matching '${searchQuery.value}'",
+                                ),
+                              );
                             }
 
                             // If actually no data (Your Empty Design)
@@ -100,9 +109,11 @@ class _FormulatorScreenState extends State<FormulatorScreen>
                               children: [
                                 Container(
                                   alignment: Alignment.center,
-                                  height: Dimensions.height20 * 10, // Adjusted height
+                                  height: Dimensions.height20 * 10,
+                                  // Adjusted height
                                   child: EmptyState(
-                                    message: 'No client folder yet, create one to start adding formulations',
+                                    message:
+                                        'No client folder yet, create one to start adding formulations',
                                     // imageAsset: 'file-icon', // Uncomment if asset exists
                                   ),
                                 ),
@@ -110,7 +121,8 @@ class _FormulatorScreenState extends State<FormulatorScreen>
                                 CustomButton(
                                   text: 'Create Folder',
                                   backgroundColor: AppColors.primary5,
-                                  onPressed: () => Get.toNamed(AppRoutes.createFolder),
+                                  onPressed:
+                                      () => Get.toNamed(AppRoutes.createFolder),
                                 ),
                               ],
                             );
@@ -121,7 +133,7 @@ class _FormulatorScreenState extends State<FormulatorScreen>
                             onRefresh: () async => await controller.getFolders(),
                             color: AppColors.primary5,
                             child: GridView.builder(
-                              padding: EdgeInsets.only(bottom: Dimensions.height100), // Space for FAB
+                              padding: EdgeInsets.only(bottom: Dimensions.height100),
                               physics: const BouncingScrollPhysics(),
                               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
@@ -131,13 +143,23 @@ class _FormulatorScreenState extends State<FormulatorScreen>
                               ),
                               itemCount: filteredList.length,
                               itemBuilder: (context, index) {
+                                // 1. Define the folder variable here based on index
                                 final folder = filteredList[index];
-                                return FolderCard(
-                                  clientName: folder.clientName,
-                                  onTap: (){
-                                    Get.toNamed(AppRoutes.folderScreen, arguments: folder);
-                                  },
 
+                                return FolderCard(
+                                  clientName: folder.clientName ?? '',
+                                  onTap: () {
+                                    // 2. FIX: Set the current folder ONLY when tapped
+                                    // It's cleaner to use 'controller' if it's already defined in the widget,
+                                    // otherwise Get.find is fine.
+                                    Get.find<ClientFolderController>().currentFolder.value = folder;
+
+                                    // 3. Navigate
+                                    Get.toNamed(
+                                      AppRoutes.folderScreen,
+                                      arguments: folder,
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -151,7 +173,6 @@ class _FormulatorScreenState extends State<FormulatorScreen>
             ],
           ),
 
-          // --- FAB (Only show if list is not empty, or always show - your choice) ---
           Positioned(
             right: Dimensions.width20,
             bottom: Dimensions.height50 + kBottomNavigationBarHeight,
@@ -172,7 +193,7 @@ class _FormulatorScreenState extends State<FormulatorScreen>
                       color: Colors.black26,
                       blurRadius: 10,
                       offset: Offset(0, 4),
-                    )
+                    ),
                   ],
                 ),
                 child: Icon(Icons.add, color: Colors.white),

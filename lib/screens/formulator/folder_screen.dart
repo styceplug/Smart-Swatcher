@@ -29,9 +29,8 @@ class _FolderScreenState extends State<FolderScreen> {
     if (Get.arguments is ClientFolderModel) {
       folder = Get.arguments as ClientFolderModel;
     } else {
-      // Fallback for safety
       folder = ClientFolderModel(
-        clientName: "Unknown",
+        clientName: "",
         clientEmail: "",
         clientPhone: "",
       );
@@ -44,7 +43,7 @@ class _FolderScreenState extends State<FolderScreen> {
       appBar: CustomAppbar(
         leadingIcon: const BackButton(),
         customTitle: Text(
-          folder.clientName,
+          folder.clientName ?? '',
           style: TextStyle(
             fontFamily: 'Poppins',
             fontWeight: FontWeight.w500,
@@ -113,13 +112,13 @@ class _FolderScreenState extends State<FolderScreen> {
             child: Icon(CupertinoIcons.person, size: Dimensions.iconSize30 * 2),
           ),
           SizedBox(height: Dimensions.height20),
-          _infoRow('Client\'s Name', folder.clientName),
-          _infoRow('Phone Number', folder.clientPhone),
-          _infoRow('Email Address', folder.clientEmail),
+          _infoRow('Client\'s Name', folder.clientName ?? ''),
+          _infoRow('Phone Number', folder.clientPhone ?? ''),
+          _infoRow('Email Address', folder.clientEmail ?? ''),
           _infoRow('Date of Birth', dob),
           _infoRow('Appointment Date', appointment),
-          _infoRow('Consent Status', folder.consentStatus),
-          _infoRow('Last Consent', folder.consentStatus),
+          _infoRow('Consent Status', folder.consentStatus ?? ''),
+          _infoRow('Last Consent', folder.consentStatus ?? ''),
           SizedBox(height: Dimensions.height20),
           CustomButton(
             text: 'Schedule Appointment',
@@ -171,135 +170,319 @@ class _FolderScreenState extends State<FolderScreen> {
     );
   }
 
-// Inside FolderScreen.dart
-
   Widget _buildFormulationsTab() {
-    final ClientFolderController controller = Get.find<ClientFolderController>();
+    final ClientFolderController controller =
+        Get.find<ClientFolderController>();
 
-    return Obx(() {
-
-
-      if (controller.formulationsList.isEmpty) {
-        return Container(
-          width: Dimensions.screenWidth,
-          padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                AppConstants.getPngAsset('no-formulation'),
-                height: Dimensions.height100 * 2,
-                width: Dimensions.width100 * 2,
-              ),
-              SizedBox(height: Dimensions.height20),
-              Text(
-                'No formulation yet, create one \nto get started',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: Dimensions.font18,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: Dimensions.height20),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: Dimensions.width50),
-                child: CustomButton(
-                  text: 'Add New',
-                  onPressed: () => Get.toNamed(AppRoutes.formulationOrCorrection),
-                  backgroundColor: AppColors.primary4,
-                  icon: Icon(CupertinoIcons.plus, color: Colors.white, size: Dimensions.iconSize20),
-                ),
-              ),
-              SizedBox(height: Dimensions.height100),
-            ],
-          ),
-        );
+    // Helper to format date (e.g., "Oct 24, 2023")
+    // If you don't have intl package, you can just use string substring
+    String formatDate(String? dateStr) {
+      if (dateStr == null || dateStr.isEmpty) return "Recently";
+      try {
+        DateTime date = DateTime.parse(dateStr);
+        return DateFormat.yMMMd().format(date); // Requires intl package
+        // OR without intl: return "${date.day}/${date.month}/${date.year}";
+      } catch (e) {
+        return "Unknown date";
       }
+    }
 
-      // 3. List (Success)
-      return ListView.builder(
-        padding: EdgeInsets.symmetric(horizontal: Dimensions.width20, vertical: Dimensions.height10),
-        itemCount: controller.formulationsList.length,
-        itemBuilder: (context, index) {
-          final form = controller.formulationsList[index];
+    // Helper to fix relative URLs
+    String getFullUrl(String? path) {
+      if (path == null || path.isEmpty) return "";
+      if (path.startsWith('http')) return path;
+      if (path.startsWith('/')) return '${AppConstants.BASE_URL}$path';
+      return '${AppConstants.BASE_URL}/$path';
+    }
 
+    return Stack(
+      children: [
+        Obx(() {
+        if (controller.formulationsList.isEmpty) {
           return Container(
-            margin: EdgeInsets.only(bottom: Dimensions.height15),
-            padding: EdgeInsets.all(Dimensions.width15),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(Dimensions.radius15),
-              border: Border.all(color: AppColors.grey2),
-            ),
+            width: Dimensions.screenWidth,
+            padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Header: Status Badge
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: form.status == 'approved' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        form.status.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: form.status == 'approved' ? Colors.green : Colors.orange,
-                        ),
-                      ),
-                    ),
-                    Icon(Icons.more_horiz, color: AppColors.grey4),
-                  ],
+                Image.asset(
+                  AppConstants.getPngAsset('no-formulation'),
+                  height: Dimensions.height100 * 2,
+                  width: Dimensions.width100 * 2,
                 ),
-                SizedBox(height: Dimensions.height10),
-
-                // Main Details
+                SizedBox(height: Dimensions.height20),
                 Text(
-                  "Desired Level: ${form.desiredLevel}",
+                  'No formulation yet, create one \nto get started',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: Dimensions.font16,
+                    fontSize: Dimensions.font18,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 5),
-                Text(
-                  "Natural Base: ${form.naturalBaseLevel} • Grey: ${form.greyPercentage}%",
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: Dimensions.font14,
-                    color: AppColors.grey4,
+                SizedBox(height: Dimensions.height20),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width50,
                   ),
-                ),
-                if(form.developerVolume > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5.0),
-                    child: Text(
-                      "Vol: ${form.developerVolume} • Ratio: ${form.mixingRatio ?? 'N/A'}",
-                      style: TextStyle(fontSize: 12, color: AppColors.black1),
+                  child: CustomButton(
+                    text: 'Add New',
+                    onPressed: () {
+                      Get.toNamed(
+                        AppRoutes.formulationOrCorrection,
+                        arguments: {'folderId': folder.id},
+                      );
+                    },
+                    backgroundColor: AppColors.primary4,
+                    icon: Icon(
+                      CupertinoIcons.plus,
+                      color: Colors.white,
+                      size: Dimensions.iconSize20,
                     ),
                   ),
-
-                // Description Preview (if any)
-                if (form.noteToStylist != null && form.noteToStylist!.isNotEmpty) ...[
-                  SizedBox(height: 10),
-                  Text(
-                    form.noteToStylist!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.grey5),
-                  ),
-                ]
+                ),
               ],
             ),
           );
-        },
-      );
-    });
-  }}
+        }
+
+        // 3. List (Success)
+        return ListView.builder(
+          padding: EdgeInsets.symmetric(
+            horizontal: Dimensions.width20,
+            vertical: Dimensions.height10,
+          ),
+          itemCount: controller.formulationsList.length,
+          itemBuilder: (context, index) {
+            final form = controller.formulationsList[index];
+
+            String originalImg = getFullUrl(form.imageUrl);
+            String predictedImg = getFullUrl(form.predictionImageUrl);
+
+            return GestureDetector(
+              onTap: () {
+                var bundle = {
+                  'inputs': form.inputData ?? {},
+                  'outputs': form.resultData ?? {},
+                };
+                Get.toNamed(AppRoutes.formulationPreview, arguments: bundle);
+              },
+              child: Container(
+                margin: EdgeInsets.only(bottom: Dimensions.height15),
+                padding: EdgeInsets.all(Dimensions.width10),
+                // Increased padding slightly
+                decoration: BoxDecoration(
+                  color: Colors.white, // Need a background color for shadow
+                  borderRadius: BorderRadius.circular(Dimensions.radius15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // --- SPLIT IMAGE PREVIEW ---
+                    Container(
+                      width: Dimensions.width10 * 8,
+                      // Adjusted width
+                      height: Dimensions.width10 * 8,
+                      // Square aspect
+                      clipBehavior: Clip.hardEdge,
+                      // Clip images to border
+                      decoration: BoxDecoration(
+                        color: AppColors.bgColor,
+                        borderRadius: BorderRadius.circular(
+                          Dimensions.radius15 / 2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Original Image (Left Half)
+                          Expanded(
+                            child:
+                                originalImg.isNotEmpty
+                                    ? Image.network(
+                                      originalImg,
+                                      fit: BoxFit.cover,
+                                      height: double.infinity,
+                                      errorBuilder:
+                                          (c, o, s) => Container(
+                                            color: Colors.grey[300],
+                                            child: Icon(
+                                              Icons.broken_image,
+                                              size: 15,
+                                            ),
+                                          ),
+                                    )
+                                    : Container(color: Colors.grey[300]),
+                          ),
+                          // Prediction Image (Right Half)
+                          Expanded(
+                            child:
+                                predictedImg.isNotEmpty
+                                    ? Image.network(
+                                      predictedImg,
+                                      fit: BoxFit.cover,
+                                      height: double.infinity,
+                                      errorBuilder:
+                                          (c, o, s) => Container(
+                                            color: AppColors.primary4.withOpacity(
+                                              0.2,
+                                            ),
+                                          ),
+                                    )
+                                    : Container(
+                                      color: AppColors.primary4.withOpacity(0.1),
+                                    ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(width: Dimensions.width15),
+
+                    // --- TEXT DETAILS ---
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // "Lvl 4 > Lvl 9"
+                          Text(
+                            'Lvl ${form.naturalBaseLevel} > Lvl ${form.desiredLevel}',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: Dimensions.font16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 5),
+                          // "Created Oct 24, 2023"
+                          Text(
+                            'Created ${formatDate(form.createdAt)}',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: Dimensions.font12,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.grey4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // --- ACTIONS ---
+                    InkWell(
+                      onTap: () {
+                        showShareModal();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Icon(Icons.more_horiz, color: AppColors.grey4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      }),
+        Positioned(
+          right: Dimensions.width20,
+          bottom: Dimensions.height100,
+          child: FloatingActionButton(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Dimensions.radius30),
+            ),
+            heroTag: "folder_fab",
+            onPressed: () {
+              Get.toNamed(
+                AppRoutes.formulationOrCorrection,
+                arguments: {'folderId': folder.id},
+              );
+            },
+            backgroundColor: AppColors.primary5,
+            child: Icon(Icons.add, color: Colors.white),
+          ),
+        ),
+
+      ],
+    );
+  }
+
+  void showShareModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(Dimensions.radius15),
+        ),
+      ),
+      builder: (context) {
+        final List<IconData> icons = [
+          Icons.add,
+          CupertinoIcons.share,
+          CupertinoIcons.link,
+          CupertinoIcons.delete,
+        ];
+        final List<String> value = ['Post', 'Share', 'Copy Link', 'Delete'];
+
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.4,
+          padding: EdgeInsets.all(Dimensions.width20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Formulator',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Divider(),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: icons.length,
+                  itemBuilder: (context, index) {
+                    return InkWell(
+                      onTap: () {
+                        setState(() {});
+                        Get.back();
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: Dimensions.height15,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(icons[index]),
+                            SizedBox(width: Dimensions.width10),
+                            Text(
+                              value[index],
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

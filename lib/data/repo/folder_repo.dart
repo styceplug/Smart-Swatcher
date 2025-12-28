@@ -12,6 +12,10 @@ class FolderRepo {
 
   FolderRepo({required this.apiClient});
 
+  Future<Response> saveFormulation(Map<String, dynamic> body) async {
+    return await apiClient.postData('/api/formulations/save', body);
+  }
+
   Future<Response> previewFormulation(Map<String, dynamic> body) async {
     return await apiClient.postData('/api/formulations/preview', body);
   }
