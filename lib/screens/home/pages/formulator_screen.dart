@@ -8,6 +8,7 @@ import 'package:smart_swatcher/widgets/custom_textfield.dart';
 import 'package:smart_swatcher/widgets/empty_state_widget.dart';
 import 'package:smart_swatcher/widgets/folder_card.dart';
 
+import '../../../controllers/folder_controller.dart';
 import '../../../routes/routes.dart';
 import '../../../widgets/custom_button.dart';
 
@@ -20,20 +21,20 @@ class FormulatorScreen extends StatefulWidget {
 
 class _FormulatorScreenState extends State<FormulatorScreen>
     with AutomaticKeepAliveClientMixin {
+
+  // 1. Inject Controller
+  final ClientFolderController controller = Get.put(ClientFolderController());
+
+  // 2. Search State
+  final TextEditingController searchInputCtrl = TextEditingController();
+  final RxString searchQuery = ''.obs; // Reactive variable for search
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
-    final clients = [
-      {'name': 'Client A'},
-      {'name': 'Client B'},
-      {'name': 'Client C'},
-      {'name': 'Client D'},
-      {'name': 'Client E'},
-      {'name': 'Client F'},
-      {'name': 'Client G'},
-    ];
+    super.build(context); // Required for KeepAlive
 
     return Container(
       width: Dimensions.screenWidth,
@@ -61,43 +62,87 @@ class _FormulatorScreenState extends State<FormulatorScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // --- SEARCH BAR ---
                       CustomTextField(
+                        controller: searchInputCtrl,
                         prefixIcon: Icons.search,
                         hintText: 'Search for client\'s name',
+                        // Update search query on type
+                        onChanged: (val) => searchQuery.value = val,
                       ),
-                      SizedBox(height: Dimensions.height50),
+                      SizedBox(height: Dimensions.height20),
 
-                      ///EMPTY STATE
-                      /*Container(
-                      alignment: Alignment.center,
-                      height: Dimensions.height20 * 19,
-                      child: EmptyState(
-                        message:
-                            'No client folder yet, create one to start adding formulations',
-                        imageAsset: 'file-icon',
-                      ),
-                    ),
-                    CustomButton(text: 'Create Folder', onPressed: () {},backgroundColor: AppColors.primary5,),*/
-
-                      ///FOLDER
+                      // --- MAIN CONTENT AREA (Reactive) ---
                       Expanded(
-                        child: GridView.builder(
-                          padding: EdgeInsets.zero,
-                          physics: const BouncingScrollPhysics(),
-                          shrinkWrap: true,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
+                        child: Obx(() {
+                          // A. LOADING STATE
+                          if (controller.isFetching.value) {
+                            return Center(
+                              child: CircularProgressIndicator(color: AppColors.primary5),
+                            );
+                          }
+
+                          // Filter Logic: Search Filter
+                          final filteredList = controller.foldersList.where((folder) {
+                            return folder.clientName.toLowerCase().contains(searchQuery.value.toLowerCase());
+                          }).toList();
+
+                          // B. EMPTY STATE (No Clients or No Search Results)
+                          if (filteredList.isEmpty) {
+                            // If user is searching and finds nothing
+                            if (searchQuery.value.isNotEmpty) {
+                              return Center(child: Text("No clients found matching '${searchQuery.value}'"));
+                            }
+
+                            // If actually no data (Your Empty Design)
+                            return Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  alignment: Alignment.center,
+                                  height: Dimensions.height20 * 10, // Adjusted height
+                                  child: EmptyState(
+                                    message: 'No client folder yet, create one to start adding formulations',
+                                    // imageAsset: 'file-icon', // Uncomment if asset exists
+                                  ),
+                                ),
+                                SizedBox(height: Dimensions.height20),
+                                CustomButton(
+                                  text: 'Create Folder',
+                                  backgroundColor: AppColors.primary5,
+                                  onPressed: () => Get.toNamed(AppRoutes.createFolder),
+                                ),
+                              ],
+                            );
+                          }
+
+                          // C. GRID VIEW (Success)
+                          return RefreshIndicator(
+                            onRefresh: () async => await controller.getFolders(),
+                            color: AppColors.primary5,
+                            child: GridView.builder(
+                              padding: EdgeInsets.only(bottom: Dimensions.height100), // Space for FAB
+                              physics: const BouncingScrollPhysics(),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                mainAxisSpacing: Dimensions.height5,
+                                mainAxisSpacing: Dimensions.height15,
                                 crossAxisSpacing: Dimensions.width15,
                                 childAspectRatio: 1.1,
                               ),
-                          itemCount: clients.length,
-                          itemBuilder: (context, index) {
-                            final client = clients[index];
-                            return FolderCard(clientName: client['name'] ?? '');
-                          },
-                        ),
+                              itemCount: filteredList.length,
+                              itemBuilder: (context, index) {
+                                final folder = filteredList[index];
+                                return FolderCard(
+                                  clientName: folder.clientName,
+                                  onTap: (){
+                                    Get.toNamed(AppRoutes.folderScreen, arguments: folder);
+                                  },
+
+                                );
+                              },
+                            ),
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -105,20 +150,32 @@ class _FormulatorScreenState extends State<FormulatorScreen>
               ),
             ],
           ),
+
+          // --- FAB (Only show if list is not empty, or always show - your choice) ---
           Positioned(
             right: Dimensions.width20,
             bottom: Dimensions.height50 + kBottomNavigationBarHeight,
             child: InkWell(
-              onTap: (){
+              onTap: () {
                 Get.toNamed(AppRoutes.createFolder);
               },
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: Dimensions.width15,vertical: Dimensions.height15),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimensions.width15,
+                  vertical: Dimensions.height15,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary4,
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    )
+                  ],
                 ),
-                child: Icon(Icons.add,color: Colors.white,),
+                child: Icon(Icons.add, color: Colors.white),
               ),
             ),
           ),

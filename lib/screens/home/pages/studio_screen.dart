@@ -93,7 +93,9 @@ class _StudioScreenState extends State<StudioScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Afternoon ${authController.stylistProfile.value?.fullName?.capitalizeFirst}',
+                          'Afternoon ${authController.stylistProfile.value?.fullName?.capitalize}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.left,
                           style: TextStyle(fontSize: Dimensions.font18),
                         ),

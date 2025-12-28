@@ -52,7 +52,7 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             title: AppConstants.APP_NAME,
             theme: ThemeData(
-                fontFamily: 'Recoleta',
+                fontFamily: 'Poppins',
                 scaffoldBackgroundColor: AppColors.bgColor
             ),
             getPages: AppRoutes.routes,

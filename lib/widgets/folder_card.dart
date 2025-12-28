@@ -11,15 +11,14 @@ import '../utils/dimensions.dart';
 
 class FolderCard extends StatelessWidget {
   final String clientName;
+  final VoidCallback? onTap;
 
-  const FolderCard({required this.clientName, super.key});
+  const FolderCard({required this.clientName, super.key, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: (){
-        Get.toNamed(AppRoutes.folderScreen,arguments: clientName);
-      },
+      onTap: onTap,
       child: Column(
         children: [
           Container(

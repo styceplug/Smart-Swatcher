@@ -16,7 +16,7 @@ class PostController extends GetxController {
 
   final RxList<dynamic> drafts = <dynamic>[].obs;
   final RxBool isLoading = false.obs;
-  final RxString selectedAudience = 'General Color Club'.obs;
+  final RxString selectedAudience = 'General'.obs;
   var postsList = <PostModel>[].obs;
   var isFeedLoading = false.obs;
   var currentPostComments = <CommentModel>[].obs;

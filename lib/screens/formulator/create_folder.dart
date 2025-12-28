@@ -221,7 +221,7 @@ class _CreateFolderScreenState extends State<CreateFolderScreen> {
                     });
                   },
                   activeTrackColor: AppColors.primary5,
-                  activeColor: AppColors.primary4,
+                  activeColor: AppColors.white,
                   inactiveThumbColor: AppColors.white,
                   inactiveTrackColor: AppColors.grey2,
                 ),
