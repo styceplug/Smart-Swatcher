@@ -28,6 +28,7 @@ class _FolderScreenState extends State<FolderScreen> {
     super.initState();
     if (Get.arguments is ClientFolderModel) {
       folder = Get.arguments as ClientFolderModel;
+      getFormulations();
     } else {
       folder = ClientFolderModel(
         clientName: "",
@@ -35,6 +36,12 @@ class _FolderScreenState extends State<FolderScreen> {
         clientPhone: "",
       );
     }
+  }
+
+  Future<void> getFormulations() async {
+    final ClientFolderController controller =
+        Get.find<ClientFolderController>();
+    if (folder.id != null) await controller.fetchFormulations(folder.id!);
   }
 
   @override
@@ -198,201 +205,202 @@ class _FolderScreenState extends State<FolderScreen> {
     return Stack(
       children: [
         Obx(() {
-        if (controller.formulationsList.isEmpty) {
-          return Container(
-            width: Dimensions.screenWidth,
-            padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  AppConstants.getPngAsset('no-formulation'),
-                  height: Dimensions.height100 * 2,
-                  width: Dimensions.width100 * 2,
-                ),
-                SizedBox(height: Dimensions.height20),
-                Text(
-                  'No formulation yet, create one \nto get started',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: Dimensions.font18,
-                    fontWeight: FontWeight.w500,
+          if (controller.formulationsList.isEmpty) {
+            return Container(
+              width: Dimensions.screenWidth,
+              padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    AppConstants.getPngAsset('no-formulation'),
+                    height: Dimensions.height100 * 2,
+                    width: Dimensions.width100 * 2,
                   ),
-                ),
-                SizedBox(height: Dimensions.height20),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width50,
-                  ),
-                  child: CustomButton(
-                    text: 'Add New',
-                    onPressed: () {
-                      Get.toNamed(
-                        AppRoutes.formulationOrCorrection,
-                        arguments: {'folderId': folder.id},
-                      );
-                    },
-                    backgroundColor: AppColors.primary4,
-                    icon: Icon(
-                      CupertinoIcons.plus,
-                      color: Colors.white,
-                      size: Dimensions.iconSize20,
+                  SizedBox(height: Dimensions.height20),
+                  Text(
+                    'No formulation yet, create one \nto get started',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: Dimensions.font18,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // 3. List (Success)
-        return ListView.builder(
-          padding: EdgeInsets.symmetric(
-            horizontal: Dimensions.width20,
-            vertical: Dimensions.height10,
-          ),
-          itemCount: controller.formulationsList.length,
-          itemBuilder: (context, index) {
-            final form = controller.formulationsList[index];
-
-            String originalImg = getFullUrl(form.imageUrl);
-            String predictedImg = getFullUrl(form.predictionImageUrl);
-
-            return GestureDetector(
-              onTap: () {
-                var bundle = {
-                  'inputs': form.inputData ?? {},
-                  'outputs': form.resultData ?? {},
-                };
-                Get.toNamed(AppRoutes.formulationPreview, arguments: bundle);
-              },
-              child: Container(
-                margin: EdgeInsets.only(bottom: Dimensions.height15),
-                padding: EdgeInsets.all(Dimensions.width10),
-                // Increased padding slightly
-                decoration: BoxDecoration(
-                  color: Colors.white, // Need a background color for shadow
-                  borderRadius: BorderRadius.circular(Dimensions.radius15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: Offset(0, 2),
+                  SizedBox(height: Dimensions.height20),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width50,
                     ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // --- SPLIT IMAGE PREVIEW ---
-                    Container(
-                      width: Dimensions.width10 * 8,
-                      // Adjusted width
-                      height: Dimensions.width10 * 8,
-                      // Square aspect
-                      clipBehavior: Clip.hardEdge,
-                      // Clip images to border
-                      decoration: BoxDecoration(
-                        color: AppColors.bgColor,
-                        borderRadius: BorderRadius.circular(
-                          Dimensions.radius15 / 2,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          // Original Image (Left Half)
-                          Expanded(
-                            child:
-                                originalImg.isNotEmpty
-                                    ? Image.network(
-                                      originalImg,
-                                      fit: BoxFit.cover,
-                                      height: double.infinity,
-                                      errorBuilder:
-                                          (c, o, s) => Container(
-                                            color: Colors.grey[300],
-                                            child: Icon(
-                                              Icons.broken_image,
-                                              size: 15,
-                                            ),
-                                          ),
-                                    )
-                                    : Container(color: Colors.grey[300]),
-                          ),
-                          // Prediction Image (Right Half)
-                          Expanded(
-                            child:
-                                predictedImg.isNotEmpty
-                                    ? Image.network(
-                                      predictedImg,
-                                      fit: BoxFit.cover,
-                                      height: double.infinity,
-                                      errorBuilder:
-                                          (c, o, s) => Container(
-                                            color: AppColors.primary4.withOpacity(
-                                              0.2,
-                                            ),
-                                          ),
-                                    )
-                                    : Container(
-                                      color: AppColors.primary4.withOpacity(0.1),
-                                    ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    SizedBox(width: Dimensions.width15),
-
-                    // --- TEXT DETAILS ---
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // "Lvl 4 > Lvl 9"
-                          Text(
-                            'Lvl ${form.naturalBaseLevel} > Lvl ${form.desiredLevel}',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: Dimensions.font16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 5),
-                          // "Created Oct 24, 2023"
-                          Text(
-                            'Created ${formatDate(form.createdAt)}',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: Dimensions.font12,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.grey4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // --- ACTIONS ---
-                    InkWell(
-                      onTap: () {
-                        showShareModal();
+                    child: CustomButton(
+                      text: 'Add New',
+                      onPressed: () {
+                        Get.toNamed(
+                          AppRoutes.formulationOrCorrection,
+                          arguments: {'folderId': folder.id},
+                        );
                       },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(Icons.more_horiz, color: AppColors.grey4),
+                      backgroundColor: AppColors.primary4,
+                      icon: Icon(
+                        CupertinoIcons.plus,
+                        color: Colors.white,
+                        size: Dimensions.iconSize20,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
-          },
-        );
-      }),
+          }
+
+          // 3. List (Success)
+          return ListView.builder(
+            padding: EdgeInsets.symmetric(
+              horizontal: Dimensions.width20,
+              vertical: Dimensions.height10,
+            ),
+            itemCount: controller.formulationsList.length,
+            itemBuilder: (context, index) {
+              final form = controller.formulationsList[index];
+
+              String originalImg = getFullUrl(form.imageUrl);
+              String predictedImg = getFullUrl(form.predictionImageUrl);
+
+              return GestureDetector(
+                onTap: () {
+                  var bundle = {
+                    'inputs': form.inputData ?? {},
+                    'outputs': form.resultData ?? {},
+                  };
+                  Get.toNamed(AppRoutes.formulationPreview, arguments: bundle);
+                },
+                child: Container(
+                  margin: EdgeInsets.only(bottom: Dimensions.height15),
+                  padding: EdgeInsets.all(Dimensions.width10),
+                  // Increased padding slightly
+                  decoration: BoxDecoration(
+                    color: Colors.white, // Need a background color for shadow
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 5,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // --- SPLIT IMAGE PREVIEW ---
+                      Container(
+                        width: Dimensions.width10 * 8,
+                        // Adjusted width
+                        height: Dimensions.width10 * 8,
+                        // Square aspect
+                        clipBehavior: Clip.hardEdge,
+                        // Clip images to border
+                        decoration: BoxDecoration(
+                          color: AppColors.bgColor,
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radius15 / 2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            // Original Image (Left Half)
+                            Expanded(
+                              child:
+                                  originalImg.isNotEmpty
+                                      ? Image.network(
+                                        originalImg,
+                                        fit: BoxFit.cover,
+                                        height: double.infinity,
+                                        errorBuilder:
+                                            (c, o, s) => Container(
+                                              color: Colors.grey[300],
+                                              child: Icon(
+                                                Icons.broken_image,
+                                                size: 15,
+                                              ),
+                                            ),
+                                      )
+                                      : Container(color: Colors.grey[300]),
+                            ),
+                            // Prediction Image (Right Half)
+                            Expanded(
+                              child:
+                                  predictedImg.isNotEmpty
+                                      ? Image.network(
+                                        predictedImg,
+                                        fit: BoxFit.cover,
+                                        height: double.infinity,
+                                        errorBuilder:
+                                            (c, o, s) => Container(
+                                              color: AppColors.primary4
+                                                  .withOpacity(0.2),
+                                            ),
+                                      )
+                                      : Container(
+                                        color: AppColors.primary4.withOpacity(
+                                          0.1,
+                                        ),
+                                      ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: Dimensions.width15),
+
+                      // --- TEXT DETAILS ---
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // "Lvl 4 > Lvl 9"
+                            Text(
+                              'Lvl ${form.naturalBaseLevel} > Lvl ${form.desiredLevel}',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: Dimensions.font16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            // "Created Oct 24, 2023"
+                            Text(
+                              'Created ${formatDate(form.createdAt)}',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: Dimensions.font12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.grey4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // --- ACTIONS ---
+                      InkWell(
+                        onTap: () {
+                          showShareModal();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(Icons.more_horiz, color: AppColors.grey4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        }),
         Positioned(
           right: Dimensions.width20,
           bottom: Dimensions.height100,
@@ -411,7 +419,6 @@ class _FolderScreenState extends State<FolderScreen> {
             child: Icon(Icons.add, color: Colors.white),
           ),
         ),
-
       ],
     );
   }
