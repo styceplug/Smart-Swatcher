@@ -125,7 +125,21 @@ class Author {
       isVerified: json['isVerified'] ?? false,
     );
   }
+  String? get displayImageUrl {
+    if (profileImageUrl!.isNotEmpty) {
+      String rawUrl = profileImageUrl!;
+      if (rawUrl.startsWith('/')) {
+        return '${AppConstants.BASE_URL}$rawUrl';
+      }
+      return rawUrl;
+    }
+    return null;
+  }
+
 }
+
+
+
 
 class MediaItem {
   String url;
@@ -207,6 +221,8 @@ class CommentModel {
     if (diff.inHours >= 1) return '${diff.inHours}h';
     return '${diff.inMinutes}m';
   }
+
+
 }
 
 class PostDraft {

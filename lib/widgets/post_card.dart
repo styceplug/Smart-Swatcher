@@ -42,7 +42,7 @@ class PostCard extends StatelessWidget {
                   image:
                       post.userProfileImage.isNotEmpty
                           ? DecorationImage(
-                            image: NetworkImage(post.userProfileImage),
+                            image: NetworkImage(post.author?.profileImageUrl ?? ''),
                             fit: BoxFit.cover,
                           )
                           : null,
@@ -234,7 +234,7 @@ class FormulasCard extends StatelessWidget {
                   image:
                       post.userProfileImage.isNotEmpty
                           ? DecorationImage(
-                            image: NetworkImage(post.userProfileImage),
+                            image: NetworkImage(post.displayImageUrl ?? ''),
                             fit: BoxFit.cover,
                           )
                           : null,
@@ -432,7 +432,7 @@ class CommentCard extends StatelessWidget {
                       (comment.author?.profileImageUrl != null)
                           ? DecorationImage(
                             image: NetworkImage(
-                              comment.author!.profileImageUrl!,
+                              comment.author!.displayImageUrl!,
                             ),
                           )
                           : null,

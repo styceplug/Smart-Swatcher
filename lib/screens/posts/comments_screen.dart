@@ -73,7 +73,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
               );
 
 
-              return PostCard(post: post);
+              return PostCard(post: livePost);
             }),
             Expanded(
               child: Obx(() {
