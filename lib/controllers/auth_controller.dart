@@ -187,7 +187,7 @@ class AuthController extends GetxController {
         );
         print("Profile loaded for: ${stylistProfile.value?.fullName}");
       } else {
-        Get.snackbar("Error", "Failed to load profile");
+        // Get.snackbar("Error", "Failed to load profile");
       }
     } catch (e) {
       print("Profile fetch error: $e");

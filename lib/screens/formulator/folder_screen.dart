@@ -158,7 +158,7 @@ class _FolderScreenState extends State<FolderScreen> {
                   ),
                   SizedBox(height: 5),
                   Text(
-                    value,
+                    value.capitalizeFirst ?? '',
                     style: TextStyle(
                       fontSize: Dimensions.font16,
                       fontWeight: FontWeight.w500,
