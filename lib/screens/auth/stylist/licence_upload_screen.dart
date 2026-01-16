@@ -63,6 +63,9 @@ class _LicenceUploadScreenState extends State<LicenceUploadScreen> {
                 suffixIcon: Icon(Icons.arrow_drop_down),
               ),
               SizedBox(height: Dimensions.height20),
+
+
+              ///Give option to open camera and gallery..
               Container(
                 width: Dimensions.screenWidth,
                 height: Dimensions.height150 * 1.2,

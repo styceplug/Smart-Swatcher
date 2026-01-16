@@ -159,7 +159,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                   ),
                   child: Align(
                     alignment: Alignment.topLeft,
-                    child: Padding(padding: EdgeInsets.all(8), child: Chip(label: Text("Original"))),
+                    child: Padding(padding: EdgeInsets.all(8), child: Chip(label: Text("Natural Level"))),
                   ),
                 ),
 
@@ -174,7 +174,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                   ),
                   child: Align(
                     alignment: Alignment.topLeft,
-                    child: Padding(padding: EdgeInsets.all(8), child: Chip(label: Text("Prediction"))),
+                    child: Padding(padding: EdgeInsets.all(8), child: Chip(label: Text("Desired Level"))),
                   ),
                 ),
 

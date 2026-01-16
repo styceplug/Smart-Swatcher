@@ -92,6 +92,7 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
                   suffixIcon: Icon(Icons.change_circle_outlined),
                   onChanged: onSearchChanged,
                   controller: usernameController,
+                  keyboardType: TextInputType.name,
                 ),
                 SizedBox(height: Dimensions.height5),
                 Obx(() {

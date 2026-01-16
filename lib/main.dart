@@ -18,7 +18,7 @@ import 'helpers/push_notification.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(
+/*  SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.deepOrange,
       statusBarIconBrightness: Brightness.dark,
@@ -28,7 +28,7 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.light,
       systemNavigationBarDividerColor: Colors.transparent,
     ),
-  );
+  );*/
 
   await NotificationService().initialize();
   await VersionService.init();

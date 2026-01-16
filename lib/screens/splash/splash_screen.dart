@@ -268,10 +268,10 @@ class _SplashScreenState extends State<SplashScreen>
                 children: [
                   SizedBox(height: Dimensions.height50),
         
-                  // Logo fade in
+
                   Container(
-                    height: Dimensions.height100 * 2,
-                    width: Dimensions.width100 * 2,
+                    height: Dimensions.height100 * 3,
+                    width: Dimensions.width100 * 3,
                     decoration: BoxDecoration(
                       borderRadius:
                       BorderRadius.circular(Dimensions.radius15),
@@ -283,8 +283,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
         
                   const Spacer(),
-        
-                  // Get Started button
+
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       Dimensions.width20,

@@ -38,7 +38,7 @@ class _AddDescriptionState extends State<AddDescription> {
         title: 'Description',
         actionIcon: InkWell(
           onTap: () {
-            // RETURN DATA BACK
+            // RETURN DATA BACK && ADD TIME-STAMP
             Get.back(result: textController.text.trim());
           },
           child: Text(
