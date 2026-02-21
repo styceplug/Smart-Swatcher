@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
 
 import '../../../routes/routes.dart';
 import '../../../utils/app_constants.dart';
@@ -13,6 +14,7 @@ import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_textfield.dart';
 import '../../../widgets/otp_box.dart';
+import '../../../widgets/snackbars.dart';
 
 class CreateCompanyAccount extends StatefulWidget {
   const CreateCompanyAccount({super.key});
@@ -31,6 +33,7 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
   TextEditingController passwordController = TextEditingController();
   bool isButtonEnabled = false;
   String otp = "";
+  AuthController authController = Get.find<AuthController>();
 
   late Future<List<CountryData>> _countriesFuture;
 
@@ -50,81 +53,6 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
     setState(() {
       passwordVisible = !passwordVisible;
     });
-  }
-
-  void showOtpModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(Dimensions.radius20),
-        ),
-      ),
-      builder:
-          (context) =>
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimensions.width20,
-              vertical: Dimensions.height30,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Enter OTP',
-                      style: TextStyle(
-                          fontSize: Dimensions.font18,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Poppins'
-                      ),
-                    ),
-                    Icon(Icons.cancel, color: Colors.grey,)
-                  ],
-                ),
-
-                SizedBox(height: Dimensions.height40),
-                Text('Enter the code sent to ${emailController.text}',
-                  style: TextStyle(
-                      fontSize: Dimensions.font15,
-                      fontWeight: FontWeight.w400,
-                      fontFamily: 'Poppins'
-                  ),
-                ),
-                SizedBox(height: Dimensions.height10),
-                OtpInput(
-                  length: 6,
-                  onCompleted: (enteredOtp) {
-                    setState(() {
-                      otp = enteredOtp;
-                      isButtonEnabled = true;
-                    });
-                  },
-                ),
-                SizedBox(height: Dimensions.height20,),
-                Text('Resend Code in 00:32',
-                  style: TextStyle(
-                      fontSize: Dimensions.font15,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'Poppins'
-                  ),
-                ),
-
-
-                SizedBox(height: Dimensions.height20),
-                CustomButton(text: 'Verify', onPressed: (){
-                  Get.toNamed(AppRoutes.setStylistUsernameScreen);
-                },backgroundColor: AppColors.primary5,),
-                SizedBox(height: Dimensions.height50),
-
-              ],
-            ),
-          ),
-    );
   }
 
 
@@ -174,18 +102,21 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
                     hintText: 'Company Name',
                     labelText: 'Company Name',
                     autofillHints: [AutofillHints.name],
+                    controller: nameController,
                   ),
                   SizedBox(height: Dimensions.height20),
                   CustomTextField(
                     hintText: 'Email Address',
                     labelText: 'Email Address',
                     autofillHints: [AutofillHints.email],
+                    controller: emailController,
                   ),
                   SizedBox(height: Dimensions.height20),
                   CustomTextField(
                     hintText: 'Phone Number',
                     labelText: 'Phone Number',
                     autofillHints: [AutofillHints.telephoneNumber],
+                    controller: phoneController,
                   ),
                   SizedBox(height: Dimensions.height20),
                   CountryState(
@@ -210,6 +141,7 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
                     autofillHints: [AutofillHints.password],
                     obscureText: !passwordVisible,
                     maxLines: 1,
+                    controller: passwordController,
                     suffixIcon: InkWell(
                       onTap: () {
                         setState(() {
@@ -225,9 +157,33 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
                   SizedBox(height: Dimensions.height20),
                   CustomButton(
                     text: 'Create Account',
-                    onPressed: showOtpModal,
+                    onPressed: () {
+                      if (nameController.text.trim().isEmpty ||
+                          emailController.text.trim().isEmpty ||
+                          phoneController.text.trim().isEmpty ||
+                          passwordController.text.trim().isEmpty ||
+                          selectedCountry == null ||
+                          selectedState == null) {
+                        CustomSnackBar.failure(message: "Please fill all fields");
+                        return;
+                      }
+
+                      authController.companyRegistrationData.addAll({
+                        "companyName": nameController.text.trim(),
+                        "email": emailController.text.trim(),
+                        "phoneNumber": phoneController.text.trim(),
+                        "country": selectedCountry!,
+                        "state": selectedState!,
+                        "password": passwordController.text.trim(),
+                        "authProvider": "email",
+                      });
+
+                      Get.toNamed(AppRoutes.companyUsernameScreen);
+
+                    },
                     backgroundColor: AppColors.primary5,
                   ),
+
                   SizedBox(height: Dimensions.height20),
                   InkWell(
                     onTap: (){

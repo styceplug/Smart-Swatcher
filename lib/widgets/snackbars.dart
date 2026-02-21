@@ -113,7 +113,7 @@ class CustomSnackBar {
   static void failure({required String message}) {
     _show(
       message: message,
-      color: AppColors.error1,
+      color: AppColors.error,
       icon: Icons.error_outline,
     );
   }

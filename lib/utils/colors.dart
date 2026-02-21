@@ -10,8 +10,7 @@ class AppColors {
   static const Color primary6 = Color(0xFF25140e);
 
   //status
-  static const Color error1 = Color(0xFFfdeaea);
-  static const Color error2 = Color(0xFFc62828);
+  static const Color error = Color(0xFFc62828);
   static const Color success1 = Color(0xFFe6f6ec);
   static const Color success2 = Color(0xFF2e7d32);
 

@@ -7,14 +7,14 @@ import '../../../utils/colors.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_button.dart';
 
-class ExperienceScreen extends StatefulWidget {
-  const ExperienceScreen({super.key});
+class CompanyRoleSelection extends StatefulWidget {
+  const CompanyRoleSelection({super.key});
 
   @override
-  State<ExperienceScreen> createState() => _ExperienceScreenState();
+  State<CompanyRoleSelection> createState() => _CompanyRoleSelectionState();
 }
 
-class _ExperienceScreenState extends State<ExperienceScreen> {
+class _CompanyRoleSelectionState extends State<CompanyRoleSelection> {
   int? selectedIndex;
 
   void selectExperience(int index) {
@@ -26,16 +26,16 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final experiences = [
+    final roles = [
       {
-        "title": "Beginner",
+        "title": "Company",
         "description":
-        "Just starting your journey, building confidence and skills."
+        "For salons or distributors managing multiple stylists or outlets."
       },
       {
-        "title": "Advanced",
+        "title": "Brand",
         "description":
-        "Experienced stylist with strong techniques and creativity."
+        "For hair care brands that want to showcase and sell directly."
       },
       {
         "title": "Educator",
@@ -43,6 +43,15 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         "Expert professional guiding and training other stylists."
       },
     ];
+
+    void onContinuePressed() {
+      if (selectedIndex == null) return;
+
+      final roleTitle = roles[selectedIndex!]["title"]!;
+      authController.companyRegistrationData["role"] = roleTitle;
+
+      Get.toNamed(AppRoutes.companyProfileInfo);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -69,14 +78,14 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Experience Level',
+                'Role Selection',
                 style: TextStyle(
                   fontSize: Dimensions.font20,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               Text(
-                'Select the level that best matches your skills',
+                'Select your role to get started.',
                 style: TextStyle(
                   fontSize: Dimensions.font14,
                   fontWeight: FontWeight.w300,
@@ -84,12 +93,12 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
                 ),
               ),
               SizedBox(height: Dimensions.height50),
-        
+
               // Loop through experiences
-              ...List.generate(experiences.length, (index) {
+              ...List.generate(roles.length, (index) {
                 final isSelected = selectedIndex == index;
-                final exp = experiences[index];
-        
+                final exp = roles[index];
+
                 return GestureDetector(
                   onTap: () => selectExperience(index),
                   child: Container(
@@ -143,14 +152,13 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
                   ),
                 );
               }),
-        
+
               const Spacer(),
 
               CustomButton(
                 text: 'Continue',
-                onPressed: (){
-                  Get.toNamed(AppRoutes.proRegistrationScreen);
-                },
+                onPressed: onContinuePressed,
+
 
                 backgroundColor: selectedIndex != null
                     ? AppColors.primary5
@@ -163,4 +171,6 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
       ),
     );
   }
+
+
 }

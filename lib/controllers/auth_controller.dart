@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -35,6 +36,8 @@ class AuthController extends GetxController {
   late TextEditingController yearsController;
   late TextEditingController licenseCountryController;
 
+  var companyRegistrationData = <String, dynamic>{}.obs;
+
   @override
   void onInit() {
     _initControllers();
@@ -60,6 +63,48 @@ class AuthController extends GetxController {
     yearsController = TextEditingController();
     licenseCountryController = TextEditingController();
   }
+
+
+  Future<void> registerCompany() async {
+    loader.showLoader();
+    try {
+      final data = Map<String, dynamic>.from(companyRegistrationData);
+
+      // Decide route: multipart if logo exists
+      final hasLogo = data['profileImageFile'] != null;
+
+      Response response = hasLogo
+          ? await authRepo.registerCompanyMultipart(data)
+          : await authRepo.registerCompany(data);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        dynamic body = response.body;
+
+        // If multipart returns JSON string, decode it
+        if (body is String) {
+          try {
+            body = jsonDecode(body);
+          } catch (_) {}
+        }
+
+        final token = body['token'] ?? body['data']?['token'];
+
+        if (token != null) {
+          await authRepo.saveUserToken(token);
+        }
+
+        Get.offAllNamed(AppRoutes.homeScreen);
+        CustomSnackBar.success(message: "Company account created!");
+      } else {
+        CustomSnackBar.failure(message: _getErrorMessage(response));
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: "Registration failed: $e");
+    } finally {
+      loader.hideLoader();
+    }
+  }
+
 
   void _fillUserData() {
     var user = stylistProfile

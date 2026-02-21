@@ -124,12 +124,16 @@ print(e.toString());
 
     Future<Response> postMultipartData(String uri, http.MultipartRequest request) async {
       try {
-        // Add your main headers to the request
-        request.headers.addAll(_mainHeaders);
+        // Copy headers but REMOVE JSON content-type
+        final headers = Map<String, String>.from(_mainHeaders);
+        headers.remove('Content-Type');
+
+        request.headers.addAll(headers);
 
         if (kDebugMode) {
           print('🧾 POST Multipart to $uri: ${request.fields}');
           print('🧾 Files: ${request.files.map((f) => f.field).join(', ')}');
+          print('🧾 Headers: ${request.headers}');
         }
 
         final streamedResponse = await request.send();
@@ -140,9 +144,14 @@ print(e.toString());
           print('📦 Response: ${response.body}');
         }
 
+        dynamic parsedBody = response.body;
+        try {
+          parsedBody = jsonDecode(response.body);
+        } catch (_) {}
+
         return Response(
           statusCode: response.statusCode,
-          body: response.body,
+          body: parsedBody,
           statusText: response.reasonPhrase,
         );
       } catch (e) {
@@ -151,6 +160,12 @@ print(e.toString());
         }
         return Response(statusCode: 1, statusText: e.toString());
       }
+    }
+
+    Map<String, String> get mainHeadersForMultipart {
+      final h = Map<String, String>.from(_mainHeaders);
+      h.remove('Content-Type'); // multipart must set its own boundary
+      return h;
     }
 
 
