@@ -8,6 +8,9 @@ import 'package:smart_swatcher/screens/auth/stylist/licence_upload_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/pro_registration_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/stylist_login_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/update_password_screen.dart';
+import 'package:smart_swatcher/screens/company/home/home_page.dart';
+import 'package:smart_swatcher/screens/company/in_app/analytics/downloads_screen.dart';
+import 'package:smart_swatcher/screens/company/in_app/analytics/engagement_screen.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/add_description.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/choose_cdl.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/grey_exceeds.dart';
@@ -39,6 +42,10 @@ import 'package:smart_swatcher/screens/subscription/subscription_plans_screen.da
 import '../screens/auth/stylist/experience_screen.dart';
 import '../screens/auth/stylist/forgot_password_screen.dart';
 import '../screens/auth/stylist/set_username_screen.dart';
+import '../screens/company/in_app/analytics/events_screen.dart';
+import '../screens/company/in_app/analytics/followers_screen.dart';
+import '../screens/company/in_app/analytics/saves_screen.dart';
+import '../screens/company/in_app/analytics/views_screen.dart';
 import '../screens/formulator/create_folder.dart';
 import '../screens/formulator/folder_screen.dart';
 import '../screens/formulator/formulation/choose_nbl.dart';
@@ -121,6 +128,13 @@ class AppRoutes {
 
   static const String companyProfileInfo = '/company-profile-info';
   static const String companyRoleScreen = '/company-role-screen';
+  static const String downloadsScreen = '/downloads-screen';
+  static const String engagementScreen = '/engagement-screen';
+  static const String eventsScreen = '/events-screen';
+  static const String followersScreen = '/followers-screen';
+  static const String savesScreen = '/saves-screen';
+  static const String viewsScreen = '/views-screen';
+
 
 
 
@@ -134,6 +148,7 @@ class AppRoutes {
 
   //company
   static const String onboardCompany = '/onboard-company';
+  static const String companyHomePage = '/company-home-page';
   static const String createCompanyAccount = '/create-company-account';
 
 
@@ -180,6 +195,57 @@ class AppRoutes {
       },
       transition: Transition.fadeIn,
     ),
+    GetPage(
+      name: companyHomePage,
+      page: () {
+        return const CompanyHomePage();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: downloadsScreen,
+      page: () {
+        return const DownloadsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: engagementScreen,
+      page: () {
+        return const EngagementScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: eventsScreen,
+      page: () {
+        return const EventsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: followersScreen,
+      page: () {
+        return const FollowersScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: savesScreen,
+      page: () {
+        return const SavesScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: viewsScreen,
+      page: () {
+        return const ViewsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+
+
 
 
 

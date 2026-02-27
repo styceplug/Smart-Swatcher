@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:smart_swatcher/screens/company/home/dashboard_screen.dart';
 import 'package:smart_swatcher/screens/home/pages/studio_screen.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 
@@ -22,6 +23,13 @@ class AppController extends GetxController {
 
   final List<Widget> pages = [
     const StudioScreen(),
+    const FormulatorScreen(),
+    const ColorClub(),
+    ProfileScreen(),
+  ];
+
+  final List<Widget> companyPages = [
+    const DashboardScreen(),
     const FormulatorScreen(),
     const ColorClub(),
     ProfileScreen(),

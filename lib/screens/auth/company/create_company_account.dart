@@ -158,27 +158,29 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
                   CustomButton(
                     text: 'Create Account',
                     onPressed: () {
-                      if (nameController.text.trim().isEmpty ||
-                          emailController.text.trim().isEmpty ||
-                          phoneController.text.trim().isEmpty ||
-                          passwordController.text.trim().isEmpty ||
-                          selectedCountry == null ||
-                          selectedState == null) {
-                        CustomSnackBar.failure(message: "Please fill all fields");
-                        return;
-                      }
+                      // if (nameController.text.trim().isEmpty ||
+                      //     emailController.text.trim().isEmpty ||
+                      //     phoneController.text.trim().isEmpty ||
+                      //     passwordController.text.trim().isEmpty ||
+                      //     selectedCountry == null ||
+                      //     selectedState == null) {
+                      //   CustomSnackBar.failure(message: "Please fill all fields");
+                      //   return;
+                      // }
 
-                      authController.companyRegistrationData.addAll({
-                        "companyName": nameController.text.trim(),
-                        "email": emailController.text.trim(),
-                        "phoneNumber": phoneController.text.trim(),
-                        "country": selectedCountry!,
-                        "state": selectedState!,
-                        "password": passwordController.text.trim(),
-                        "authProvider": "email",
-                      });
-
-                      Get.toNamed(AppRoutes.companyUsernameScreen);
+                      // authController.companyRegistrationData.addAll({
+                      //   "companyName": nameController.text.trim(),
+                      //   "email": emailController.text.trim(),
+                      //   "phoneNumber": phoneController.text.trim(),
+                      //   "country": selectedCountry!,
+                      //   "state": selectedState!,
+                      //   "password": passwordController.text.trim(),
+                      //   "authProvider": "email",
+                      // });
+                      //
+                      // Get.toNamed(AppRoutes.companyUsernameScreen);
+                      
+                      Get.toNamed(AppRoutes.companyHomePage);
 
                     },
                     backgroundColor: AppColors.primary5,

@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 
-import '../../controllers/app_controller.dart';
-import '../../utils/dimensions.dart';
-import '../../widgets/home_screen_bottom_nav_bar.dart';
+import '../../../controllers/app_controller.dart';
+import '../../../utils/dimensions.dart';
+import '../../../widgets/home_screen_bottom_nav_bar.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+
+
+class CompanyHomePage extends StatefulWidget {
+  const CompanyHomePage({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<CompanyHomePage> createState() => _CompanyHomePageState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _CompanyHomePageState extends State<CompanyHomePage> {
   AppController appController = Get.find<AppController>();
 
 
@@ -68,8 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   PageView.builder(
                     controller: appController.pageController,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: appController.pages.length,
-                    itemBuilder: (context, index) => appController.pages[index],
+                    itemCount: appController.companyPages.length,
+                    itemBuilder: (context, index) => appController.companyPages[index],
                     onPageChanged: (index) {
                       if (appController.currentAppPage.value != index) {
                         appController.changeCurrentAppPage(
@@ -86,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    child: HomeScreenBottomNavBar(),
+                    child: CompanyBottomNavBar(),
                   ),
                 ],
               ),
@@ -97,7 +99,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-
-
-
