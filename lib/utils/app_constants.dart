@@ -16,7 +16,6 @@ class AppConstants {
 
 
 
-
   //POST
 
   static const String CREATE_POST = '/api/posts';
