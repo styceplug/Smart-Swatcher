@@ -65,7 +65,7 @@ class _NoInternetScreenState extends State<NoInternetScreen> {
               CustomButton(
                 text: 'RETRY',
                 onPressed: () {
-                  Get.offAllNamed(AppRoutes.splashScreen);
+                  Get.offAllNamed(AppRoutes.getStarted);
                 },
               ),
               SizedBox(height: Dimensions.height30),

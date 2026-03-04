@@ -2,6 +2,7 @@ class RoomReminder {
   final int id;
   final String hostName;
   final String hostRole;
+  final String description;
   final String sessionType;
   final String title;
   final DateTime dateTime;
@@ -15,6 +16,7 @@ class RoomReminder {
     required this.title,
     required this.dateTime,
     this.isReminderSet = false,
+    required this.description,
   });
 
   Map<String, dynamic> toJson() => {
@@ -35,6 +37,7 @@ class RoomReminder {
     title: json['title'],
     dateTime: DateTime.parse(json['dateTime']),
     isReminderSet: json['isReminderSet'] ?? false,
+    description: json['description'],
   );
 
   RoomReminder copyWith({bool? isReminderSet}) => RoomReminder(
@@ -45,5 +48,6 @@ class RoomReminder {
     title: title,
     dateTime: dateTime,
     isReminderSet: isReminderSet ?? this.isReminderSet,
+    description: description,
   );
 }

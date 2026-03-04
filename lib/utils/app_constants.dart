@@ -33,16 +33,19 @@ class AppConstants {
   static const String FIRST_INSTALL = 'first-install';
   static const String REMEMBER_KEY = 'remember-me';
   static const String STYLIST_KEY = 'stylist-key';
+  static const String COMPANY_KEY = 'company-key';
 
 
 
   static const String STYLIST_SIGN_UP = '/api/stylists/signup';
   static const String PATCH_STYLIST_PROFILE = '/api/stylists/me';
   static const String LOGIN_STYLIST = '/api/stylists/signin';
+  static const String LOGIN_COMPANY = '/api/companies/signin';
   static const String VERIFY_OTP = '/api/otp/verify';
   static const String RESEND_OTP = '/api/otp/resend';
   static const String CHECK_USERNAME = '/api/usernames/availability';
   static const String STYLIST_PROFILE_URI = '/api/stylists/me';
+  static const String COMPANY_PROFILE_URI = '/api/companies/me';
 
 
   static String getPngAsset(String image) {

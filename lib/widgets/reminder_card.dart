@@ -17,6 +17,7 @@ class ReminderCard extends StatelessWidget {
   final String title;
   final String dateTime;
   final bool isReminderSet;
+  final String description;
   final VoidCallback onPressed;
 
   const ReminderCard({
@@ -25,6 +26,7 @@ class ReminderCard extends StatelessWidget {
     required this.hostRole,
     required this.sessionType,
     required this.title,
+    required this.description,
     required this.dateTime,
     this.isReminderSet = false,
     required this.onPressed,
@@ -95,6 +97,18 @@ class ReminderCard extends StatelessWidget {
               fontSize: Dimensions.font20,
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: Dimensions.height20),
+
+          /// Description
+
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: Dimensions.font14,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w400,
             ),
           ),
           SizedBox(height: Dimensions.height20),

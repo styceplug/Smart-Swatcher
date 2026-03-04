@@ -98,19 +98,11 @@ class _CompanyProfileInfoState extends State<CompanyProfileInfo> {
       return;
     }
 
-    // save mission
     authController.companyRegistrationData.addAll({
       "missionStatement": mission,
     });
 
-
-    if (authController.selectedImage.value != null) {
-      authController.companyRegistrationData.addAll({
-        "profileImageFile": authController.selectedImage.value,
-      });
-    }
-
-    // Final submit
+    // ✅ Controller will upload selectedImage if it exists
     authController.registerCompany();
   }
 

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/screens/company/home/company_profile.dart';
 import 'package:smart_swatcher/screens/company/home/dashboard_screen.dart';
 import 'package:smart_swatcher/screens/home/pages/studio_screen.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 
 import '../data/repo/app_repo.dart';
+import '../routes/routes.dart';
 import '../screens/home/pages/color_club.dart';
 import '../screens/home/pages/formulator_screen.dart';
 import '../screens/home/pages/profile_screen.dart';
@@ -20,6 +23,7 @@ class AppController extends GetxController {
 
   var currentAppPage = 0.obs;
   PageController pageController = PageController();
+  AuthController authController = Get.find<AuthController>();
 
   final List<Widget> pages = [
     const StudioScreen(),
@@ -32,7 +36,7 @@ class AppController extends GetxController {
     const DashboardScreen(),
     const FormulatorScreen(),
     const ColorClub(),
-    ProfileScreen(),
+    const CompanyProfile(),
   ];
 
   @override
@@ -41,10 +45,29 @@ class AppController extends GetxController {
     super.onInit();
   }
 
-  void initializeApp() async {
+  Future<void> initializeApp() async {
+    await _loadProfiles();
+    _routeByAccountType();
+  }
+
+  Future<void> _loadProfiles() async {
     await Future.wait([
-      // Get.find<VersionController>().fetchActiveClasses(),
+      authController.loadCompanyProfile(),
+      authController.loadStylistProfile(),
     ]);
+  }
+
+  void _routeByAccountType() {
+    final hasCompany = authController.companyProfile.value != null;
+    final hasStylist = authController.stylistProfile.value != null;
+
+    if (hasCompany) {
+      Get.offAllNamed(AppRoutes.companyHomePage);
+    } else if (hasStylist) {
+      Get.offAllNamed(AppRoutes.homeScreen);
+    } else {
+      Get.offAllNamed(AppRoutes.getStarted);
+    }
   }
 
   void changeCurrentAppPage(int page, {bool movePage = true}) {
@@ -108,10 +131,13 @@ class AppController extends GetxController {
                 ),
                 SizedBox(height: Dimensions.height40),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: Dimensions.width20,vertical: Dimensions.height10),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height10,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.grey2),
-                    borderRadius: BorderRadius.circular(Dimensions.radius15)
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
                   ),
                   child: Row(
                     children: [
@@ -123,7 +149,7 @@ class AppController extends GetxController {
                           color: AppColors.grey2,
                         ),
                       ),
-                      SizedBox(width: Dimensions.width10,),
+                      SizedBox(width: Dimensions.width10),
                       Text(
                         'Sophy_AnderSZN',
                         style: TextStyle(
@@ -133,7 +159,10 @@ class AppController extends GetxController {
                         ),
                       ),
                       Spacer(),
-                      Icon(Icons.radio_button_checked,color: AppColors.primary5,)
+                      Icon(
+                        Icons.radio_button_checked,
+                        color: AppColors.primary5,
+                      ),
                     ],
                   ),
                 ),

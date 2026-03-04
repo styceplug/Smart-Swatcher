@@ -111,7 +111,7 @@ class ApiClient extends GetConnect implements GetxService {
           final responseSize = utf8.encode(response.body.toString()).length;
           print('Response Size for $uri: $responseSize bytes (${(responseSize / 1024).toStringAsFixed(2)} KB)');
         }
-        // ApiChecker.checkApi(response);
+        ApiChecker.checkApi(response);
         return response;
       } catch (e) {
         if (kDebugMode) {
@@ -124,9 +124,12 @@ print(e.toString());
 
     Future<Response> postMultipartData(String uri, http.MultipartRequest request) async {
       try {
-        // Copy headers but REMOVE JSON content-type
+        // ✅ Copy headers but REMOVE JSON content-type
         final headers = Map<String, String>.from(_mainHeaders);
         headers.remove('Content-Type');
+
+        // Optional: accept json
+        headers['Accept'] = 'application/json';
 
         request.headers.addAll(headers);
 
@@ -144,14 +147,14 @@ print(e.toString());
           print('📦 Response: ${response.body}');
         }
 
-        dynamic parsedBody = response.body;
+        dynamic body = response.body;
         try {
-          parsedBody = jsonDecode(response.body);
+          body = jsonDecode(response.body);
         } catch (_) {}
 
         return Response(
           statusCode: response.statusCode,
-          body: parsedBody,
+          body: body,
           statusText: response.reasonPhrase,
         );
       } catch (e) {

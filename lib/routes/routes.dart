@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:smart_swatcher/screens/auth/company/company_login_screen.dart';
 import 'package:smart_swatcher/screens/auth/company/company_profile_info.dart';
 import 'package:smart_swatcher/screens/auth/company/company_role_selection.dart';
 import 'package:smart_swatcher/screens/auth/company/company_username_check.dart';
@@ -35,6 +36,7 @@ import 'package:smart_swatcher/screens/posts/create_post_screen.dart';
 import 'package:smart_swatcher/screens/posts/post_drafts_screen.dart';
 import 'package:smart_swatcher/screens/settings/edit_profile.dart';
 import 'package:smart_swatcher/screens/splash/company/onboarding_screen.dart';
+import 'package:smart_swatcher/screens/splash/get_started.dart';
 import 'package:smart_swatcher/screens/splash/stylist/onboarding_screen.dart';
 import 'package:smart_swatcher/screens/subscription/plan_overview.dart';
 import 'package:smart_swatcher/screens/subscription/subscription_plans_screen.dart';
@@ -59,6 +61,7 @@ import '../screens/splash/splash_screen.dart';
 class AppRoutes {
   //general
   static const String splashScreen = '/splash-screen';
+  static const String getStarted = '/get-started';
   static const String onboardingScreen = '/onboarding-screen';
   static const String updateAppScreen = '/update-app-screen';
   static const String noInternetScreen = '/no-internet-screen';
@@ -150,6 +153,7 @@ class AppRoutes {
   static const String onboardCompany = '/onboard-company';
   static const String companyHomePage = '/company-home-page';
   static const String createCompanyAccount = '/create-company-account';
+  static const String companyLoginScreen = '/company-login-screen';
 
 
 
@@ -160,6 +164,13 @@ class AppRoutes {
   static final routes = [
 
     //company
+    GetPage(
+      name: companyLoginScreen,
+      page: () {
+        return const CompanyLoginScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
     GetPage(
       name: onboardCompany,
       page: () {
@@ -253,12 +264,22 @@ class AppRoutes {
 
 
     GetPage(
+      name: getStarted,
+      page: () {
+        return const GetStartedScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
       name: splashScreen,
       page: () {
         return const SplashScreen();
       },
       transition: Transition.fadeIn,
     ),
+
+
+
     GetPage(
       name: createStylistAccountScreen,
       page: () {

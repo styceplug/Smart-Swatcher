@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_swatcher/data/api/api_client.dart';
+import 'package:smart_swatcher/models/company_model.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 
 import '../../models/stylist_model.dart';
@@ -17,6 +18,18 @@ class AuthRepo extends GetxService {
 
 
 
+  Future<Response> uploadMedia(File file) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${apiClient.baseUrl}/api/media/upload'),
+    );
+
+    request.files.add(
+      await http.MultipartFile.fromPath('file', file.path),
+    );
+
+    return await apiClient.postMultipartData('/api/media/upload', request);
+  }
 
   Future<Response> registerCompanyMultipart(Map<String, dynamic> body) async {
     final File? imageFile = body['profileImageFile'];
@@ -117,7 +130,7 @@ class AuthRepo extends GetxService {
     );
   }
 
-  Future<StylistModel?> loadSTypeListerProfile() async {
+  Future<StylistModel?> loadStylistProfile() async {
     String? stylistJson = await sharedPreferences.getString(
       AppConstants.STYLIST_KEY,
     );
@@ -125,8 +138,28 @@ class AuthRepo extends GetxService {
     return StylistModel.fromJson(jsonDecode(stylistJson));
   }
 
+  Future<void> saveCompanyProfile(CompanyModel companyProfile) async {
+    Map<String, dynamic> companyJson = companyProfile.toJson();
+    await sharedPreferences.setString(
+      AppConstants.COMPANY_KEY,
+      jsonEncode(companyJson),
+    );
+  }
+
+  Future<CompanyModel?> loadCompanyProfile() async {
+    String? companyJson = await sharedPreferences.getString(
+      AppConstants.COMPANY_KEY,
+    );
+    if (companyJson == null) return null;
+    return CompanyModel.fromJson(jsonDecode(companyJson));
+  }
+
   Future<Response> getStylistProfile() async {
     return await apiClient.getData(AppConstants.STYLIST_PROFILE_URI);
+  }
+
+  Future<Response> getCompanyProfile() async {
+    return await apiClient.getData(AppConstants.COMPANY_PROFILE_URI);
   }
 
   Future<Response> signUp(Map<String, dynamic> body) async {
@@ -137,8 +170,12 @@ class AuthRepo extends GetxService {
     return await apiClient.patchData(AppConstants.PATCH_STYLIST_PROFILE, body);
   }
 
-  Future<Response> login(Map<String, dynamic> body) async {
+  Future<Response> loginStylist(Map<String, dynamic> body) async {
     return await apiClient.postData(AppConstants.LOGIN_STYLIST, body);
+  }
+
+  Future<Response> loginCompany(Map<String, dynamic> body) async {
+    return await apiClient.postData(AppConstants.LOGIN_COMPANY, body);
   }
 
   Future<bool> saveUserToken(String token) async {

@@ -114,7 +114,7 @@ class _FormulatorScreenState extends State<FormulatorScreen>
                                   child: EmptyState(
                                     message:
                                         'No client folder yet, create one to start adding formulations',
-                                    // imageAsset: 'file-icon', // Uncomment if asset exists
+                                    imageAsset: 'file-icon',
                                   ),
                                 ),
                                 SizedBox(height: Dimensions.height20),

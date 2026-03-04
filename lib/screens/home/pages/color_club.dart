@@ -253,6 +253,7 @@ Widget liveRoom() {
                       isReminderSet: controller.isReminderSet(
                         reminderData["id"],
                       ),
+                      description: "This is a description",
                     );
 
                     return Padding(
@@ -282,7 +283,7 @@ Widget liveRoom() {
                               _showReminderSetDialog(context);
                             }
                           }
-                        },
+                        }, description: reminder.description,
                       ),
                     );
                   },

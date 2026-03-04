@@ -15,35 +15,30 @@ class EmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
 
-    return SizedBox(
-      height: Dimensions.screenHeight,
-      width: Dimensions.screenWidth,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            height: Dimensions.height100 ,
-            width: Dimensions.width100 ,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(AppConstants.getPngAsset(imageAsset!)),
-              ),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          height: Dimensions.height100 ,
+          width: Dimensions.width100 ,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage(AppConstants.getPngAsset(imageAsset!)),
             ),
           ),
-          SizedBox(height: Dimensions.height20),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: Dimensions.font18,
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w500,
-              color: textColor.withOpacity(0.8),
-            ),
-            textAlign: TextAlign.center,
+        ),
+        SizedBox(height: Dimensions.height20),
+        Text(
+          message,
+          style: TextStyle(
+            fontSize: Dimensions.font18,
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w500,
+            color: textColor.withOpacity(0.8),
           ),
-          SizedBox(height: Dimensions.height20 * 10),
-        ],
-      ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

@@ -176,6 +176,7 @@ class _EventsScreenState extends State<EventsScreen> {
                       title: 'Irony of Life',
                       dateTime: '1 Aug 2022',
                       onPressed: () {},
+                      description: 'This is a description',
                     ),
                   ],
                 ),
