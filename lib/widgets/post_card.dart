@@ -9,10 +9,32 @@ import '../models/post_model.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 
-class PostCard extends StatelessWidget {
+class PostCard extends StatefulWidget {
   final PostModel post;
 
   const PostCard({super.key, required this.post});
+
+  @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> {
+
+  final PostController postController = Get.find<PostController>();
+  bool _hasTriggeredImpression = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_hasTriggeredImpression) {
+      _hasTriggeredImpression = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        postController.recordImpression(widget.post.id);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,15 +62,15 @@ class PostCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: AppColors.grey3,
                   image:
-                      post.userProfileImage.isNotEmpty
+                      widget.post.userProfileImage.isNotEmpty
                           ? DecorationImage(
-                            image: NetworkImage(post.author?.profileImageUrl ?? ''),
+                            image: NetworkImage(widget.post.author?.profileImageUrl ?? ''),
                             fit: BoxFit.cover,
                           )
                           : null,
                 ),
                 child:
-                    post.userProfileImage.isEmpty
+                    widget.post.userProfileImage.isEmpty
                         ? Icon(Icons.person, color: AppColors.grey4)
                         : null,
               ),
@@ -60,7 +82,7 @@ class PostCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      post.author!.name,
+                      widget.post.author!.name,
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: Dimensions.font15,
@@ -70,7 +92,7 @@ class PostCard extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          post.userRole,
+                          widget.post.userRole,
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: Dimensions.font13,
@@ -89,7 +111,7 @@ class PostCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          post.timeAgo,
+                          widget.post.timeAgo,
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: Dimensions.font13,
@@ -114,11 +136,11 @@ class PostCard extends StatelessWidget {
           SizedBox(height: Dimensions.height10),
 
           // --- CAPTION ---
-          if (post.caption.isNotEmpty)
+          if (widget.post.caption.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(bottom: Dimensions.height10),
               child: Text(
-                post.caption,
+                widget.post.caption,
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: Dimensions.font14,
@@ -127,7 +149,7 @@ class PostCard extends StatelessWidget {
             ),
 
           // --- IMAGE ---
-          if (post.displayImageUrl != null)
+          if (widget.post.displayImageUrl != null)
             Container(
               height: Dimensions.height40 * 5,
               width: Dimensions.screenWidth,
@@ -135,7 +157,7 @@ class PostCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(Dimensions.radius15),
                 color: AppColors.grey3,
                 image: DecorationImage(
-                  image: NetworkImage(post.displayImageUrl!),
+                  image: NetworkImage(widget.post.displayImageUrl!),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -150,31 +172,31 @@ class PostCard extends StatelessWidget {
               Row(
                 children: [
                   _actionButton(
-                    post.isLiked ? Icons.favorite : Icons.favorite_border,
+                    widget.post.isLiked ? Icons.favorite : Icons.favorite_border,
 
-                    post.likeCount.toString(),
+                    widget.post.likeCount.toString(),
 
-                    post.isLiked ? Colors.red : AppColors.grey4,
+                    widget.post.isLiked ? Colors.red : AppColors.grey4,
                     () {
-                      postController.toggleLike(post.id);
+                      postController.toggleLike(widget.post.id);
                     },
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
                     Iconsax.message,
-                    post.commentCount.toString(),
+                    widget.post.commentCount.toString(),
                     AppColors.grey4,
                     () {
-                      Get.toNamed(AppRoutes.commentsScreen, arguments: post);
+                      Get.toNamed(AppRoutes.commentsScreen, arguments: widget.post);
                     },
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
-    post.isSaved ? Icons.bookmark : Icons.bookmark_border,
-                    post.saveCount.toString(),
-                    post.isSaved ? AppColors.black1 : AppColors.grey4,
+    widget.post.isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    widget.post.saveCount.toString(),
+                    widget.post.isSaved ? AppColors.black1 : AppColors.grey4,
                     () {
-                      postController.toggleSave(post.id);
+                      postController.toggleSave(widget.post.id);
                     },
                   ),
                 ],

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
@@ -15,29 +16,43 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  AuthController authController = Get.find<AuthController>();
+
+  @override
+  void initState() {
+    authController.companyProfile();
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final companyProfile = authController.companyProfile.value;
     return Scaffold(
       appBar: CustomAppbar(
         customTitle: Align(
           alignment: AlignmentGeometry.centerLeft,
           child: Text(
-            'Welcome, L\'Oréal Paris',
+            'Welcome, ${companyProfile?.companyName?.capitalizeFirst}',
             style: TextStyle(fontWeight: FontWeight.w500),
           ),
         ),
-        actionIcon: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: Dimensions.width5,
-            vertical: Dimensions.height5,
-          ),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.grey3),
-          ),
-          child: Icon(
-            Icons.notifications_active_outlined,
-            color: AppColors.grey5,
+        actionIcon: InkWell(
+          onTap: (){
+            Get.toNamed(AppRoutes.notificationScreen);
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: Dimensions.width5,
+              vertical: Dimensions.height5,
+            ),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.grey3),
+            ),
+            child: Icon(
+              Icons.notifications_active_outlined,
+              color: AppColors.grey5,
+            ),
           ),
         ),
       ),

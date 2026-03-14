@@ -22,7 +22,8 @@ class PostController extends GetxController {
   var currentPostComments = <CommentModel>[].obs;
   var isCommentsLoading = false.obs;
   var selectedMediaFiles = <File>[].obs;
-
+  final Set<String> _recordedImpressionIds = <String>{};
+  final RxSet<String> recordingImpressionIds = <String>{}.obs;
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -30,6 +31,57 @@ class PostController extends GetxController {
     super.onInit();
     loadDrafts();
     fetchFeed();
+  }
+
+
+
+  bool hasRecordedImpression(String postId) {
+    return _recordedImpressionIds.contains(postId);
+  }
+
+  Future<void> recordImpression(String postId) async {
+    if (postId.isEmpty) return;
+    if (_recordedImpressionIds.contains(postId)) return;
+    if (recordingImpressionIds.contains(postId)) return;
+
+    recordingImpressionIds.add(postId);
+
+    try {
+      final response = await postRepo.recordPostImpression(postId);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _recordedImpressionIds.add(postId);
+      }
+    } catch (e) {
+      print("Impression Error: $e");
+    } finally {
+      recordingImpressionIds.remove(postId);
+    }
+  }
+
+  Future<void> recordImpressions(List<String> postIds) async {
+    final validIds = postIds
+        .where((id) => id.trim().isNotEmpty)
+        .where((id) => !_recordedImpressionIds.contains(id))
+        .where((id) => !recordingImpressionIds.contains(id))
+        .toSet()
+        .toList();
+
+    if (validIds.isEmpty) return;
+
+    recordingImpressionIds.addAll(validIds);
+
+    try {
+      final response = await postRepo.recordPostImpressions(validIds);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _recordedImpressionIds.addAll(validIds);
+      }
+    } catch (e) {
+      print("Batch Impression Error: $e");
+    } finally {
+      recordingImpressionIds.removeAll(validIds);
+    }
   }
 
 

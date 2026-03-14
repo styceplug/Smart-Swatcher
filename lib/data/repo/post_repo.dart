@@ -17,29 +17,22 @@ class PostRepo {
 
 
 
+  Future<Response> recordPostImpression(String postId) async {
+    return await apiClient.postData('/api/posts/impressions', {
+      "postId": postId,
+    });
+  }
+
+  Future<Response> recordPostImpressions(List<String> postIds) async {
+    return await apiClient.postData('/api/posts/impressions', {
+      "postIds": postIds,
+    });
+  }
+
   Future<Response> getPosts({int limit = 20, int offset = 0}) async {
     return await apiClient.getData('/api/posts?limit=$limit&offset=$offset');
   }
 
-/*
-  Future<Response> createPost(Map<String, String> body, List<MultipartBody> files) async {
-    final uri = Uri.parse('${AppConstants.BASE_URL}/api/posts');
-
-    var request = http.MultipartRequest('POST', uri);
-
-    request.fields.addAll(body);
-
-    for (var multipart in files) {
-      var file = await http.MultipartFile.fromPath(
-          multipart.key,
-          multipart.file.path
-      );
-      request.files.add(file);
-    }
-
-    return await apiClient.postMultipartData('/api/posts', request);
-  }
-*/
 
   Future<Response> createPost(Map<String, String> fields, List<File> files) async {
     final uri = Uri.parse('${AppConstants.BASE_URL}/api/posts');
