@@ -139,7 +139,15 @@ class _ProfileHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Icon(Iconsax.user_add, size: Dimensions.iconSize20 * 1.4),
+                InkWell(
+                  onTap: () {
+                    Get.toNamed(AppRoutes.recommendedAccountScreen);
+                  },
+                  child: Icon(
+                    Iconsax.user_add,
+                    size: Dimensions.iconSize20 * 1.4,
+                  ),
+                ),
                 Row(
                   children: [
                     InkWell(
@@ -717,7 +725,8 @@ class EventsTab extends StatelessWidget {
           hostRole: 'HOST',
           sessionType: event['type'] as String,
           dateTime: event['date'] as String,
-          onPressed: () {}, description: event['description'] as String,
+          onPressed: () {},
+          description: event['description'] as String,
         );
       },
     );

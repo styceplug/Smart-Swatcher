@@ -6,6 +6,7 @@ import 'package:smart_swatcher/controllers/post_controller.dart';
 import 'package:smart_swatcher/routes/routes.dart';
 
 import '../models/post_model.dart';
+import '../utils/app_constants.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 
@@ -19,7 +20,6 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard> {
-
   final PostController postController = Get.find<PostController>();
   bool _hasTriggeredImpression = false;
 
@@ -38,7 +38,11 @@ class _PostCardState extends State<PostCard> {
 
   @override
   Widget build(BuildContext context) {
-    PostController postController = Get.find<PostController>();
+    final profileImageUrl = MediaUrlHelper.resolve(
+      widget.post.author?.profileImageUrl,
+    );
+    final postImageUrl = MediaUrlHelper.resolve(widget.post.displayImageUrl);
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: Dimensions.width20,
@@ -51,38 +55,33 @@ class _PostCardState extends State<PostCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- HEADER ---
           Row(
             children: [
-              // Avatar
               Container(
                 height: Dimensions.height40,
                 width: Dimensions.width40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.grey3,
-                  image:
-                      widget.post.userProfileImage.isNotEmpty
-                          ? DecorationImage(
-                            image: NetworkImage(widget.post.author?.profileImageUrl ?? ''),
-                            fit: BoxFit.cover,
-                          )
-                          : null,
+                  image: profileImageUrl != null
+                      ? DecorationImage(
+                    image: NetworkImage(profileImageUrl),
+                    fit: BoxFit.cover,
+                  )
+                      : null,
                 ),
-                child:
-                    widget.post.userProfileImage.isEmpty
-                        ? Icon(Icons.person, color: AppColors.grey4)
-                        : null,
+                child: profileImageUrl == null
+                    ? Icon(Icons.person, color: AppColors.grey4)
+                    : null,
               ),
               SizedBox(width: Dimensions.width10),
 
-              // Name & Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.post.author!.name,
+                      widget.post.author?.name ?? '',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: Dimensions.font15,
@@ -125,7 +124,6 @@ class _PostCardState extends State<PostCard> {
                 ),
               ),
 
-              // Menu Button
               InkWell(
                 onTap: () => _showMoreOptions(context),
                 child: Icon(Icons.more_horiz, color: AppColors.black1),
@@ -135,7 +133,6 @@ class _PostCardState extends State<PostCard> {
 
           SizedBox(height: Dimensions.height10),
 
-          // --- CAPTION ---
           if (widget.post.caption.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(bottom: Dimensions.height10),
@@ -148,8 +145,7 @@ class _PostCardState extends State<PostCard> {
               ),
             ),
 
-          // --- IMAGE ---
-          if (widget.post.displayImageUrl != null)
+          if (postImageUrl != null)
             Container(
               height: Dimensions.height40 * 5,
               width: Dimensions.screenWidth,
@@ -157,7 +153,7 @@ class _PostCardState extends State<PostCard> {
                 borderRadius: BorderRadius.circular(Dimensions.radius15),
                 color: AppColors.grey3,
                 image: DecorationImage(
-                  image: NetworkImage(widget.post.displayImageUrl!),
+                  image: NetworkImage(postImageUrl),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -165,19 +161,18 @@ class _PostCardState extends State<PostCard> {
 
           SizedBox(height: Dimensions.height10),
 
-          // --- ACTIONS ROW ---
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   _actionButton(
-                    widget.post.isLiked ? Icons.favorite : Icons.favorite_border,
-
+                    widget.post.isLiked
+                        ? Icons.favorite
+                        : Icons.favorite_border,
                     widget.post.likeCount.toString(),
-
                     widget.post.isLiked ? Colors.red : AppColors.grey4,
-                    () {
+                        () {
                       postController.toggleLike(widget.post.id);
                     },
                   ),
@@ -186,22 +181,28 @@ class _PostCardState extends State<PostCard> {
                     Iconsax.message,
                     widget.post.commentCount.toString(),
                     AppColors.grey4,
-                    () {
-                      Get.toNamed(AppRoutes.commentsScreen, arguments: widget.post);
+                        () {
+                      Get.toNamed(
+                        AppRoutes.commentsScreen,
+                        arguments: widget.post,
+                      );
                     },
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
-    widget.post.isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    widget.post.isSaved
+                        ? Icons.bookmark
+                        : Icons.bookmark_border,
                     widget.post.saveCount.toString(),
-                    widget.post.isSaved ? AppColors.black1 : AppColors.grey4,
-                    () {
+                    widget.post.isSaved
+                        ? AppColors.black1
+                        : AppColors.grey4,
+                        () {
                       postController.toggleSave(widget.post.id);
                     },
                   ),
                 ],
               ),
-              // Share Button
               Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: Dimensions.width10,
@@ -232,6 +233,8 @@ class FormulasCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profileImageUrl = MediaUrlHelper.resolve(post.author?.profileImageUrl);
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: Dimensions.width20,
@@ -244,7 +247,6 @@ class FormulasCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- HEADER ---
           Row(
             children: [
               Container(
@@ -253,14 +255,16 @@ class FormulasCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.grey3,
-                  image:
-                      post.userProfileImage.isNotEmpty
-                          ? DecorationImage(
-                            image: NetworkImage(post.displayImageUrl ?? ''),
-                            fit: BoxFit.cover,
-                          )
-                          : null,
+                  image: profileImageUrl != null
+                      ? DecorationImage(
+                    image: NetworkImage(profileImageUrl),
+                    fit: BoxFit.cover,
+                  )
+                      : null,
                 ),
+                child: profileImageUrl == null
+                    ? Icon(Icons.person, color: AppColors.grey4)
+                    : null,
               ),
               SizedBox(width: Dimensions.width10),
               Expanded(
@@ -319,7 +323,6 @@ class FormulasCard extends StatelessWidget {
 
           SizedBox(height: Dimensions.height10),
 
-          // --- CAPTION ---
           Text(
             post.caption,
             style: TextStyle(
@@ -330,33 +333,26 @@ class FormulasCard extends StatelessWidget {
 
           SizedBox(height: Dimensions.height10),
 
-          // --- FORMULA BOX ---
-          // Only show if data exists (Base, Lights, or Toner)
-          if ((post.base != null) ||
-              (post.lights != null) ||
-              (post.toner != null))
+          if ((post.base != null) || (post.lights != null) || (post.toner != null))
             Container(
               width: Dimensions.screenWidth,
               padding: EdgeInsets.all(Dimensions.width20),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(Dimensions.radius15),
-                color: AppColors.primary1, // Light background
+                color: AppColors.primary1,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (post.base != null) _buildFormulaRow("Base", post.base!),
-                  if (post.lights != null)
-                    _buildFormulaRow("Lights", post.lights!),
-                  if (post.toner != null)
-                    _buildFormulaRow("Toner", post.toner!),
+                  if (post.lights != null) _buildFormulaRow("Lights", post.lights!),
+                  if (post.toner != null) _buildFormulaRow("Toner", post.toner!),
                 ],
               ),
             ),
 
           SizedBox(height: Dimensions.height10),
 
-          // --- ACTIONS ---
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -366,14 +362,14 @@ class FormulasCard extends StatelessWidget {
                     Icons.favorite_border,
                     post.likeCount.toString(),
                     Colors.red,
-                    () {},
+                        () {},
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
                     Iconsax.message,
                     post.commentCount.toString(),
                     AppColors.grey4,
-                    () {
+                        () {
                       Get.toNamed(AppRoutes.commentsScreen, arguments: post);
                     },
                   ),
@@ -382,7 +378,7 @@ class FormulasCard extends StatelessWidget {
                     Icons.bookmark_border,
                     post.saveCount.toString(),
                     AppColors.grey4,
-                    () {},
+                        () {},
                   ),
                 ],
               ),
@@ -428,6 +424,10 @@ class CommentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profileImageUrl = MediaUrlHelper.resolve(
+      comment.author?.profileImageUrl,
+    );
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: Dimensions.width20,
@@ -440,7 +440,6 @@ class CommentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- HEADER ---
           Row(
             children: [
               Container(
@@ -449,16 +448,16 @@ class CommentCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.grey3,
-
-                  image:
-                      (comment.author?.profileImageUrl != null)
-                          ? DecorationImage(
-                            image: NetworkImage(
-                              comment.author!.displayImageUrl!,
-                            ),
-                          )
-                          : null,
+                  image: profileImageUrl != null
+                      ? DecorationImage(
+                    image: NetworkImage(profileImageUrl),
+                    fit: BoxFit.cover,
+                  )
+                      : null,
                 ),
+                child: profileImageUrl == null
+                    ? Icon(Icons.person, color: AppColors.grey4)
+                    : null,
               ),
               SizedBox(width: Dimensions.width10),
               Expanded(
@@ -469,7 +468,7 @@ class CommentCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          comment.author!.name,
+                          comment.author?.name ?? '',
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: Dimensions.font14,
@@ -498,7 +497,7 @@ class CommentCard extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      comment.author!.username,
+                      comment.author?.username ?? '',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: Dimensions.font13,
@@ -506,7 +505,6 @@ class CommentCard extends StatelessWidget {
                         color: AppColors.grey4,
                       ),
                     ),
-
                   ],
                 ),
               ),
@@ -519,9 +517,8 @@ class CommentCard extends StatelessWidget {
 
           SizedBox(height: Dimensions.height10),
 
-          // --- CONTENT ---
           Text(
-            comment.body, // FIXED: was post.content
+            comment.body,
             style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: Dimensions.font14,
@@ -530,8 +527,6 @@ class CommentCard extends StatelessWidget {
 
           SizedBox(height: Dimensions.height10),
 
-          // --- ACTIONS ---
-          // Assuming you want basic interactions for comments
           Row(
             children: [
               Icon(
@@ -541,7 +536,6 @@ class CommentCard extends StatelessWidget {
               ),
               SizedBox(width: 5),
               Text("0", style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
-              // Add like count if available
               SizedBox(width: 20),
               Text(
                 "Reply",

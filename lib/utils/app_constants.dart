@@ -45,6 +45,9 @@ class AppConstants {
   static const String CHECK_USERNAME = '/api/usernames/availability';
   static const String STYLIST_PROFILE_URI = '/api/stylists/me';
   static const String COMPANY_PROFILE_URI = '/api/companies/me';
+  static const String GET_RECOMMENDED_PROFILE = '/api/connections/suggestions';
+  static const String REQUEST_CONNECTION = '/api/connections';
+  static String ACCEPT_CONNECTION(String targetId) => '/api/connections/$targetId/accept';
 
 
   static String getPngAsset(String image) {
@@ -61,4 +64,28 @@ class AppConstants {
     return 'assets/base/$image.png';
   }
 
+
+
 }
+
+class MediaUrlHelper {
+  static const String baseUrl = 'https://swatcher.thecribbers.ng';
+
+  static String? resolve(String? url) {
+    if (url == null) return null;
+
+    final value = url.trim();
+    if (value.isEmpty || value == 'null') return null;
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+
+    if (value.startsWith('/')) {
+      return '$baseUrl$value';
+    }
+
+    return '$baseUrl/$value';
+  }
+}
+

@@ -17,6 +17,7 @@ import 'package:smart_swatcher/screens/formulator/formulation/choose_cdl.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/grey_exceeds.dart';
 import 'package:smart_swatcher/screens/formulator/formulation_or_correction.dart';
 import 'package:smart_swatcher/screens/home/home_screen.dart';
+import 'package:smart_swatcher/screens/in_app/recommended_accounts_screen.dart';
 import 'package:smart_swatcher/screens/reference/hair_formulator_guide.dart';
 import 'package:smart_swatcher/screens/reference/mixing_ratio_guide.dart';
 import 'package:smart_swatcher/screens/reference/reference_hub.dart';
@@ -140,6 +141,10 @@ class AppRoutes {
 
 
 
+  static const String recommendedAccountScreen = '/recommended-account-screen';
+
+
+
 
 
 
@@ -252,6 +257,15 @@ class AppRoutes {
       name: viewsScreen,
       page: () {
         return const ViewsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+
+
+    GetPage(
+      name: recommendedAccountScreen,
+      page: () {
+        return const RecommendedAccountsScreen();
       },
       transition: Transition.fadeIn,
     ),

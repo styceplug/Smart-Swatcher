@@ -2,9 +2,11 @@
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_swatcher/controllers/folder_controller.dart';
+import 'package:smart_swatcher/controllers/user_controller.dart';
 import 'package:smart_swatcher/data/repo/auth_repo.dart';
 import 'package:smart_swatcher/data/repo/folder_repo.dart';
 import 'package:smart_swatcher/data/repo/post_repo.dart';
+import 'package:smart_swatcher/data/repo/user_repo.dart';
 
 
 import '../controllers/app_controller.dart';
@@ -38,6 +40,7 @@ Future<void> init() async {
   Get.lazyPut(() => PostRepo(apiClient: Get.find()));
   Get.lazyPut(()=>AuthRepo(apiClient: Get.find(), sharedPreferences: Get.find()));
   Get.lazyPut(()=>FolderRepo(apiClient: Get.find()));
+  Get.lazyPut(()=>UserRepo(apiClient: Get.find()),fenix: true);
 
 
 
@@ -51,6 +54,7 @@ Future<void> init() async {
   Get.lazyPut(()=> PostController());
   Get.lazyPut(() => AuthController(authRepo: Get.find()),fenix: true);
   Get.lazyPut(() => ClientFolderController());
+  Get.lazyPut(() => UserController(userRepo: Get.find()),fenix: true);
 
 
 }
