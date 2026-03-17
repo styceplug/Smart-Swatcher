@@ -228,7 +228,7 @@ class _ProfileHeader extends StatelessWidget {
                           authController
                               .stylistProfile
                               .value
-                              ?.fullProfileImageUrl;
+                              ?.getProfileImage(AppConstants.BASE_URL);
                       if (networkUrl != null && networkUrl.isNotEmpty) {
                         bgImage = NetworkImage(networkUrl);
                       }

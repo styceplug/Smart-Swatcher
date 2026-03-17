@@ -123,148 +123,221 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(bottom: Dimensions.height20),
-      child: Column(
+    final baseUrl = authController.authRepo.apiClient.baseUrl;
+
+    return Obx(() {
+      final company = authController.companyProfile.value;
+
+      final profileUrl = company?.getProfileImage(baseUrl!);
+      final coverUrl = company?.getBackgroundImage(baseUrl!);
+
+      final hasCover = coverUrl != null && coverUrl.isNotEmpty;
+      final hasProfile = profileUrl != null && profileUrl.isNotEmpty;
+
+      return Column(
         children: [
-          Container(
-            width: Dimensions.screenWidth,
-            height: Dimensions.height100 * 1.5,
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimensions.width20,
-              vertical: Dimensions.height20,
-            ),
-            color: AppColors.primary1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                InkWell(
-                  onTap: () {
-                    Get.toNamed(AppRoutes.recommendedAccountScreen);
-                  },
-                  child: Icon(
-                    Iconsax.user_add,
-                    size: Dimensions.iconSize20 * 1.4,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: Dimensions.screenWidth,
+                height: Dimensions.height100 * 1.6,
+                decoration: BoxDecoration(
+                  color: AppColors.primary1,
+                  image:
+                      hasCover
+                          ? DecorationImage(
+                            image: NetworkImage(coverUrl),
+                            fit: BoxFit.cover,
+                          )
+                          : null,
+                ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height50,
                   ),
-                ),
-                Row(
-                  children: [
-                    InkWell(
-                      onTap: () => Get.toNamed(AppRoutes.editProfileScreen),
-                      child: Image.asset(
-                        AppConstants.getPngAsset('edit-icon'),
-                        height: Dimensions.height20,
-                        width: Dimensions.width20,
-                      ),
-                    ),
-                    SizedBox(width: Dimensions.width20),
-                    InkWell(
-                      onTap: () => Get.toNamed(AppRoutes.settingsScreen),
-                      child: Image.asset(
-                        AppConstants.getPngAsset('settings-icon'),
-                        height: Dimensions.height20 * 1.3,
-                        width: Dimensions.width20 * 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimensions.width20,
-              vertical: Dimensions.height20,
-            ),
-
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Obx(() {
-                      ImageProvider? bgImage;
-                      String? networkUrl =
-                          authController.companyProfile.value?.profileImageUrl;
-                      if (networkUrl != null && networkUrl.isNotEmpty) {
-                        bgImage = NetworkImage(networkUrl);
-                      }
-
-                      return Container(
-                        height: Dimensions.height70,
-                        width: Dimensions.width70,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.grey2,
-                          image:
-                              bgImage != null
-                                  ? DecorationImage(
-                                    image: bgImage,
-                                    fit: BoxFit.cover,
-                                  )
-                                  : null,
-                        ),
-                        child:
-                            bgImage == null
-                                ? Icon(
-                                  Icons.person,
-                                  size: 50,
-                                  color: AppColors.grey4,
-                                )
-                                : null,
-                      );
-                    }),
-                    SizedBox(width: Dimensions.width20),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Only wrap the text that changes with Obx/GetBuilder
-                        GetBuilder<AuthController>(
-                          builder: (controller) {
-                            return Text(
-                              controller
-                                      .companyProfile
-                                      .value
-                                      ?.companyName
-                                      ?.capitalizeFirst ??
-                                  'Company',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: Dimensions.font17,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            );
-                          },
-                        ),
-                        SizedBox(height: Dimensions.height5),
-                        Text(
-                          '@${authController.companyProfile.value?.username ?? ""}',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: Dimensions.font15,
-                            fontWeight: FontWeight.w300,
-                            color: AppColors.grey4,
-                          ),
-                        ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.10),
+                        Colors.black.withOpacity(0.35),
                       ],
                     ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      InkWell(
+                        onTap: () {
+                          Get.toNamed(AppRoutes.recommendedAccountScreen);
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(Dimensions.width10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Iconsax.user_add,
+                            color: AppColors.white,
+                            size: Dimensions.iconSize20,
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          InkWell(
+                            onTap:
+                                () => Get.toNamed(AppRoutes.editProfileScreen),
+                            child: Container(
+                              padding: EdgeInsets.all(Dimensions.width10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Image.asset(
+                                AppConstants.getPngAsset('edit-icon'),
+                                height: Dimensions.height18,
+                                width: Dimensions.width18,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: Dimensions.width10),
+                          InkWell(
+                            onTap: () => Get.toNamed(AppRoutes.settingsScreen),
+                            child: Container(
+                              padding: EdgeInsets.all(Dimensions.width10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Image.asset(
+                                AppConstants.getPngAsset('settings-icon'),
+                                height: Dimensions.height20,
+                                width: Dimensions.width20,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              Positioned(
+                left: Dimensions.width20,
+                bottom: -Dimensions.height10*3.5,
+                child: Container(
+                  height: Dimensions.height10*7.5,
+                  width: Dimensions.width10*7.5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.white,
+                    border: Border.all(color: AppColors.white, width: 3),
+                    image:
+                        hasProfile
+                            ? DecorationImage(
+                              image: NetworkImage(profileUrl),
+                              fit: BoxFit.cover,
+                            )
+                            : null,
+                  ),
+                  child:
+                      !hasProfile
+                          ? Icon(Icons.person, size: 38, color: AppColors.grey4)
+                          : null,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: Dimensions.height10 * 4.5),
+
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        company?.companyName?.capitalizeFirst ?? 'Company',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: Dimensions.font18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if ((company?.isVerified ?? false))
+                      Icon(
+                        Icons.verified,
+                        color: AppColors.primary5,
+                        size: Dimensions.iconSize20,
+                      ),
                   ],
                 ),
-                SizedBox(height: Dimensions.height10),
+                SizedBox(height: Dimensions.height5),
                 Text(
-                  'Lorem ipsum dolor sit amet consectetur. Dui integer pretium tempor mauris quam fames aliquet.',
+                  '@${company?.username ?? ""}',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: Dimensions.font14,
                     fontWeight: FontWeight.w300,
-                    color: AppColors.black1.withOpacity(0.7),
+                    color: AppColors.grey4,
                   ),
                 ),
+
+                if ((company?.role ?? '').isNotEmpty) ...[
+                  SizedBox(height: Dimensions.height10),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width10,
+                      vertical: Dimensions.height5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary5.withOpacity(.08),
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                    ),
+                    child: Text(
+                      company!.role!,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primary5,
+                      ),
+                    ),
+                  ),
+                ],
+
+                SizedBox(height: Dimensions.height12),
+
+                Text(
+                 company?.missionStatement?.trim().isNotEmpty == true
+                      ? company!.missionStatement!
+                      : 'No company description added yet.',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: Dimensions.font14,
+                    fontWeight: FontWeight.w300,
+                    color: AppColors.black1.withOpacity(0.75),
+                    height: 1.5,
+                  ),
+                ),
+
                 SizedBox(height: Dimensions.height20),
 
-                // --- Stats Row ---
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+                  padding: EdgeInsets.symmetric(horizontal: Dimensions.width10),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -280,8 +353,8 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildStatItem(String count, String label) {
@@ -311,7 +384,7 @@ class _ProfileHeader extends StatelessWidget {
   Widget _buildDivider() {
     return Container(
       width: 1,
-      height: Dimensions.height50,
+      height: Dimensions.height10 * 4.5,
       color: AppColors.grey2,
     );
   }
@@ -397,20 +470,6 @@ class FeedTab extends StatelessWidget {
             },
           ),
 
-          // Floating Action Button
-          Positioned(
-            bottom: Dimensions.height20,
-            right: Dimensions.width20,
-            child: FloatingActionButton(
-              backgroundColor: AppColors.primary5,
-              onPressed: () => Get.toNamed(AppRoutes.createPost),
-              child: Icon(
-                CupertinoIcons.plus,
-                color: AppColors.white,
-                size: Dimensions.iconSize20,
-              ),
-            ),
-          ),
         ],
       );
     });
@@ -495,8 +554,15 @@ class AboutTab extends StatelessWidget {
       child: Obx(() {
         final company = authController.companyProfile.value;
 
+        final text =
+            company?.about?.trim().isNotEmpty == true
+                ? company!.about!
+                : company?.missionStatement?.trim().isNotEmpty == true
+                ? company!.missionStatement!
+                : 'No about info added yet.';
+
         return Text(
-          company?.missionStatement ?? 'No about info added yet.',
+          text,
           style: TextStyle(
             fontFamily: 'Poppins',
             fontSize: Dimensions.font14,

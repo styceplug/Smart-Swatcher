@@ -104,9 +104,10 @@ class CompanyModel {
       licenseNumber: json['licenseNumber']?.toString(),
       saloonName: json['saloonName']?.toString(),
       certificationType: json['certificationType']?.toString(),
-      yearsOfExperience: json['yearsOfExperience'] != null
-          ? int.tryParse(json['yearsOfExperience'].toString())
-          : null,
+      yearsOfExperience:
+          json['yearsOfExperience'] != null
+              ? int.tryParse(json['yearsOfExperience'].toString())
+              : null,
       licenseCountry: json['licenseCountry']?.toString(),
       documentType: json['documentType']?.toString(),
       documentUrl: json['documentUrl']?.toString(),
@@ -118,19 +119,22 @@ class CompanyModel {
       isIdentityVerified: json['isIdentityVerified'] ?? false,
       isActive: json['isActive'] ?? false,
       isPremium: json['isPremium'] ?? false,
-      lastSeen: json['lastSeen'] != null
-          ? DateTime.tryParse(json['lastSeen'].toString())
-          : null,
+      lastSeen:
+          json['lastSeen'] != null
+              ? DateTime.tryParse(json['lastSeen'].toString())
+              : null,
       lastIpAddress: json['lastIpAddress']?.toString(),
       lastDeviceName: json['lastDeviceName']?.toString(),
       lastDeviceId: json['lastDeviceId']?.toString(),
       lastDeviceType: json['lastDeviceType']?.toString(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'].toString())
-          : null,
+      createdAt:
+          json['createdAt'] != null
+              ? DateTime.tryParse(json['createdAt'].toString())
+              : null,
+      updatedAt:
+          json['updatedAt'] != null
+              ? DateTime.tryParse(json['updatedAt'].toString())
+              : null,
     );
   }
 
@@ -253,16 +257,7 @@ class CompanyModel {
     );
   }
 
-  UserRepo userRepo = Get.find<UserRepo>();
-
-  static String? resolveUrl(String? url, String baseUrl) {
-    if (url == null || url.trim().isEmpty || url == 'null') return null;
-    if (url.startsWith('http')) return url;
-    if (url.startsWith('/')) return '$baseUrl$url';
-    return '$baseUrl/$url';
-  }
-
-  String resolveImageUrl(String? url) {
+  static String resolveImage(String? url, String baseUrl) {
     const placeholder =
         'https://ui-avatars.com/api/?name=User&background=E5E7EB&color=6B7280';
 
@@ -274,18 +269,20 @@ class CompanyModel {
       return placeholder;
     }
 
-    if (value.startsWith('http://') || value.startsWith('https://')) {
-      return value;
-    }
+    if (value.startsWith('http')) return value;
 
     if (value.startsWith('/')) {
-      return '${userRepo.apiClient.baseUrl}$value';
+      return '$baseUrl$value';
     }
 
-    return '${userRepo.apiClient.baseUrl}/$value';
+    return '$baseUrl/$value';
   }
 
-  String? resolvedBackgroundImageUrl(String baseUrl) {
-    return resolveUrl(backgroundImageUrl, baseUrl);
+  String getProfileImage(String baseUrl) {
+    return resolveImage(profileImageUrl, baseUrl);
+  }
+
+  String getBackgroundImage(String baseUrl) {
+    return resolveImage(backgroundImageUrl, baseUrl);
   }
 }

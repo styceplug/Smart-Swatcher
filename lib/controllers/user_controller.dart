@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../data/repo/user_repo.dart';
 import '../models/user_model.dart';
+import '../widgets/snackbars.dart';
 
 class UserController extends GetxController {
   final UserRepo userRepo;
@@ -11,6 +12,9 @@ class UserController extends GetxController {
       <RecommendedAccountModel>[].obs;
   final RxString selectedTypeFilter = ''.obs;
   final RxBool isFetchingSuggestions = false.obs;
+
+  final RxSet<String> requestingConnectionIds = <String>{}.obs;
+  final RxMap<String, String> connectionStatuses = <String, String>{}.obs;
 
   @override
   void onInit() {
@@ -84,5 +88,66 @@ class UserController extends GetxController {
     }
 
     return '${userRepo.apiClient.baseUrl}/$value';
+  }
+
+  bool isRequestingConnection(String targetId) {
+    return requestingConnectionIds.contains(targetId);
+  }
+
+  String? getConnectionStatus(String targetId) {
+    return connectionStatuses[targetId];
+  }
+
+  bool isPendingConnection(String targetId) {
+    return connectionStatuses[targetId] == 'pending';
+  }
+
+  bool isConnected(String targetId) {
+    return connectionStatuses[targetId] == 'accepted';
+  }
+
+  Future<void> requestConnection(String targetId) async {
+    if (targetId.trim().isEmpty) return;
+    if (requestingConnectionIds.contains(targetId)) return;
+    if (connectionStatuses[targetId] == 'pending' ||
+        connectionStatuses[targetId] == 'accepted') {
+      return;
+    }
+
+    requestingConnectionIds.add(targetId);
+
+    try {
+      final response = await userRepo.requestConnection(targetId);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        String? status;
+
+        if (response.body is Map) {
+          final connection = response.body['connection'];
+
+          if (connection is Map && connection['status'] != null) {
+            status = connection['status'].toString();
+          }
+        }
+
+        connectionStatuses[targetId] = status ?? 'pending';
+
+        final successMessage = status == 'accepted'
+            ? 'Connection accepted'
+            : 'Connection request sent';
+
+        CustomSnackBar.success(message: successMessage);
+      } else {
+        final message = response.body is Map
+            ? (response.body['message'] ?? 'Failed to send connection request')
+            : 'Failed to send connection request';
+
+        CustomSnackBar.failure(message: message);
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to send connection request');
+    } finally {
+      requestingConnectionIds.remove(targetId);
+    }
   }
 }

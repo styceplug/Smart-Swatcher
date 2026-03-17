@@ -21,7 +21,9 @@ class UserRepo {
     return await apiClient.getData(uri);
   }
 
-  Future<Response> requestConnection()async {
-     return await apiClient.postData(AppConstants.REQUEST_CONNECTION, {});
+  Future<Response> requestConnection(String targetId)async {
+     return await apiClient.postData(AppConstants.REQUEST_CONNECTION, {
+       "targetId": targetId,
+     },);
   }
 }

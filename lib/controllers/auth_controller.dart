@@ -12,16 +12,22 @@ import '../data/repo/auth_repo.dart';
 import '../models/stylist_model.dart';
 import '../routes/routes.dart';
 
+enum AccountType {
+  stylist,
+  company,
+}
+
+
 class AuthController extends GetxController {
-  // ─── Dependencies ────────────────────────────────────────────────────────────
+
 
   final AuthRepo authRepo;
   AuthController({required this.authRepo});
 
   final GlobalLoaderController _loader = Get.find<GlobalLoaderController>();
 
-  // ─── Reactive State ──────────────────────────────────────────────────────────
-
+  final Rxn<AccountType> currentAccountType = Rxn<AccountType>();
+  final Rxn<File> selectedBackgroundImage = Rxn<File>();
   final Rx<StylistModel?> stylistProfile = Rx<StylistModel?>(null);
   final Rx<CompanyModel?> companyProfile = Rx<CompanyModel?>(null);
   final Rxn<File> selectedImage = Rxn<File>();
@@ -33,8 +39,10 @@ class AuthController extends GetxController {
   final RxMap<String, dynamic> companyRegistrationData =
       <String, dynamic>{}.obs;
 
-  // ─── Form Controllers ────────────────────────────────────────────────────────
-
+  late TextEditingController roleController;
+  late TextEditingController missionController;
+  late TextEditingController aboutController;
+  late TextEditingController companyNameController;
   late TextEditingController nameController;
   late TextEditingController emailController;
   late TextEditingController usernameController;
@@ -47,11 +55,7 @@ class AuthController extends GetxController {
   late TextEditingController yearsController;
   late TextEditingController licenseCountryController;
 
-  // ─── Private ─────────────────────────────────────────────────────────────────
-
   StylistModel _tempUserData = StylistModel();
-
-  // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
   @override
   void onInit() {
@@ -60,7 +64,18 @@ class AuthController extends GetxController {
 
   }
 
-  // ─── Setup ───────────────────────────────────────────────────────────────────
+  Future<void> pickBackgroundImage(ImageSource source) async {
+    final picked = await ImagePicker().pickImage(source: source);
+    if (picked != null) {
+      selectedBackgroundImage.value = File(picked.path);
+      Get.back();
+    }
+  }
+
+  void removeBackgroundImage() {
+    selectedBackgroundImage.value = null;
+    Get.back();
+  }
 
   void _initTextControllers() {
     nameController = TextEditingController();
@@ -74,9 +89,13 @@ class AuthController extends GetxController {
     certTypeController = TextEditingController();
     yearsController = TextEditingController();
     licenseCountryController = TextEditingController();
+
+    roleController = TextEditingController();
+    missionController = TextEditingController();
+    aboutController = TextEditingController();
+    companyNameController = TextEditingController();
   }
 
-  /// Populate form fields from the currently loaded stylist profile.
   void _fillFormFromProfile() {
     final user = stylistProfile.value;
 
@@ -93,23 +112,53 @@ class AuthController extends GetxController {
     licenseCountryController.text = user?.licenseCountry ?? '';
   }
 
-  // ─── Profile Loading ─────────────────────────────────────────────────────────
+  void _fillStylistForm() {
+    final user = stylistProfile.value;
 
-  /// Load cached stylist profile from storage, then refresh from the API.
+    nameController.text = user?.fullName ?? '';
+    emailController.text = user?.email ?? '';
+    usernameController.text = user?.username ?? '';
+    phoneController.text = user?.phoneNumber ?? '';
+    countryController.text = user?.country ?? '';
+    stateController.text = user?.state ?? '';
+    licenseController.text = user?.licenseNumber ?? '';
+    salonController.text = user?.saloonName ?? '';
+    certTypeController.text = user?.certificationType ?? '';
+    yearsController.text = user?.yearsOfExperience?.toString() ?? '';
+    licenseCountryController.text = user?.licenseCountry ?? '';
+  }
+
+  void _fillCompanyForm() {
+    final company = companyProfile.value;
+
+    companyNameController.text = company?.companyName ?? '';
+    emailController.text = company?.email ?? '';
+    usernameController.text = company?.username ?? '';
+    phoneController.text = company?.phoneNumber ?? '';
+    countryController.text = company?.country ?? '';
+    stateController.text = company?.state ?? '';
+    roleController.text = company?.role ?? '';
+    missionController.text = company?.missionStatement ?? '';
+    aboutController.text = company?.about ?? '';
+    salonController.text = company?.saloonName ?? '';
+    licenseController.text = company?.licenseNumber ?? '';
+    certTypeController.text = company?.certificationType ?? '';
+    yearsController.text = company?.yearsOfExperience?.toString() ?? '';
+    licenseCountryController.text = company?.licenseCountry ?? '';
+  }
+
   Future<void> loadStylistProfile() async {
     final cached = await authRepo.loadStylistProfile();
     if (cached != null) stylistProfile.value = cached;
     await getProfile();
   }
 
-  /// Load cached company profile from storage, then refresh from the API.
   Future<void> loadCompanyProfile() async {
     final cached = await authRepo.loadCompanyProfile();
     if (cached != null) companyProfile.value = cached;
     await getCompanyProfile();
   }
 
-  /// Persist stylist profile to local storage and update reactive state.
   Future<void> saveStylistProfile(StylistModel model) async {
     await authRepo.saveStylistProfile(model);
     stylistProfile.value = model;
@@ -117,7 +166,6 @@ class AuthController extends GetxController {
     update();
   }
 
-  /// Persist company profile to local storage and update reactive state.
   Future<void> saveCompanyProfile(CompanyModel model) async {
     await authRepo.saveCompanyProfile(model);
     companyProfile.value = model;
@@ -268,19 +316,17 @@ class AuthController extends GetxController {
     }
   }
 
-  // ─── Profile — API Calls ──────────────────────────────────────────────────────
-
-  /// Fetch the latest stylist profile from the server.
   Future<void> getProfile() async {
-    // _loader.showLoader();
     update();
     try {
       final response = await authRepo.getStylistProfile();
       if (response.statusCode == 200) {
         final model = StylistModel.fromJson(response.body['stylist']);
+        currentAccountType.value = AccountType.stylist;
         await saveStylistProfile(model);
+        _fillStylistForm();
       } else {
-        stylistProfile.value = null; // 401 or any error → clear
+        stylistProfile.value = null;
       }
     } catch (e) {
       stylistProfile.value = null;
@@ -291,17 +337,17 @@ class AuthController extends GetxController {
     }
   }
 
-  /// Fetch the latest company profile from the server.
   Future<void> getCompanyProfile() async {
-    // _loader.showLoader();
     update();
     try {
       final response = await authRepo.getCompanyProfile();
       if (response.statusCode == 200) {
         final model = CompanyModel.fromJson(response.body['company']);
+        currentAccountType.value = AccountType.company;
         await saveCompanyProfile(model);
+        _fillCompanyForm();
       } else {
-        companyProfile.value = null; // 401 or any error → clear
+        companyProfile.value = null;
       }
     } catch (e) {
       companyProfile.value = null;
@@ -312,9 +358,8 @@ class AuthController extends GetxController {
     }
   }
 
-  // ─── Profile — Updates ────────────────────────────────────────────────────────
 
-  /// Save all pending form changes (image + text data) to the server.
+
   Future<void> saveChanges() async {
     _loader.showLoader();
 
@@ -365,7 +410,123 @@ class AuthController extends GetxController {
     }
   }
 
-  /// Partially update stylist fields; optionally navigate to [nextRoute].
+
+  Future<void> saveStylistChanges() async {
+    _loader.showLoader();
+
+    try {
+      if (selectedImage.value != null) {
+        final imgResponse =
+        await authRepo.updateProfilePicture(selectedImage.value!);
+
+        if (imgResponse.statusCode != 200 && imgResponse.statusCode != 201) {
+          CustomSnackBar.failure(message: 'Failed to upload image');
+          return;
+        }
+      }
+
+      final body = <String, dynamic>{
+        'fullName': nameController.text.trim(),
+        'username': usernameController.text.trim(),
+        'phone': phoneController.text.trim(),
+        'country': countryController.text.trim(),
+        'state': stateController.text.trim(),
+        'licenseNumber': licenseController.text.trim(),
+        'salonName': salonController.text.trim(),
+        'certificationType': certTypeController.text.trim(),
+        'licensingCountry': licenseCountryController.text.trim(),
+      };
+
+      final years = int.tryParse(yearsController.text);
+      if (years != null) body['yearsOfExperience'] = years;
+
+      final response = await authRepo.updateProfile(body);
+
+      if (response.statusCode == 200) {
+        await getProfile();
+        Get.back();
+        CustomSnackBar.success(message: 'Profile updated successfully');
+      } else {
+        CustomSnackBar.failure(
+          message: response.body['message'] ?? 'Update failed',
+        );
+      }
+    } catch (e) {
+      debugPrint('saveStylistChanges error: $e');
+      CustomSnackBar.failure(message: 'An error occurred');
+    } finally {
+      _loader.hideLoader();
+    }
+  }
+
+  Future<void> saveCompanyChanges() async {
+    _loader.showLoader();
+
+    try {
+      String? profileImageUrl = companyProfile.value?.profileImageUrl;
+      String? backgroundImageUrl = companyProfile.value?.backgroundImageUrl;
+
+      if (selectedImage.value != null) {
+        profileImageUrl = await uploadCompanyLogoAndGetUrl(selectedImage.value!);
+        if (profileImageUrl == null) return;
+      }
+
+      if (selectedBackgroundImage.value != null) {
+        backgroundImageUrl =
+        await uploadCompanyLogoAndGetUrl(selectedBackgroundImage.value!);
+        if (backgroundImageUrl == null) return;
+      }
+
+      final body = <String, dynamic>{
+        'companyName': companyNameController.text.trim(),
+        'username': usernameController.text.trim(),
+        'phoneNumber': phoneController.text.trim(),
+        'country': countryController.text.trim(),
+        'state': stateController.text.trim(),
+        'role': roleController.text.trim(),
+        'missionStatement': missionController.text.trim(),
+        'about': aboutController.text.trim(),
+        'saloonName': salonController.text.trim(),
+        'licenseNumber': licenseController.text.trim(),
+        'certificationType': certTypeController.text.trim(),
+        'licenseCountry': licenseCountryController.text.trim(),
+        'profileImageUrl': profileImageUrl,
+        'backgroundImageUrl': backgroundImageUrl,
+      };
+
+      final years = int.tryParse(yearsController.text.trim());
+      if (years != null) {
+        body['yearsOfExperience'] = years;
+      }
+
+      final response = await authRepo.updateCompanyProfile(body);
+
+      if (response.statusCode == 200) {
+        await getCompanyProfile();
+        Get.back();
+        CustomSnackBar.success(message: 'Company profile updated successfully');
+      } else {
+        CustomSnackBar.failure(
+          message: response.body['message'] ?? 'Update failed',
+        );
+      }
+    } catch (e) {
+      debugPrint('saveCompanyChanges error: $e');
+      CustomSnackBar.failure(message: 'An error occurred');
+    } finally {
+      _loader.hideLoader();
+    }
+  }
+
+  Future<void> saveCurrentProfileChanges() async {
+    if (currentAccountType.value == AccountType.company) {
+      await saveCompanyChanges();
+    } else {
+      await saveStylistChanges();
+    }
+  }
+
+
   Future<void> patchStylistData(
       Map<String, dynamic> data, {
         String? nextRoute,

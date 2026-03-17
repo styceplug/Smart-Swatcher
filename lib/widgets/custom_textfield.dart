@@ -13,7 +13,7 @@ class CustomTextField extends StatelessWidget {
   final bool enabled;
   final bool readOnly; // <--- ADDED THIS
   final Widget? suffixIcon;
-  final TextInputType keyboardType;
+  final TextInputType? keyboardType;
   final int? maxLines;
   final TextInputType? textInputType; // Helper for older code using this name
   final void Function(String)? onChanged;
@@ -29,7 +29,7 @@ class CustomTextField extends StatelessWidget {
     this.enabled = true,
     this.readOnly = false, // <--- ADDED THIS (Default false)
     this.suffixIcon,
-    this.keyboardType = TextInputType.text,
+    this.keyboardType,
     this.textInputType, // Helper
     this.maxLines = 1, // Default to 1 line for standard input
     this.onChanged,

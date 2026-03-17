@@ -116,22 +116,43 @@ class RecommendedAccountCard extends StatelessWidget {
               ),
 
               /// ACTION BUTTON
-              CustomButton(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width15,
-                  vertical: Dimensions.height10,
-                ),
-                text: 'Connect',
-                textStyle: TextStyle(
-                  fontSize: Dimensions.font12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.white,
-                ),
-                onPressed: () {
-                  // Connection Logic
-                },
-                backgroundColor: AppColors.primary5,
-              ),
+              Obx(() {
+                final isLoading = controller.isRequestingConnection(account.id);
+                final status = controller.getConnectionStatus(account.id);
+
+                final isPending = status == 'pending';
+                final isConnected = status == 'accepted';
+
+                final buttonText = isLoading
+                    ? 'Sending...'
+                    : isConnected
+                    ? 'Connected'
+                    : isPending
+                    ? 'Pending'
+                    : 'Connect';
+
+                final buttonColor = isConnected || isPending
+                    ? AppColors.grey4
+                    : AppColors.primary5;
+
+                return CustomButton(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width15,
+                    vertical: Dimensions.height10,
+                  ),
+                  text: buttonText,
+                  textStyle: TextStyle(
+                    fontSize: Dimensions.font12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.white,
+                  ),
+                  onPressed: () {
+                    if (isLoading || isPending || isConnected) return;
+                    controller.requestConnection(account.id);
+                  },
+                  backgroundColor: buttonColor,
+                );
+              })
             ],
           ),
 

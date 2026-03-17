@@ -170,6 +170,10 @@ class AuthRepo extends GetxService {
     return await apiClient.patchData(AppConstants.PATCH_STYLIST_PROFILE, body);
   }
 
+  Future<Response> updateCompanyProfile(Map<String, dynamic> body) async {
+    return await apiClient.patchData('/api/companies/me', body);
+  }
+
   Future<Response> loginStylist(Map<String, dynamic> body) async {
     return await apiClient.postData(AppConstants.LOGIN_STYLIST, body);
   }

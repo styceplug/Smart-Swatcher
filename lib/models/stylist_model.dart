@@ -71,11 +71,28 @@ class StylistModel {
     );
   }
 
-  String? get fullProfileImageUrl {
-    if (profileImageUrl == null) return null;
-    if (profileImageUrl!.startsWith('/')) {
-      return '${AppConstants.BASE_URL}$profileImageUrl';
+  static String resolveImage(String? url, String baseUrl) {
+    const placeholder =
+        'https://ui-avatars.com/api/?name=User&background=E5E7EB&color=6B7280';
+
+    if (url == null) return placeholder;
+
+    final value = url.trim();
+
+    if (value.isEmpty || value == 'null' || value == 'string') {
+      return placeholder;
     }
-    return profileImageUrl;
+
+    if (value.startsWith('http')) return value;
+
+    if (value.startsWith('/')) {
+      return '$baseUrl$value';
+    }
+
+    return '$baseUrl/$value';
+  }
+
+  String getProfileImage(String baseUrl) {
+    return resolveImage(profileImageUrl, baseUrl);
   }
 }

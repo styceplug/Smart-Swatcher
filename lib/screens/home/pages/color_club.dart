@@ -61,11 +61,16 @@ class _ColorClubState extends State<ColorClub>
                         color: Colors.black,
                       ),
                       SizedBox(width: Dimensions.width15),
-                      Image.asset(
-                        AppConstants.getPngAsset('notification-icon'),
-                        height: Dimensions.height10 * 2.5,
-                        width: Dimensions.width10 * 2.5,
-                        color: Colors.black,
+                      InkWell(
+                        onTap: (){
+                          Get.toNamed(AppRoutes.notificationScreen);
+                        },
+                        child: Image.asset(
+                          AppConstants.getPngAsset('notification-icon'),
+                          height: Dimensions.height10 * 2.5,
+                          width: Dimensions.width10 * 2.5,
+                          color: Colors.black,
+                        ),
                       ),
                       SizedBox(width: Dimensions.width15),
                       Image.asset(
