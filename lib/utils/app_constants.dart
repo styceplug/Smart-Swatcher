@@ -51,6 +51,16 @@ class AppConstants {
 
 
   static const String CREATE_EVENT = '/api/events';
+  static const String GET_EVENT = '/api/events';
+  static const String GET_RECOMMENDED_EVENT = '/api/events/recommended';
+  static String PATCH_EVENT(String eventId) => '/api/events/$eventId';
+  static String GET_SINGLE_EVENT(String eventId) => '/api/events/$eventId';
+  static String SUBSCRIBE_EVENT(String eventId) => '/api/events/$eventId/subscribe';
+  static String UNSUBSCRIBE_EVENT(String eventId) => '/api/events/$eventId/subscribe';
+  static String START_EVENT(String eventId) => '/api/events/$eventId/start';
+  static String JOIN_EVENT(String eventId) => '/api/events/$eventId/join';
+  static String LEAVE_EVENT(String eventId) => '/api/events/$eventId/leave';
+  static String END_EVENT(String eventId) => '/api/events/$eventId/end';
 
 
 

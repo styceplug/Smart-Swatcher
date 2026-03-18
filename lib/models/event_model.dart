@@ -92,6 +92,10 @@ class EventModel {
   final int liveParticipantCount;
   final EventViewerModel? viewer;
 
+  final num? recommendationScore;
+  final String? recommendationReason;
+  final List<String> recommendationReasons;
+
   EventModel({
     this.id,
     this.title,
@@ -106,6 +110,9 @@ class EventModel {
     this.subscriberCount = 0,
     this.liveParticipantCount = 0,
     this.viewer,
+    this.recommendationScore,
+    this.recommendationReason,
+    this.recommendationReasons = const [],
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
@@ -134,6 +141,61 @@ class EventModel {
       int.tryParse(json['liveParticipantCount']?.toString() ?? '0') ?? 0,
       viewer: json['viewer'] != null
           ? EventViewerModel.fromJson(json['viewer'])
+          : null,
+      recommendationScore: json['recommendationScore'],
+      recommendationReason: json['recommendationReason']?.toString(),
+      recommendationReasons: json['recommendationReasons'] != null
+          ? List<String>.from(json['recommendationReasons'])
+          : [],
+    );
+  }
+}
+
+class EventRtcModel {
+  final String? appId;
+  final String? channelName;
+  final int? uid;
+  final String? token;
+  final String? clientRole;
+  final String? channelProfile;
+  final bool audioOnly;
+  final DateTime? tokenExpiresAt;
+  final DateTime? joinPrivilegeExpiresAt;
+  final DateTime? publishAudioPrivilegeExpiresAt;
+
+  EventRtcModel({
+    this.appId,
+    this.channelName,
+    this.uid,
+    this.token,
+    this.clientRole,
+    this.channelProfile,
+    this.audioOnly = true,
+    this.tokenExpiresAt,
+    this.joinPrivilegeExpiresAt,
+    this.publishAudioPrivilegeExpiresAt,
+  });
+
+  factory EventRtcModel.fromJson(Map<String, dynamic> json) {
+    return EventRtcModel(
+      appId: json['appId']?.toString(),
+      channelName: json['channelName']?.toString(),
+      uid: int.tryParse(json['uid']?.toString() ?? ''),
+      token: json['token']?.toString(),
+      clientRole: json['clientRole']?.toString(),
+      channelProfile: json['channelProfile']?.toString(),
+      audioOnly: json['audioOnly'] ?? true,
+      tokenExpiresAt: json['tokenExpiresAt'] != null
+          ? DateTime.tryParse(json['tokenExpiresAt'].toString())
+          : null,
+      joinPrivilegeExpiresAt: json['joinPrivilegeExpiresAt'] != null
+          ? DateTime.tryParse(json['joinPrivilegeExpiresAt'].toString())
+          : null,
+      publishAudioPrivilegeExpiresAt:
+      json['publishAudioPrivilegeExpiresAt'] != null
+          ? DateTime.tryParse(
+        json['publishAudioPrivilegeExpiresAt'].toString(),
+      )
           : null,
     );
   }

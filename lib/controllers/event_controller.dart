@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../data/repo/event_repo.dart';
 import '../helpers/global_loader_controller.dart';
 import '../models/event_model.dart';
+import '../routes/routes.dart';
 import '../widgets/snackbars.dart';
 
 class EventController extends GetxController {
@@ -20,6 +21,13 @@ class EventController extends GetxController {
   final Rxn<DateTime> selectedDateTime = Rxn<DateTime>();
 
   final RxBool isCreatingEvent = false.obs;
+  final RxBool isGettingEvents = false.obs;
+  final RxBool isGettingRecommendedEvents = false.obs;
+  final RxBool isGettingSingleEvent = false.obs;
+
+  final RxList<EventModel> events = <EventModel>[].obs;
+  final RxList<EventModel> recommendedEvents = <EventModel>[].obs;
+  final Rxn<EventModel> selectedEvent = Rxn<EventModel>();
   final Rxn<EventModel> createdEvent = Rxn<EventModel>();
 
   @override
@@ -27,6 +35,13 @@ class EventController extends GetxController {
     titleController.dispose();
     descriptionController.dispose();
     super.onClose();
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchRecommendedEvents();
+    fetchEvents();
   }
 
   void setVisibility(String value) {
@@ -58,15 +73,13 @@ class EventController extends GetxController {
 
     if (pickedTime == null) return;
 
-    final combined = DateTime(
+    selectedDateTime.value = DateTime(
       pickedDate.year,
       pickedDate.month,
       pickedDate.day,
       pickedTime.hour,
       pickedTime.minute,
     );
-
-    selectedDateTime.value = combined;
   }
 
   Future<void> createEvent() async {
@@ -107,11 +120,13 @@ class EventController extends GetxController {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final eventJson = response.body['event'];
         if (eventJson != null) {
-          createdEvent.value = EventModel.fromJson(eventJson);
+          final event = EventModel.fromJson(eventJson);
+          createdEvent.value = event;
+          selectedEvent.value = event;
         }
 
         CustomSnackBar.success(message: 'Event created successfully');
-        Get.back();
+        Get.toNamed(AppRoutes.shareSpaceScreen);
       } else {
         CustomSnackBar.failure(
           message: response.body?['message'] ?? 'Failed to create event',
@@ -125,6 +140,92 @@ class EventController extends GetxController {
     }
   }
 
+  Future<void> fetchEvents({
+    String? status,
+    String? visibility,
+    String? creatorId,
+    String? creatorType,
+    bool? createdByMe,
+    bool? subscribedOnly,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    isGettingEvents.value = true;
+
+    try {
+      final response = await eventRepo.getEvents(
+        status: status,
+        visibility: visibility,
+        creatorId: creatorId,
+        creatorType: creatorType,
+        createdByMe: createdByMe,
+        subscribedOnly: subscribedOnly,
+        limit: limit,
+        offset: offset,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.body['events'] ?? [];
+        events.assignAll(data.map((e) => EventModel.fromJson(e)).toList());
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to fetch events',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to fetch events');
+    } finally {
+      isGettingEvents.value = false;
+    }
+  }
+
+  Future<void> fetchRecommendedEvents({int limit = 20}) async {
+    isGettingRecommendedEvents.value = true;
+
+    try {
+      final response = await eventRepo.getRecommendedEvents(limit: limit);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.body['events'] ?? [];
+        recommendedEvents.assignAll(
+          data.map((e) => EventModel.fromJson(e)).toList(),
+        );
+      } else {
+        CustomSnackBar.failure(
+          message:
+          response.body?['message'] ?? 'Failed to fetch recommended events',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to fetch recommended events');
+    } finally {
+      isGettingRecommendedEvents.value = false;
+    }
+  }
+
+  Future<void> fetchSingleEvent(String eventId) async {
+    isGettingSingleEvent.value = true;
+
+    try {
+      final response = await eventRepo.getSingleEvent(eventId);
+
+      if (response.statusCode == 200) {
+        final eventJson = response.body['event'];
+        if (eventJson != null) {
+          selectedEvent.value = EventModel.fromJson(eventJson);
+        }
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to fetch event',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to fetch event');
+    } finally {
+      isGettingSingleEvent.value = false;
+    }
+  }
+
   String get formattedDateTime {
     final value = selectedDateTime.value;
     if (value == null) return 'Select Time';
@@ -134,5 +235,15 @@ class EventController extends GetxController {
     final suffix = value.hour >= 12 ? 'PM' : 'AM';
 
     return '${value.day}/${value.month}/${value.year}  $hour:$minute $suffix';
+  }
+
+  String formatEventDate(DateTime? value) {
+    if (value == null) return 'No date';
+
+    final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+    final minute = value.minute.toString().padLeft(2, '0');
+    final suffix = value.hour >= 12 ? 'PM' : 'AM';
+
+    return '${value.day}/${value.month}/${value.year} at $hour:$minute $suffix';
   }
 }
