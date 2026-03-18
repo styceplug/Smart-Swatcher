@@ -72,6 +72,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Get.toNamed(AppRoutes.referenceHubScreen);
                       },
                     ),
+                    ProfileOptionTile(
+                      leadingIcon: Icons.event,
+                      title: 'My Events',
+                      onTap: (){
+                        Get.toNamed(AppRoutes.myEventsScreen);
+                      },
+                    ),
                   ],
                 ),
               ),

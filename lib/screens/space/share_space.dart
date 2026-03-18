@@ -48,12 +48,19 @@ class ShareSpaceScreen extends StatelessWidget {
             );
           }
 
+          final isLive = event.status?.toLowerCase() == 'live';
+          final canStart = event.viewer?.canStart ?? false;
+          final canJoin = event.viewer?.canJoin ?? false;
+          final isCreator = event.viewer?.isCreator ?? false;
+
           return Column(
             children: [
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: Dimensions.width40),
                 child: Text(
-                  'Event Created. Time to share it with your people',
+                  isLive
+                      ? 'Your event is live now. Jump back in.'
+                      : 'Event Created. Time to share it with your people',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: Dimensions.font17,
@@ -74,6 +81,7 @@ class ShareSpaceScreen extends StatelessWidget {
                 visibility: event.visibility ?? 'General',
                 status: event.status ?? 'upcoming',
                 subscriberCount: event.subscriberCount,
+                isLive: isLive,
                 onPressed: () {},
               ),
 
@@ -82,19 +90,28 @@ class ShareSpaceScreen extends StatelessWidget {
               CustomButton(
                 text: 'Share Event',
                 onPressed: () {
-                  CustomSnackBar.processing(message: 'Share flow coming next');
+                  CustomSnackBar.processing(
+                    message: 'Share flow coming next',
+                  );
                 },
               ),
 
               SizedBox(height: Dimensions.height15),
 
-              if ((event.viewer?.canStart ?? false) &&
-                  (event.status?.toLowerCase() != 'live'))
+              if (isLive && (canJoin || isCreator))
+                CustomButton(
+                  text: 'Rejoin Live Event',
+                  backgroundColor: Colors.red,
+                  onPressed: () async {
+                    await controller.joinEventSession(event.id ?? '');
+                  },
+                )
+              else if (canStart)
                 CustomButton(
                   text: 'Start Event',
                   backgroundColor: AppColors.primary1,
-                  onPressed: () {
-                    controller.startEventSession(event.id ?? '');
+                  onPressed: () async {
+                    await controller.startEventSession(event.id ?? '');
                   },
                 ),
             ],

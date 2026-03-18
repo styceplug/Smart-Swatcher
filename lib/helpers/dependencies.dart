@@ -9,6 +9,7 @@ import 'package:smart_swatcher/data/repo/event_repo.dart';
 import 'package:smart_swatcher/data/repo/folder_repo.dart';
 import 'package:smart_swatcher/data/repo/post_repo.dart';
 import 'package:smart_swatcher/data/repo/user_repo.dart';
+import 'package:smart_swatcher/helpers/agora_audio_helper.dart';
 
 
 import '../controllers/app_controller.dart';
@@ -31,6 +32,11 @@ Future<void> init() async {
     () => ApiClient(
       appBaseUrl: AppConstants.BASE_URL,
       sharedPreferences: Get.find(),
+    ),
+  );
+  Get.lazyPut(
+    () => AgoraAudioHelper(
+
     ),
   );
 

@@ -4,14 +4,39 @@ import 'package:get/get.dart';
 import '../../controllers/event_controller.dart';
 import '../../utils/colors.dart';
 import '../../utils/dimensions.dart';
+import 'package:smart_swatcher/helpers/agora_audio_helper.dart';
 
-class AudioSessionScreen extends StatelessWidget {
+
+class AudioSessionScreen extends StatefulWidget {
   const AudioSessionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final EventController controller = Get.find<EventController>();
+  State<AudioSessionScreen> createState() => _AudioSessionScreenState();
+}
 
+class _AudioSessionScreenState extends State<AudioSessionScreen> {
+  final EventController controller = Get.find<EventController>();
+  final AgoraAudioHelper agoraHelper = Get.find<AgoraAudioHelper>();
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Future<void> _leaveSession() async {
+    await controller.leaveEventSession();
+    if (mounted) Get.back();
+  }
+
+  Future<void> _endSession() async {
+    await controller.endEventSession();
+    if (mounted && Get.isOverlaysOpen == false) {
+      Get.back();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.black1,
       body: SafeArea(
@@ -37,16 +62,16 @@ class AudioSessionScreen extends StatelessWidget {
                 Row(
                   children: [
                     InkWell(
-                      onTap: () async {
-                        await controller.leaveEventSession(event.id ?? '');
-                        Get.back();
-                      },
-                      child: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                      onTap: _leaveSession,
+                      child: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.white,
+                      ),
                     ),
                     const Spacer(),
                     if (isCreator)
                       InkWell(
-                        onTap: () => controller.endEventSession(event.id ?? ''),
+                        onTap: _endSession,
                         child: Container(
                           padding: EdgeInsets.symmetric(
                             horizontal: Dimensions.width15,
@@ -64,7 +89,9 @@ class AudioSessionScreen extends StatelessWidget {
                       ),
                   ],
                 ),
+
                 SizedBox(height: Dimensions.height30),
+
                 Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: Dimensions.width10,
@@ -82,7 +109,9 @@ class AudioSessionScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+
                 SizedBox(height: Dimensions.height20),
+
                 Text(
                   event.title ?? 'Untitled Event',
                   style: TextStyle(
@@ -92,7 +121,9 @@ class AudioSessionScreen extends StatelessWidget {
                     fontFamily: 'Poppins',
                   ),
                 ),
+
                 SizedBox(height: Dimensions.height10),
+
                 Text(
                   event.description ?? '',
                   style: TextStyle(
@@ -101,7 +132,9 @@ class AudioSessionScreen extends StatelessWidget {
                     fontFamily: 'Poppins',
                   ),
                 ),
+
                 SizedBox(height: Dimensions.height30),
+
                 Row(
                   children: [
                     CircleAvatar(
@@ -128,25 +161,79 @@ class AudioSessionScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+
                 SizedBox(height: Dimensions.height30),
-                Text(
-                  '${event.liveParticipantCount} listening',
-                  style: const TextStyle(color: Colors.white70),
+
+                ValueListenableBuilder<int>(
+                  valueListenable: agoraHelper.remoteUserCount,
+                  builder: (context, remoteCount, _) {
+                    final totalListeners = isCreator
+                        ? remoteCount + 1
+                        : remoteCount;
+
+                    return Text(
+                      '$totalListeners listening',
+                      style: const TextStyle(color: Colors.white70),
+                    );
+                  },
                 ),
+
+                SizedBox(height: Dimensions.height10),
+
+                ValueListenableBuilder<bool>(
+                  valueListenable: agoraHelper.joinedNotifier,
+                  builder: (context, joined, _) {
+                    return Text(
+                      joined ? 'Connected to live audio' : 'Connecting...',
+                      style: TextStyle(
+                        color: joined ? Colors.greenAccent : Colors.orangeAccent,
+                        fontSize: Dimensions.font13,
+                        fontFamily: 'Poppins',
+                      ),
+                    );
+                  },
+                ),
+
                 const Spacer(),
+
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _audioAction(Icons.volume_up),
-                      SizedBox(width: Dimensions.width20),
-                      _audioAction(Icons.mic_off),
-                      SizedBox(width: Dimensions.width20),
-                      InkWell(
-                        onTap: () async {
-                          await controller.leaveEventSession(event.id ?? '');
-                          Get.back();
+                      ValueListenableBuilder<bool>(
+                        valueListenable: agoraHelper.speakerNotifier,
+                        builder: (context, speakerOn, _) {
+                          return _audioAction(
+                            icon: speakerOn
+                                ? Icons.volume_up
+                                : Icons.volume_off,
+                            onTap: () async {
+                              await agoraHelper.toggleSpeaker();
+                            },
+                          );
                         },
+                      ),
+                      SizedBox(width: Dimensions.width20),
+
+                      ValueListenableBuilder<bool>(
+                        valueListenable: agoraHelper.mutedNotifier,
+                        builder: (context, isMuted, _) {
+                          return _audioAction(
+                            icon: isMuted ? Icons.mic_off : Icons.mic,
+                            onTap: isCreator
+                                ? () async {
+                              await agoraHelper.toggleMute();
+                            }
+                                : null,
+                            disabled: !isCreator,
+                          );
+                        },
+                      ),
+
+                      SizedBox(width: Dimensions.width20),
+
+                      InkWell(
+                        onTap: _leaveSession,
                         child: Container(
                           height: 64,
                           width: 64,
@@ -154,12 +241,16 @@ class AudioSessionScreen extends StatelessWidget {
                             color: Colors.red,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.call_end, color: Colors.white),
+                          child: const Icon(
+                            Icons.call_end,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
+
                 SizedBox(height: Dimensions.height30),
               ],
             ),
@@ -169,15 +260,25 @@ class AudioSessionScreen extends StatelessWidget {
     );
   }
 
-  Widget _audioAction(IconData icon) {
-    return Container(
-      height: 54,
-      width: 54,
-      decoration: BoxDecoration(
-        color: Colors.white12,
-        shape: BoxShape.circle,
+  Widget _audioAction({
+    required IconData icon,
+    VoidCallback? onTap,
+    bool disabled = false,
+  }) {
+    return InkWell(
+      onTap: disabled ? null : onTap,
+      child: Container(
+        height: 54,
+        width: 54,
+        decoration: BoxDecoration(
+          color: disabled ? Colors.white10 : Colors.white12,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: disabled ? Colors.white38 : Colors.white,
+        ),
       ),
-      child: Icon(icon, color: Colors.white),
     );
   }
 }

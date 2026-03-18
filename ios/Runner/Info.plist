@@ -12,7 +12,8 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>We need access to your microphone to record audio for videos.</string>
 
-
+<key>NSMicrophoneUsageDescription</key>
+<string>This app uses your microphone for live audio events.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

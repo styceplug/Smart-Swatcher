@@ -61,21 +61,102 @@ class AgoraAudioHelper {
     }
 
     _engine!.registerEventHandler(
-        RtcEngineEventHandler(
-            onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
-              localUid = connection.localUid;
-              _joined = true;
-              joinedNotifier.value = true;
-              debugPrint('Agora joined successfully: uid=${connection.localUid}');
-            },
-            onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-              remoteUserCount.value = remoteUserCount.value + 1;
-              debugPrint('Remote user joined: $remoteUid');
-            },
-            onUserOffline: (
-                RtcConnection connection,
-                int remoteUid,
-                UserOfflineReasonType reason,
-                ) {
-              if (remoteUserCount.value > 0) {
-                remoteUserCount.value
+      RtcEngineEventHandler(
+        onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
+          localUid = connection.localUid;
+          _joined = true;
+          joinedNotifier.value = true;
+          debugPrint('Agora joined successfully: uid=${connection.localUid}');
+        },
+        onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
+          remoteUserCount.value = remoteUserCount.value + 1;
+          debugPrint('Remote user joined: $remoteUid');
+        },
+        onUserOffline: (
+            RtcConnection connection,
+            int remoteUid,
+            UserOfflineReasonType reason,
+            ) {
+          if (remoteUserCount.value > 0) {
+            remoteUserCount.value = remoteUserCount.value - 1;
+          }
+          debugPrint('Remote user left: $remoteUid');
+        },
+        onLeaveChannel: (RtcConnection connection, RtcStats stats) {
+          _joined = false;
+          joinedNotifier.value = false;
+          remoteUserCount.value = 0;
+          debugPrint('Left agora channel');
+        },
+        onError: (ErrorCodeType err, String msg) {
+          debugPrint('Agora error: $err, $msg');
+        },
+      ),
+    );
+
+    _initialized = true;
+  }
+
+  Future<void> joinChannel({
+    required String channelName,
+    required String token,
+    required int uid,
+  }) async {
+    if (_engine == null) return;
+
+    await _engine!.joinChannel(
+      token: token,
+      channelId: channelName,
+      uid: uid,
+      options: ChannelMediaOptions(
+        autoSubscribeAudio: true,
+        publishMicrophoneTrack: _isBroadcaster,
+        clientRoleType: _isBroadcaster
+            ? ClientRoleType.clientRoleBroadcaster
+            : ClientRoleType.clientRoleAudience,
+        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+      ),
+    );
+  }
+
+  Future<void> toggleMute() async {
+    if (_engine == null || !_isBroadcaster) return;
+
+    _localMuted = !_localMuted;
+    await _engine!.muteLocalAudioStream(_localMuted);
+    mutedNotifier.value = _localMuted;
+  }
+
+  Future<void> toggleSpeaker() async {
+    if (_engine == null) return;
+
+    _speakerEnabled = !_speakerEnabled;
+    await _engine!.setEnableSpeakerphone(_speakerEnabled);
+    speakerNotifier.value = _speakerEnabled;
+  }
+
+  Future<void> leaveChannel() async {
+    if (_engine == null || !_joined) return;
+    await _engine!.leaveChannel();
+  }
+
+  Future<void> disposeEngine() async {
+    await leaveChannel();
+
+    if (_engine != null) {
+      await _engine!.release();
+    }
+
+    _engine = null;
+    _initialized = false;
+    _joined = false;
+    _localMuted = false;
+    _speakerEnabled = true;
+    _isBroadcaster = false;
+    localUid = null;
+    remoteUserCount.value = 0;
+    joinedNotifier.value = false;
+    mutedNotifier.value = false;
+    speakerNotifier.value = true;
+  }
+}

@@ -17,7 +17,8 @@ class ShareEventCard extends StatelessWidget {
   final String description;
   final String visibility;
   final String status;
-  final int subscriberCount;
+  final int? subscriberCount;
+  final bool isLive;
   final VoidCallback onPressed;
 
   const ShareEventCard({
@@ -30,157 +31,173 @@ class ShareEventCard extends StatelessWidget {
     required this.description,
     required this.visibility,
     required this.status,
-    required this.subscriberCount,
+    required this.isLive,
+    this.subscriberCount,
     required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: Dimensions.screenWidth,
-      padding: EdgeInsets.symmetric(
-        horizontal: Dimensions.width20,
-        vertical: Dimensions.height20,
-      ),
+      padding: EdgeInsets.all(Dimensions.width20),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(Dimensions.radius15),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// top row
+          /// HOST ROW
           Row(
             children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.grey.shade200,
+                child: const Icon(Icons.person, size: 18),
+              ),
+              SizedBox(width: Dimensions.width10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hostName,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w600,
+                      fontSize: Dimensions.font14,
+                    ),
+                  ),
+                  Text(
+                    hostRole,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      color: Colors.grey,
+                      fontSize: Dimensions.font12,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+
+              /// SESSION TYPE
               Text(
-                hostName,
+                sessionType,
                 style: TextStyle(
-                  fontSize: Dimensions.font14,
                   fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
+                  fontSize: Dimensions.font12,
+                  color: Colors.grey,
                 ),
               ),
-              SizedBox(width: Dimensions.width5),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width5,
-                  vertical: Dimensions.height5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(Dimensions.radius10),
-                ),
-                child: Text(
-                  hostRole,
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: Dimensions.font12,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
+            ],
+          ),
+
+          SizedBox(height: Dimensions.height20),
+
+          /// LIVE INDICATOR
+          if (isLive)
+            Row(
+              children: [
+                Container(
+                  height: 10,
+                  width: 10,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
                   ),
+                ),
+                SizedBox(width: Dimensions.width10),
+                Text(
+                  'LIVE NOW',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                    fontSize: Dimensions.font12,
+                  ),
+                ),
+                SizedBox(width: Dimensions.width10),
+
+                /// FAKE AUDIO BARS (clean subtle animation feel)
+                Row(
+                  children: List.generate(
+                    6,
+                        (i) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                      width: 3,
+                      height: (i % 3 + 1) * 6,
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+          if (isLive) SizedBox(height: Dimensions.height15),
+
+          /// TITLE
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: Dimensions.font18,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Poppins',
+            ),
+          ),
+
+          SizedBox(height: Dimensions.height10),
+
+          /// DESCRIPTION
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: Dimensions.font13,
+              fontFamily: 'Poppins',
+              color: Colors.grey.shade700,
+            ),
+          ),
+
+          SizedBox(height: Dimensions.height20),
+
+          /// META ROW
+          Row(
+            children: [
+              Icon(CupertinoIcons.calendar, size: Dimensions.iconSize16),
+              SizedBox(width: Dimensions.width5),
+              Text(
+                dateTime,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: Dimensions.font12,
                 ),
               ),
               const Spacer(),
               Text(
-                sessionType,
+                visibility,
                 style: TextStyle(
-                  fontSize: Dimensions.font13,
                   fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w400,
+                  fontSize: Dimensions.font12,
+                  color: Colors.grey,
                 ),
               ),
             ],
           ),
 
-          SizedBox(height: Dimensions.height20),
+          SizedBox(height: Dimensions.height10),
 
-          /// title
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: Dimensions.font20,
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-
-          SizedBox(height: Dimensions.height15),
-
-          /// description
-          Text(
-            description,
-            style: TextStyle(
-              fontSize: Dimensions.font14,
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w400,
-              color: AppColors.black1.withOpacity(.75),
-            ),
-          ),
-
-          SizedBox(height: Dimensions.height20),
-
-          /// date row
-          Row(
-            children: [
-              Icon(CupertinoIcons.calendar, size: Dimensions.iconSize20),
-              SizedBox(width: Dimensions.width5),
-              Expanded(
-                child: Text(
-                  dateTime,
-                  style: TextStyle(
-                    fontSize: Dimensions.font14,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
+          /// SUBSCRIBERS
+          if (subscriberCount != null)
+            Text(
+              '${subscriberCount} interested',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: Dimensions.font12,
+                color: Colors.grey,
               ),
-            ],
-          ),
-
-          SizedBox(height: Dimensions.height12),
-
-          /// extra details
-          Wrap(
-            spacing: Dimensions.width10,
-            runSpacing: Dimensions.height10,
-            children: [
-              _tag('Audience: $visibility'),
-              _tag('Status: ${status.capitalizeFirst ?? status}'),
-              _tag('$subscriberCount Reminders'),
-            ],
-          ),
-
-          SizedBox(height: Dimensions.height20),
-
-          CustomButton(
-            text: 'Preview Event',
-            textStyle: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Poppins',
-              fontSize: Dimensions.font16,
             ),
-            onPressed: onPressed,
-            backgroundColor: AppColors.primary1,
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _tag(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.grey1,
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
       ),
     );
   }
