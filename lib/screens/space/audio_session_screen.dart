@@ -19,10 +19,6 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
   final AgoraAudioHelper agoraHelper = Get.find<AgoraAudioHelper>();
 
   @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _leaveSession() async {
     await controller.leaveEventSession();
     if (mounted) Get.back();
@@ -53,6 +49,12 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
           }
 
           final isCreator = event.viewer?.isCreator ?? false;
+          final remoteCount = agoraHelper.remoteUsersCount.value;
+          final joined = agoraHelper.isJoined.value;
+          final speakerOn = agoraHelper.speakerEnabled.value;
+          final isMuted = agoraHelper.micMuted.value;
+
+          final totalListeners = isCreator ? remoteCount + 1 : remoteCount;
 
           return Padding(
             padding: EdgeInsets.all(Dimensions.width20),
@@ -164,34 +166,20 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
 
                 SizedBox(height: Dimensions.height30),
 
-                ValueListenableBuilder<int>(
-                  valueListenable: agoraHelper.remoteUserCount,
-                  builder: (context, remoteCount, _) {
-                    final totalListeners = isCreator
-                        ? remoteCount + 1
-                        : remoteCount;
-
-                    return Text(
-                      '$totalListeners listening',
-                      style: const TextStyle(color: Colors.white70),
-                    );
-                  },
+                Text(
+                  '$totalListeners listening',
+                  style: const TextStyle(color: Colors.white70),
                 ),
 
                 SizedBox(height: Dimensions.height10),
 
-                ValueListenableBuilder<bool>(
-                  valueListenable: agoraHelper.joinedNotifier,
-                  builder: (context, joined, _) {
-                    return Text(
-                      joined ? 'Connected to live audio' : 'Connecting...',
-                      style: TextStyle(
-                        color: joined ? Colors.greenAccent : Colors.orangeAccent,
-                        fontSize: Dimensions.font13,
-                        fontFamily: 'Poppins',
-                      ),
-                    );
-                  },
+                Text(
+                  joined ? 'Connected to live audio' : 'Connecting...',
+                  style: TextStyle(
+                    color: joined ? Colors.greenAccent : Colors.orangeAccent,
+                    fontSize: Dimensions.font13,
+                    fontFamily: 'Poppins',
+                  ),
                 ),
 
                 const Spacer(),
@@ -200,34 +188,22 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ValueListenableBuilder<bool>(
-                        valueListenable: agoraHelper.speakerNotifier,
-                        builder: (context, speakerOn, _) {
-                          return _audioAction(
-                            icon: speakerOn
-                                ? Icons.volume_up
-                                : Icons.volume_off,
-                            onTap: () async {
-                              await agoraHelper.toggleSpeaker();
-                            },
-                          );
+                      _audioAction(
+                        icon: speakerOn ? Icons.volume_up : Icons.volume_off,
+                        onTap: () async {
+                          await agoraHelper.toggleSpeaker();
                         },
                       ),
                       SizedBox(width: Dimensions.width20),
 
-                      ValueListenableBuilder<bool>(
-                        valueListenable: agoraHelper.mutedNotifier,
-                        builder: (context, isMuted, _) {
-                          return _audioAction(
-                            icon: isMuted ? Icons.mic_off : Icons.mic,
-                            onTap: isCreator
-                                ? () async {
-                              await agoraHelper.toggleMute();
-                            }
-                                : null,
-                            disabled: !isCreator,
-                          );
-                        },
+                      _audioAction(
+                        icon: isMuted ? Icons.mic_off : Icons.mic,
+                        onTap: isCreator
+                            ? () async {
+                          await agoraHelper.toggleMute();
+                        }
+                            : null,
+                        disabled: !isCreator,
                       ),
 
                       SizedBox(width: Dimensions.width20),

@@ -54,6 +54,7 @@ class EventController extends GetxController {
 
   Future<void> setupAndJoinAgoraFromCurrentRtc() async {
     final rtc = currentRtc.value;
+
     if (rtc == null) {
       CustomSnackBar.failure(message: 'RTC details not available');
       return;
@@ -77,20 +78,36 @@ class EventController extends GetxController {
       return;
     }
 
-    await agoraAudioHelper.initialize(
-      appId: rtc.appId!,
-      audioOnly: rtc.audioOnly,
-      clientRole: rtc.clientRole ?? 'audience',
-    );
+    try {
+      await agoraAudioHelper.initialize(
+        appId: rtc.appId!,
+        audioOnly: rtc.audioOnly,
+        clientRole: rtc.clientRole ?? 'audience',
+      );
 
-    await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 250));
 
-    await agoraAudioHelper.joinChannel(
-      channelName: rtc.channelName!,
-      token: rtc.token!,
-      uid: rtc.uid!,
-    );
+      final role = (rtc.clientRole ?? 'audience').toLowerCase();
+
+      if (role == 'broadcaster') {
+        await agoraAudioHelper.joinChannel(
+          channelName: rtc.channelName!,
+          token: rtc.token!,
+          uid: rtc.uid!,
+        );
+      } else {
+        await agoraAudioHelper.joinAsAudience(
+          channelName: rtc.channelName!,
+          token: rtc.token!,
+          uid: rtc.uid!,
+        );
+      }
+    } catch (e) {
+      debugPrint('setupAndJoinAgoraFromCurrentRtc error: $e');
+      CustomSnackBar.failure(message: 'Unable to join live audio');
+    }
   }
+
 
   Future<void> startEventSession(String eventId) async {
     if (isStartingEvent.value) return;
