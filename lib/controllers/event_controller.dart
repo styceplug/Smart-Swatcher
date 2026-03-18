@@ -24,6 +24,13 @@ class EventController extends GetxController {
   final RxBool isGettingEvents = false.obs;
   final RxBool isGettingRecommendedEvents = false.obs;
   final RxBool isGettingSingleEvent = false.obs;
+  final RxBool isTogglingReminder = false.obs;
+  final RxBool isStartingEvent = false.obs;
+  final RxBool isJoiningEvent = false.obs;
+  final RxBool isLeavingEvent = false.obs;
+  final RxBool isEndingEvent = false.obs;
+
+  final Rxn<EventRtcModel> currentRtc = Rxn<EventRtcModel>();
 
   final RxList<EventModel> events = <EventModel>[].obs;
   final RxList<EventModel> recommendedEvents = <EventModel>[].obs;
@@ -42,6 +49,225 @@ class EventController extends GetxController {
     super.onInit();
     fetchRecommendedEvents();
     fetchEvents();
+  }
+
+  Future<void> startEventSession(String eventId) async {
+    if (isStartingEvent.value) return;
+
+    isStartingEvent.value = true;
+    loader.showLoader();
+
+    try {
+      final response = await eventRepo.startEvent(eventId);
+
+      if (response.statusCode == 200) {
+        final eventJson = response.body['event'];
+        final rtcJson = response.body['rtc'];
+
+        if (eventJson != null) {
+          final updatedEvent = EventModel.fromJson(eventJson);
+          _replaceEventEverywhere(updatedEvent);
+          selectedEvent.value = updatedEvent;
+        }
+
+        if (rtcJson != null) {
+          currentRtc.value = EventRtcModel.fromJson(rtcJson);
+        }
+
+        Get.toNamed(AppRoutes.audioSessionScreen);
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to start event',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to start event');
+    } finally {
+      isStartingEvent.value = false;
+      loader.hideLoader();
+    }
+  }
+
+  Future<void> joinEventSession(String eventId) async {
+    if (isJoiningEvent.value) return;
+
+    isJoiningEvent.value = true;
+    loader.showLoader();
+
+    try {
+      final response = await eventRepo.joinEvent(eventId);
+
+      if (response.statusCode == 200) {
+        final eventJson = response.body['event'];
+        final rtcJson = response.body['rtc'];
+
+        if (eventJson != null) {
+          final updatedEvent = EventModel.fromJson(eventJson);
+          _replaceEventEverywhere(updatedEvent);
+          selectedEvent.value = updatedEvent;
+        }
+
+        if (rtcJson != null) {
+          currentRtc.value = EventRtcModel.fromJson(rtcJson);
+        }
+
+        Get.toNamed(AppRoutes.audioSessionScreen);
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to join event',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to join event');
+    } finally {
+      isJoiningEvent.value = false;
+      loader.hideLoader();
+    }
+  }
+
+  Future<void> leaveEventSession(String eventId) async {
+    if (isLeavingEvent.value) return;
+
+    isLeavingEvent.value = true;
+    try {
+      final response = await eventRepo.leaveEvent(eventId);
+
+      if (response.statusCode == 200) {
+        final eventJson = response.body['event'];
+        if (eventJson != null) {
+          final updatedEvent = EventModel.fromJson(eventJson);
+          _replaceEventEverywhere(updatedEvent);
+          selectedEvent.value = updatedEvent;
+        }
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to leave event',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to leave event');
+    } finally {
+      isLeavingEvent.value = false;
+    }
+  }
+
+  Future<void> endEventSession(String eventId) async {
+    if (isEndingEvent.value) return;
+
+    isEndingEvent.value = true;
+    loader.showLoader();
+
+    try {
+      final response = await eventRepo.endEvent(eventId);
+
+      if (response.statusCode == 200) {
+        final eventJson = response.body['event'];
+        if (eventJson != null) {
+          final updatedEvent = EventModel.fromJson(eventJson);
+          _replaceEventEverywhere(updatedEvent);
+          selectedEvent.value = updatedEvent;
+        }
+
+        CustomSnackBar.success(message: 'Event ended');
+        Get.back();
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to end event',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to end event');
+    } finally {
+      isEndingEvent.value = false;
+      loader.hideLoader();
+    }
+  }
+
+  Future<void> subscribeToEvent(String eventId) async {
+    if (isTogglingReminder.value) return;
+
+    isTogglingReminder.value = true;
+    try {
+      final response = await eventRepo.subscribeToEvent(eventId);
+
+      if (response.statusCode == 200) {
+        final eventJson = response.body['event'];
+        if (eventJson != null) {
+          final updatedEvent = EventModel.fromJson(eventJson);
+          _replaceEventEverywhere(updatedEvent);
+        }
+        CustomSnackBar.success(message: 'Reminder set');
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to set reminder',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to set reminder');
+    } finally {
+      isTogglingReminder.value = false;
+    }
+  }
+
+  Future<void> unsubscribeFromEvent(String eventId) async {
+    if (isTogglingReminder.value) return;
+
+    isTogglingReminder.value = true;
+    try {
+      final response = await eventRepo.unsubscribeFromEvent(eventId);
+
+      if (response.statusCode == 200) {
+        final eventJson = response.body['event'];
+        if (eventJson != null) {
+          final updatedEvent = EventModel.fromJson(eventJson);
+          _replaceEventEverywhere(updatedEvent);
+        }
+        CustomSnackBar.success(message: 'Reminder cancelled');
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to cancel reminder',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to cancel reminder');
+    } finally {
+      isTogglingReminder.value = false;
+    }
+  }
+
+  Future<void> toggleSubscription(EventModel event) async {
+    if (event.id == null) return;
+
+    if (event.viewer?.isSubscribed == true) {
+      await unsubscribeFromEvent(event.id!);
+    } else {
+      await subscribeToEvent(event.id!);
+    }
+  }
+
+  void _replaceEventEverywhere(EventModel updatedEvent) {
+    final eventId = updatedEvent.id;
+    if (eventId == null) return;
+
+    final eventIndex = events.indexWhere((e) => e.id == eventId);
+    if (eventIndex != -1) {
+      events[eventIndex] = updatedEvent;
+      events.refresh();
+    }
+
+    final recommendedIndex = recommendedEvents.indexWhere((e) => e.id == eventId);
+    if (recommendedIndex != -1) {
+      recommendedEvents[recommendedIndex] = updatedEvent;
+      recommendedEvents.refresh();
+    }
+
+    if (selectedEvent.value?.id == eventId) {
+      selectedEvent.value = updatedEvent;
+    }
+
+    if (createdEvent.value?.id == eventId) {
+      createdEvent.value = updatedEvent;
+    }
   }
 
   void setVisibility(String value) {

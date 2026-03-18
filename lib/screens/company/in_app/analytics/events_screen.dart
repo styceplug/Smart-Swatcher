@@ -175,7 +175,11 @@ class _EventsScreenState extends State<EventsScreen> {
                       sessionType: 'Video',
                       title: 'Irony of Life',
                       dateTime: '1 Aug 2022',
-                      onPressed: () {},
+                      onTap: () async {
+
+                      },
+                      onReminderTap: () async {
+                      },
                       description: 'This is a description',
                     ),
                   ],

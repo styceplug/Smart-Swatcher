@@ -18,7 +18,8 @@ class ReminderCard extends StatelessWidget {
   final String dateTime;
   final bool isReminderSet;
   final String description;
-  final VoidCallback onPressed;
+  final VoidCallback onTap;
+  final VoidCallback onReminderTap;
 
   const ReminderCard({
     super.key,
@@ -29,13 +30,14 @@ class ReminderCard extends StatelessWidget {
     required this.description,
     required this.dateTime,
     this.isReminderSet = false,
-    required this.onPressed,
+    required this.onTap,
+    required this.onReminderTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onPressed,
+      onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: Dimensions.width20,
@@ -48,7 +50,6 @@ class ReminderCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// Top Row
             Row(
               children: [
                 Text(
@@ -91,8 +92,6 @@ class ReminderCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: Dimensions.height20),
-
-            /// Title
             Text(
               title,
               style: TextStyle(
@@ -102,9 +101,6 @@ class ReminderCard extends StatelessWidget {
               ),
             ),
             SizedBox(height: Dimensions.height20),
-
-            /// Description
-
             Text(
               description,
               style: TextStyle(
@@ -114,25 +110,23 @@ class ReminderCard extends StatelessWidget {
               ),
             ),
             SizedBox(height: Dimensions.height20),
-
-            /// Date/Time Row
             Row(
               children: [
                 Icon(CupertinoIcons.calendar, size: Dimensions.iconSize20),
                 SizedBox(width: Dimensions.width5),
-                Text(
-                  dateTime,
-                  style: TextStyle(
-                    fontSize: Dimensions.font14,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w400,
+                Expanded(
+                  child: Text(
+                    dateTime,
+                    style: TextStyle(
+                      fontSize: Dimensions.font14,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ),
               ],
             ),
             SizedBox(height: Dimensions.height20),
-
-
             CustomButton(
               text: isReminderSet ? 'Cancel reminder' : 'Set reminder',
               textStyle: TextStyle(
@@ -140,8 +134,9 @@ class ReminderCard extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: Dimensions.font16,
               ),
-              onPressed: onPressed,
-              backgroundColor: isReminderSet ? Colors.redAccent : AppColors.primary1,
+              onPressed: onReminderTap,
+              backgroundColor:
+              isReminderSet ? Colors.redAccent : AppColors.primary1,
               icon: Image.asset(
                 AppConstants.getPngAsset('notification-icon'),
                 height: Dimensions.height20,
@@ -155,4 +150,3 @@ class ReminderCard extends StatelessWidget {
     );
   }
 }
-

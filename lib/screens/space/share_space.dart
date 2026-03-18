@@ -7,6 +7,8 @@ import 'package:smart_swatcher/widgets/reminder_card.dart';
 import 'package:smart_swatcher/widgets/share_event_card.dart';
 
 import '../../controllers/event_controller.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/snackbars.dart';
 
 
 class ShareSpaceScreen extends StatelessWidget {
@@ -31,11 +33,18 @@ class ShareSpaceScreen extends StatelessWidget {
           vertical: Dimensions.height20,
         ),
         child: Obx(() {
-          final event = controller.selectedEvent.value ?? controller.createdEvent.value;
+          final event =
+              controller.selectedEvent.value ?? controller.createdEvent.value;
 
           if (event == null) {
-            return const Center(
-              child: Text('No event found'),
+            return Center(
+              child: Text(
+                'No event found',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: Dimensions.font15,
+                ),
+              ),
             );
           }
 
@@ -54,14 +63,40 @@ class ShareSpaceScreen extends StatelessWidget {
                 ),
               ),
               SizedBox(height: Dimensions.height20),
+
               ShareEventCard(
                 hostName: event.creator?.name ?? 'Unknown Host',
                 hostRole: event.creator?.role ?? 'Host',
                 sessionType: 'AUDIO',
                 title: event.title ?? 'Untitled Event',
                 dateTime: controller.formatEventDate(event.scheduledStartAt),
+                description: event.description ?? 'No description available',
+                visibility: event.visibility ?? 'General',
+                status: event.status ?? 'upcoming',
+                subscriberCount: event.subscriberCount,
                 onPressed: () {},
               ),
+
+              SizedBox(height: Dimensions.height30),
+
+              CustomButton(
+                text: 'Share Event',
+                onPressed: () {
+                  CustomSnackBar.processing(message: 'Share flow coming next');
+                },
+              ),
+
+              SizedBox(height: Dimensions.height15),
+
+              if ((event.viewer?.canStart ?? false) &&
+                  (event.status?.toLowerCase() != 'live'))
+                CustomButton(
+                  text: 'Start Event',
+                  backgroundColor: AppColors.primary1,
+                  onPressed: () {
+                    controller.startEventSession(event.id ?? '');
+                  },
+                ),
             ],
           );
         }),

@@ -28,7 +28,9 @@ import 'package:smart_swatcher/screens/settings/change_password_screen.dart';
 import 'package:smart_swatcher/screens/settings/faq_screen.dart';
 import 'package:smart_swatcher/screens/settings/privacy_policy_screen.dart';
 import 'package:smart_swatcher/screens/settings/terms_condition_screen.dart';
+import 'package:smart_swatcher/screens/space/audio_session_screen.dart';
 import 'package:smart_swatcher/screens/space/create_space.dart';
+import 'package:smart_swatcher/screens/space/my_events_screen.dart';
 import 'package:smart_swatcher/screens/space/share_space.dart';
 import 'package:smart_swatcher/screens/notification/notification_screen.dart';
 import 'package:smart_swatcher/screens/notification/notification_settings.dart';
@@ -142,6 +144,8 @@ class AppRoutes {
 
 
   static const String recommendedAccountScreen = '/recommended-account-screen';
+  static const String myEventsScreen = '/my-events-screen';
+  static const String audioSessionScreen = '/audio-session-screen';
 
 
 
@@ -266,6 +270,20 @@ class AppRoutes {
       name: recommendedAccountScreen,
       page: () {
         return const RecommendedAccountsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: myEventsScreen,
+      page: () {
+        return const MyEventsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: audioSessionScreen,
+      page: () {
+        return const AudioSessionScreen();
       },
       transition: Transition.fadeIn,
     ),

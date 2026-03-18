@@ -251,16 +251,16 @@ Widget liveRoom() {
                         hostRole: event.creator?.role ?? 'Host',
                         sessionType: 'A U D I O',
                         title: event.title ?? 'Untitled Event',
-                        dateTime: controller.formatEventDate(
-                          event.scheduledStartAt,
-                        ),
+                        dateTime: controller.formatEventDate(event.scheduledStartAt),
                         isReminderSet: event.viewer?.isSubscribed ?? false,
-                        onPressed: () async {
-                          print('event ${event.id} tapped');
+                        description: event.description ?? '',
+                        onTap: () async {
                           await controller.fetchSingleEvent(event.id ?? '');
                           Get.toNamed(AppRoutes.shareSpaceScreen);
                         },
-                        description: event.description ?? '',
+                        onReminderTap: () async {
+                          await controller.toggleSubscription(event);
+                        },
                       ),
                     );
                   },

@@ -785,15 +785,22 @@ class EventsTab extends StatelessWidget {
       itemCount: _dummyEvents.length,
       itemBuilder: (context, index) {
         final event = _dummyEvents[index];
-        return ReminderCard(
-          title: event['title'] as String,
-          hostName: event['host'] as String,
-          hostRole: 'HOST',
-          sessionType: event['type'] as String,
-          dateTime: event['date'] as String,
-          onPressed: () {},
-          description: event['description'] as String,
-        );
+        // return ReminderCard(
+        //   hostName: event.creator?.name ?? 'Unknown Host',
+        //   hostRole: event.creator?.role ?? 'Host',
+        //   sessionType: 'A U D I O',
+        //   title: event.title ?? 'Untitled Event',
+        //   dateTime: controller.formatEventDate(event.scheduledStartAt),
+        //   isReminderSet: event.viewer?.isSubscribed ?? false,
+        //   description: event.description ?? '',
+        //   onTap: () async {
+        //     await controller.fetchSingleEvent(event.id ?? '');
+        //     Get.toNamed(AppRoutes.shareSpaceScreen);
+        //   },
+        //   onReminderTap: () async {
+        //     await controller.toggleSubscription(event);
+        //   },
+        // );
       },
     );
   }
