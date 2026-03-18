@@ -50,6 +50,11 @@ class AppConstants {
   static String ACCEPT_CONNECTION(String targetId) => '/api/connections/$targetId/accept';
 
 
+  static const String CREATE_EVENT = '/api/events';
+
+
+
+
   static String getPngAsset(String image) {
     return 'assets/images/$image.png';
   }

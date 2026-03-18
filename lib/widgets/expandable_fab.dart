@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:smart_swatcher/widgets/snackbars.dart';
 import 'dart:math' as math;
 
 import '../routes/routes.dart';
@@ -92,7 +93,8 @@ class _ExpandableFabState extends State<ExpandableFab>
             icon: Iconsax.video,
             distance: Dimensions.height70,
             onTap: () {
-              Get.toNamed(AppRoutes.createSpaceScreen);
+              // Get.toNamed(AppRoutes.createSpaceScreen);
+              CustomSnackBar.processing(message: 'Video Rooms coming soon');
               debugPrint("Video tapped");
               _toggle();
             },

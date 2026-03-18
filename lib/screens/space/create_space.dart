@@ -9,335 +9,255 @@ import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
+import 'package:smart_swatcher/widgets/snackbars.dart';
 
-class CreateSpaceScreen extends StatefulWidget {
+import '../../controllers/event_controller.dart';
+import '../../widgets/custom_textfield.dart';
+
+class CreateSpaceScreen extends StatelessWidget {
   const CreateSpaceScreen({super.key});
 
   @override
-  State<CreateSpaceScreen> createState() => _CreateSpaceScreenState();
-}
-
-class _CreateSpaceScreenState extends State<CreateSpaceScreen> {
-  @override
   Widget build(BuildContext context) {
+    final EventController controller = Get.find<EventController>();
+
     return Scaffold(
       appBar: CustomAppbar(
-        leadingIcon: Icon(Icons.close),
-        title: 'Event',
-        actionIcon: Text(
-          'Done',
-          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w500),
+        leadingIcon: InkWell(
+          onTap: () => Get.back(),
+          child: const Icon(Icons.close),
         ),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimensions.width20,
-              vertical: Dimensions.height20,
-            ),
-            child: TextField(
-              style: TextStyle(fontFamily: 'Poppins'),
-              decoration: InputDecoration(
-                hintText: 'Enter Space Name',
-                hintStyle: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: AppColors.grey4,
-                ),
-                border: InputBorder.none,
+        title: 'Event',
+        actionIcon: Obx(
+          () => InkWell(
+            onTap:
+                controller.isCreatingEvent.value
+                    ? null
+                    : controller.createEvent,
+            child: Text(
+              'Done',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w500,
+                color:
+                    controller.isCreatingEvent.value
+                        ? AppColors.grey4
+                        : AppColors.primary5,
               ),
             ),
           ),
-          Spacer(),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimensions.width20,
-              vertical: Dimensions.height40,
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimensions.width20,
+                  vertical: Dimensions.height20,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: controller.titleController,
+                      style: TextStyle(fontFamily: 'Poppins'),
+                      decoration: InputDecoration(
+                        hintText: 'Enter Space Name',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Poppins',
+                          color: AppColors.grey4,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+
+                    SizedBox(height: Dimensions.height20),
+                    TextField(
+                      controller: controller.descriptionController,
+
+                      maxLines: 5,
+                      style: TextStyle(fontFamily: 'Poppins'),
+                      decoration: InputDecoration(
+                        hintText: 'Tell people what this event is about',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Poppins',
+                          color: AppColors.grey4,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                    SizedBox(height: Dimensions.height30),
+
+                    Obx(
+                      () => OptionTile(
+                        icon: CupertinoIcons.time,
+                        title: 'Time',
+                        value: controller.formattedDateTime,
+                        onTap: () => controller.pickDateTime(context),
+                      ),
+                    ),
+
+                    OptionTile(
+                      icon: CupertinoIcons.mic,
+                      title: 'Event Type',
+                      value: 'Audio',
+                      onTap: () {
+                        CustomSnackBar.processing(
+                          message: 'Only audio events are available for now',
+                        );
+                      },
+                    ),
+
+                    Obx(
+                      () => OptionTile(
+                        icon: CupertinoIcons.person,
+                        title: 'Audience',
+                        value: controller.selectedVisibility.value,
+                        onTap: () {
+                          _showAudienceSheet(context, controller);
+                        },
+                      ),
+                    ),
+
+                    OptionTile(
+                      icon: Iconsax.record,
+                      title: 'Session',
+                      value: 'Live Only',
+                      onTap: () {
+                        CustomSnackBar.processing(
+                          message: 'Only live sessions are available for now',
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: Dimensions.width20,
+                vertical: Dimensions.height20,
+              ),
+              child: Obx(
+                () => CustomButton(
+                  text:
+                      controller.isCreatingEvent.value
+                          ? 'Creating...'
+                          : 'Create Event',
+                  onPressed:
+                      controller.isCreatingEvent.value
+                          ? () {}
+                          : controller.createEvent,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAudienceSheet(BuildContext context, EventController controller) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Obx(
+          () => Container(
+            padding: EdgeInsets.fromLTRB(
+              Dimensions.width20,
+              Dimensions.height20,
+              Dimensions.width20,
+              Dimensions.height40,
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                OptionTile(
-                  icon: CupertinoIcons.time,
-                  title: 'Time',
-                  value: 'Select Time',
-                  onTap: () {},
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Audience',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => Get.back(),
+                      child: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
-                OptionTile(
-                  icon: CupertinoIcons.mic,
-                  title: 'Event Type',
-                  value: 'Video',
+                SizedBox(height: Dimensions.height20),
+                Container(
+                  height: 1,
+                  width: Dimensions.screenWidth,
+                  color: AppColors.grey2,
+                ),
+                SizedBox(height: Dimensions.height20),
+
+                InkWell(
                   onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
+                    controller.setVisibility('General');
+                    Get.back();
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        'General',
+                        style: TextStyle(
+                          fontSize: Dimensions.font17,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
-                      builder: (context) {
-                        return StatefulBuilder(
-                          builder: (context, setModalState) {
-                            return Container(
-                              padding: EdgeInsets.fromLTRB(
-                                Dimensions.width20,
-                                Dimensions.height20,
-                                Dimensions.width20,
-                                Dimensions.height70,
-                              ),
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Event Type',
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: Dimensions.font16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        Icon(Icons.close),
-                                      ],
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Container(
-                                      height: 1,
-                                      width: Dimensions.screenWidth,
-                                      color: AppColors.grey2,
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.multitrack_audio_outlined),
-                                        SizedBox(width: Dimensions.width10),
-                                        Text(
-                                          'Audio',
-                                          style: TextStyle(
-                                            fontSize: Dimensions.font17,
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                        Spacer(),
-                                        Icon(Icons.radio_button_checked),
-                                      ],
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Row(
-                                      children: [
-                                        Icon(Iconsax.video),
-                                        SizedBox(width: Dimensions.width10),
-                                        Text(
-                                          'Video',
-                                          style: TextStyle(
-                                            fontSize: Dimensions.font17,
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                        Spacer(),
-                                        Icon(Icons.radio_button_off),
-                                      ],
-                                    ),
-
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
+                      const Spacer(),
+                      Icon(
+                        controller.selectedVisibility.value == 'General'
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                      ),
+                    ],
+                  ),
                 ),
-                OptionTile(
-                  icon: CupertinoIcons.person,
-                  title: 'Audience',
-                  value: 'Connections Only',
+                SizedBox(height: Dimensions.height20),
+
+                InkWell(
                   onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
+                    controller.setVisibility('Elite');
+                    Get.back();
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        'Elite',
+                        style: TextStyle(
+                          fontSize: Dimensions.font17,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
-                      builder: (context) {
-                        return StatefulBuilder(
-                          builder: (context, setModalState) {
-                            return Container(
-                              padding: EdgeInsets.fromLTRB(
-                                Dimensions.width20,
-                                Dimensions.height20,
-                                Dimensions.width20,
-                                Dimensions.height70,
-                              ),
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Audience',
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: Dimensions.font16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        Icon(Icons.close),
-                                      ],
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Container(
-                                      height: 1,
-                                      width: Dimensions.screenWidth,
-                                      color: AppColors.grey2,
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Connections only',
-                                          style: TextStyle(
-                                            fontSize: Dimensions.font17,
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                        Spacer(),
-                                        Icon(Icons.radio_button_checked),
-                                      ],
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Everyone',
-                                          style: TextStyle(
-                                            fontSize: Dimensions.font17,
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                        Spacer(),
-                                        Icon(Icons.radio_button_off),
-                                      ],
-                                    ),
-
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-
-                ),
-                OptionTile(
-                  icon: Iconsax.record,
-                  title: 'Session',
-                  value: 'Recorded',
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
+                      const Spacer(),
+                      Icon(
+                        controller.selectedVisibility.value == 'Elite'
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
                       ),
-                      builder: (context) {
-                        return StatefulBuilder(
-                          builder: (context, setModalState) {
-                            return Container(
-                              padding: EdgeInsets.fromLTRB(
-                                Dimensions.width20,
-                                Dimensions.height20,
-                                Dimensions.width20,
-                                Dimensions.height70,
-                              ),
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Session',
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: Dimensions.font16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        Icon(Icons.close),
-                                      ],
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Container(
-                                      height: 1,
-                                      width: Dimensions.screenWidth,
-                                      color: AppColors.grey2,
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Live Only',
-                                          style: TextStyle(
-                                            fontSize: Dimensions.font17,
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                        Spacer(),
-                                        Icon(Icons.radio_button_checked),
-                                      ],
-                                    ),
-                                    SizedBox(height: Dimensions.height20),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Recorded',
-                                          style: TextStyle(
-                                            fontSize: Dimensions.font17,
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                        Spacer(),
-                                        Icon(Icons.radio_button_off),
-                                      ],
-                                    ),
-
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-
+                    ],
+                  ),
                 ),
-                SizedBox(height: Dimensions.height30),
-                CustomButton(text: 'Create Space', onPressed: () {
-                  Get.toNamed(AppRoutes.shareSpaceScreen);
-                }),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
