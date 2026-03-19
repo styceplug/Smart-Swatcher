@@ -10,10 +10,9 @@
     <string>We need access to your camera to let you take photos for your posts.</string>
 
     <key>NSMicrophoneUsageDescription</key>
-    <string>We need access to your microphone to record audio for videos.</string>
+    <string>This app uses your microphone for live audio events and audio recording.</string>
 
-<key>NSMicrophoneUsageDescription</key>
-<string>This app uses your microphone for live audio events.</string>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

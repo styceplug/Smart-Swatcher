@@ -17,6 +17,7 @@ class AudioSessionScreen extends StatefulWidget {
 class _AudioSessionScreenState extends State<AudioSessionScreen> {
   final EventController controller = Get.find<EventController>();
   final AgoraAudioHelper agoraHelper = Get.find<AgoraAudioHelper>();
+  late Worker _remoteJoinWorker;
 
   @override
   Future<void> _leaveSession() async {
@@ -29,6 +30,28 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
     if (mounted && Get.isOverlaysOpen == false) {
       Get.back();
     }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _remoteJoinWorker = ever(agoraHelper.remoteUsersCount, (count) {
+      if (count > 0) {
+        Get.snackbar(
+          'Live update',
+          'Someone joined the event',
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 2),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _remoteJoinWorker.dispose();
+    super.dispose();
   }
 
   @override
@@ -166,10 +189,34 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
 
                 SizedBox(height: Dimensions.height30),
 
-                Text(
-                  '$totalListeners listening',
-                  style: const TextStyle(color: Colors.white70),
-                ),
+                Obx(() {
+                  final remoteCount = agoraHelper.remoteUsersCount.value;
+                  final joined = agoraHelper.isJoined.value;
+                  final total = (event.viewer?.isCreator ?? false)
+                      ? remoteCount + 1
+                      : remoteCount + 1;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$total in this live room',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        joined
+                            ? remoteCount > 0
+                            ? 'Someone is in the room with you'
+                            : 'Connected. Waiting for others...'
+                            : 'Connecting...',
+                        style: TextStyle(
+                          color: joined ? Colors.greenAccent : Colors.orangeAccent,
+                        ),
+                      ),
+                    ],
+                  );
+                }),
 
                 SizedBox(height: Dimensions.height10),
 

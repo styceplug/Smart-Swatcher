@@ -1,4 +1,3 @@
-
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_swatcher/controllers/event_controller.dart';
@@ -11,13 +10,14 @@ import 'package:smart_swatcher/data/repo/post_repo.dart';
 import 'package:smart_swatcher/data/repo/user_repo.dart';
 import 'package:smart_swatcher/helpers/agora_audio_helper.dart';
 
-
 import '../controllers/app_controller.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/notification_controller.dart';
 import '../controllers/post_controller.dart';
 import '../controllers/version_controller.dart';
 import '../data/api/api_client.dart';
 import '../data/repo/app_repo.dart';
+import '../data/repo/notification_repo.dart';
 import '../data/repo/version_repo.dart';
 import '../utils/app_constants.dart';
 import 'global_loader_controller.dart';
@@ -34,37 +34,34 @@ Future<void> init() async {
       sharedPreferences: Get.find(),
     ),
   );
-  Get.lazyPut(
-    () => AgoraAudioHelper(
-
-    ),
-  );
-
-
+  Get.put(AgoraAudioHelper(), permanent: true);
 
   // repos
-  Get.lazyPut(() => AppRepo(apiClient: Get.find(), sharedPreferences: Get.find()));
+  Get.lazyPut(
+    () => AppRepo(apiClient: Get.find(), sharedPreferences: Get.find()),
+  );
   Get.lazyPut(() => VersionRepo(apiClient: Get.find()));
   Get.lazyPut(() => PostRepo(apiClient: Get.find()));
-  Get.lazyPut(()=>AuthRepo(apiClient: Get.find(), sharedPreferences: Get.find()));
-  Get.lazyPut(()=>FolderRepo(apiClient: Get.find()));
-  Get.lazyPut(()=>UserRepo(apiClient: Get.find()),fenix: true);
-  Get.lazyPut(()=>EventRepo(apiClient: Get.find()),fenix: true);
-
-
-
-
+  Get.lazyPut(
+    () => AuthRepo(apiClient: Get.find(), sharedPreferences: Get.find()),
+  );
+  Get.lazyPut(() => FolderRepo(apiClient: Get.find()));
+  Get.lazyPut(() => UserRepo(apiClient: Get.find()), fenix: true);
+  Get.put(EventRepo(apiClient: Get.find()), permanent: true);
+  Get.lazyPut(() => NotificationRepo(apiClient: Get.find()), fenix: true);
 
   //controllers
 
   Get.lazyPut(() => AppController(appRepo: Get.find()));
   Get.lazyPut(() => VersionController(versionRepo: Get.find()));
   Get.lazyPut(() => GlobalLoaderController());
-  Get.lazyPut(()=> PostController());
-  Get.lazyPut(() => AuthController(authRepo: Get.find()),fenix: true);
+  Get.lazyPut(() => PostController());
+  Get.lazyPut(() => AuthController(authRepo: Get.find()), fenix: true);
   Get.lazyPut(() => ClientFolderController());
-  Get.lazyPut(() => UserController(userRepo: Get.find()),fenix: true);
-  Get.lazyPut(() => EventController(eventRepo: Get.find()),fenix: true);
-
-
+  Get.lazyPut(() => UserController(userRepo: Get.find()), fenix: true);
+  Get.put(EventController(eventRepo: Get.find()), permanent: true);
+  Get.lazyPut(
+    () => NotificationController(notificationRepo: Get.find()),
+    fenix: true,
+  );
 }

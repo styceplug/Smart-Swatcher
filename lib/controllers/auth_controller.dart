@@ -187,6 +187,7 @@ class AuthController extends GetxController {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final token = response.body['token'] as String;
         await authRepo.saveUserToken(token);
+        await getProfile();
       } else {
         Get.snackbar('Error', response.statusText ?? 'Registration failed');
       }
@@ -212,6 +213,7 @@ class AuthController extends GetxController {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final token = response.body['token'];
         if (token != null) await authRepo.saveUserToken(token as String);
+        await getProfile();
 
         Get.offAllNamed(AppRoutes.companyHomePage);
         CustomSnackBar.success(message: 'Company account created!');
@@ -240,6 +242,7 @@ class AuthController extends GetxController {
 
       if (response.statusCode == 200) {
         await authRepo.saveUserToken(response.body['token'] as String);
+await getCompanyProfile();
         Get.offAllNamed(AppRoutes.homeScreen);
       } else {
         Get.snackbar('Error', response.statusText ?? 'Login failed');
@@ -266,6 +269,7 @@ class AuthController extends GetxController {
 
       if (response.statusCode == 200) {
         await authRepo.saveUserToken(response.body['token'] as String);
+        await getCompanyProfile();
         Get.offAllNamed(AppRoutes.companyHomePage);
       } else {
         Get.snackbar('Error', response.statusText ?? 'Login failed');

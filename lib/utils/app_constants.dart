@@ -64,6 +64,10 @@ class AppConstants {
 
 
 
+  static const String GET_NOTIFICATIONS = '/api/notifications';
+
+
+
 
   static String getPngAsset(String image) {
     return 'assets/images/$image.png';

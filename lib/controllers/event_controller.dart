@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../data/repo/event_repo.dart';
 import '../helpers/agora_audio_helper.dart';
@@ -52,12 +53,12 @@ class EventController extends GetxController {
     fetchEvents();
   }
 
+
+
   Future<void> setupAndJoinAgoraFromCurrentRtc() async {
     final rtc = currentRtc.value;
-
     if (rtc == null) {
-      CustomSnackBar.failure(message: 'RTC details not available');
-      return;
+      throw Exception('RTC details not available');
     }
 
     debugPrint('RTC DEBUG →');
@@ -74,40 +75,38 @@ class EventController extends GetxController {
         rtc.token == null ||
         rtc.token!.isEmpty ||
         rtc.uid == null) {
-      CustomSnackBar.failure(message: 'Incomplete RTC payload');
-      return;
+      throw Exception('Incomplete RTC payload');
     }
 
-    try {
-      await agoraAudioHelper.initialize(
-        appId: rtc.appId!,
-        audioOnly: rtc.audioOnly,
-        clientRole: rtc.clientRole ?? 'audience',
-      );
+    await agoraAudioHelper.initialize(
+      appId: rtc.appId!,
+      audioOnly: rtc.audioOnly ?? true,
+      clientRole: rtc.clientRole ?? 'audience',
+    );
 
+    await Future.delayed(const Duration(milliseconds: 250));
+
+    await agoraAudioHelper.joinChannel(
+      channelName: rtc.channelName!,
+      token: rtc.token!,
+      uid: rtc.uid!,
+    );
+
+    int attempts = 0;
+    while (!agoraAudioHelper.isJoined.value && attempts < 20) {
       await Future.delayed(const Duration(milliseconds: 250));
+      attempts++;
+    }
 
-      final role = (rtc.clientRole ?? 'audience').toLowerCase();
-
-      if (role == 'broadcaster') {
-        await agoraAudioHelper.joinChannel(
-          channelName: rtc.channelName!,
-          token: rtc.token!,
-          uid: rtc.uid!,
-        );
-      } else {
-        await agoraAudioHelper.joinAsAudience(
-          channelName: rtc.channelName!,
-          token: rtc.token!,
-          uid: rtc.uid!,
-        );
-      }
-    } catch (e) {
-      debugPrint('setupAndJoinAgoraFromCurrentRtc error: $e');
-      CustomSnackBar.failure(message: 'Unable to join live audio');
+    if (!agoraAudioHelper.isJoined.value) {
+      throw Exception('Agora joined event not received');
     }
   }
 
+  Future<bool> requestMicPermission() async {
+    final status = await Permission.microphone.request();
+    return status.isGranted;
+  }
 
   Future<void> startEventSession(String eventId) async {
     if (isStartingEvent.value) return;
@@ -116,6 +115,12 @@ class EventController extends GetxController {
     loader.showLoader();
 
     try {
+      final hasMic = await requestMicPermission();
+      if (!hasMic) {
+        CustomSnackBar.failure(message: 'Microphone permission is required');
+        return;
+      }
+
       final response = await eventRepo.startEvent(eventId);
 
       if (response.statusCode == 200) {
@@ -140,13 +145,14 @@ class EventController extends GetxController {
         );
       }
     } catch (e) {
-      CustomSnackBar.failure(message: 'Failed to start event');
       debugPrint('startEventSession error: $e');
+      CustomSnackBar.failure(message: 'Failed to start live session');
     } finally {
       isStartingEvent.value = false;
       loader.hideLoader();
     }
   }
+
 
   Future<void> joinEventSession(String eventId) async {
     if (isJoiningEvent.value) return;
@@ -158,29 +164,31 @@ class EventController extends GetxController {
       final response = await eventRepo.joinEvent(eventId);
 
       if (response.statusCode == 200) {
-        final eventJson = response.body['event'];
-        final rtcJson = response.body['rtc'];
+        selectedEvent.value = EventModel.fromJson(response.body['event']);
+        currentRtc.value = EventRtcModel.fromJson(response.body['rtc']);
 
-        if (eventJson != null) {
-          final updatedEvent = EventModel.fromJson(eventJson);
-          _replaceEventEverywhere(updatedEvent);
-          selectedEvent.value = updatedEvent;
-        }
+        final role = currentRtc.value?.clientRole?.toLowerCase() ?? 'audience';
 
-        if (rtcJson != null) {
-          currentRtc.value = EventRtcModel.fromJson(rtcJson);
+        if (role == 'broadcaster') {
+          final hasMic = await requestMicPermission();
+          if (!hasMic) {
+            CustomSnackBar.failure(
+              message: 'Microphone permission is required',
+            );
+            return;
+          }
         }
 
         await setupAndJoinAgoraFromCurrentRtc();
         Get.toNamed(AppRoutes.audioSessionScreen);
       } else {
         CustomSnackBar.failure(
-          message: response.body?['message'] ?? 'Failed to join event',
+          message: response.body['message'] ?? 'Failed to join event',
         );
       }
     } catch (e) {
-      CustomSnackBar.failure(message: 'Failed to join event');
       debugPrint('joinEventSession error: $e');
+      CustomSnackBar.failure(message: 'Unable to join live audio');
     } finally {
       isJoiningEvent.value = false;
       loader.hideLoader();
@@ -189,27 +197,24 @@ class EventController extends GetxController {
 
   Future<void> leaveEventSession() async {
     final eventId = selectedEvent.value?.id;
-
     try {
       await agoraAudioHelper.leaveChannel();
-
       if (eventId != null && eventId.isNotEmpty) {
-        await leaveEventSession();
+        await eventRepo.leaveEvent(eventId);
       }
     } catch (e) {
-      debugPrint('leaveCurrentAudioSession error: $e');
+      debugPrint('leaveEventSession error: $e');
     }
   }
 
   Future<void> endEventSession() async {
     final eventId = selectedEvent.value?.id;
     if (eventId == null || eventId.isEmpty) return;
-
     try {
       await agoraAudioHelper.leaveChannel();
-      await endEventSession();
+      await eventRepo.endEvent(eventId);
     } catch (e) {
-      debugPrint('endCurrentAudioSession error: $e');
+      debugPrint('endEventSession error: $e');
     }
   }
 
