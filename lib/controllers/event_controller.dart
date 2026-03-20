@@ -80,7 +80,7 @@ class EventController extends GetxController {
 
     await agoraAudioHelper.initialize(
       appId: rtc.appId!,
-      audioOnly: rtc.audioOnly ?? true,
+      audioOnly: rtc.audioOnly,
       clientRole: rtc.clientRole ?? 'audience',
     );
 
@@ -144,8 +144,9 @@ class EventController extends GetxController {
           message: response.body?['message'] ?? 'Failed to start event',
         );
       }
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('startEventSession error: $e');
+      debugPrintStack(stackTrace: st);
       CustomSnackBar.failure(message: 'Failed to start live session');
     } finally {
       isStartingEvent.value = false;
@@ -186,8 +187,9 @@ class EventController extends GetxController {
           message: response.body['message'] ?? 'Failed to join event',
         );
       }
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('joinEventSession error: $e');
+      debugPrintStack(stackTrace: st);
       CustomSnackBar.failure(message: 'Unable to join live audio');
     } finally {
       isJoiningEvent.value = false;

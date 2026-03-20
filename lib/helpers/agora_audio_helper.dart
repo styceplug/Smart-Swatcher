@@ -1,7 +1,6 @@
-import 'dart:io';
+import 'dart:async';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 
@@ -30,15 +29,13 @@ class AgoraAudioHelper extends GetxService {
 
     try {
       _currentRole = clientRole.toLowerCase();
-      // 1. Sanitize the App ID to prevent hidden character errors
-      final sanitizedAppId = appId.trim().replaceAll(RegExp(r'[^\x20-\x7E]'), '');
+      final sanitizedAppId = _sanitizeAppId(appId);
 
       if (_engine != null &&
           isInitialized.value &&
           _currentAppId == sanitizedAppId) {
         debugPrint('AGORA REUSE EXISTING ENGINE');
-        await _setClientRole(_currentRole);
-        _isInitializing = false;
+        await _runAgoraStep('set client role', () => _setClientRole(_currentRole));
         return;
       }
 
@@ -46,27 +43,34 @@ class AgoraAudioHelper extends GetxService {
         await resetEngine();
       }
 
+      debugPrint('AGORA APP ID LENGTH => ${sanitizedAppId.length}');
+      if (!_looksLikeAgoraAppId(sanitizedAppId)) {
+        debugPrint('AGORA WARNING => appId format looks unexpected');
+      }
+
       debugPrint('AGORA STEP 1: create engine');
       _engine = createAgoraRtcEngine();
       _currentAppId = sanitizedAppId;
 
       debugPrint('AGORA STEP 2: initialize engine');
-      // 2. Initialize with ONLY the AppId first.
-      // Setting channelProfile inside the context can sometimes trigger -3 on certain devices.
-      await _engine!.initialize(RtcEngineContext(appId: sanitizedAppId));
-
-      // 3. Set the Channel Profile explicitly after initialization
-      await _engine!.setChannelProfile(
-        ChannelProfileType.channelProfileLiveBroadcasting,
+      await _runAgoraStep(
+        'initialize engine',
+        () => _engine!.initialize(
+          RtcEngineContext(
+            appId: sanitizedAppId,
+            channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+          ),
+        ),
       );
 
       debugPrint('AGORA STEP 3: register handlers');
       _engine!.registerEventHandler(
         RtcEngineEventHandler(
-          onJoinChannelSuccess: (connection, elapsed) async {
+          onJoinChannelSuccess: (connection, elapsed) {
             isJoined.value = true;
             micMuted.value = false;
             speakerEnabled.value = true;
+            _applySpeakerphonePreference();
             debugPrint('AGORA EVENT: joined channel');
           },
           onUserJoined: (connection, remoteUid, elapsed) {
@@ -91,14 +95,15 @@ class AgoraAudioHelper extends GetxService {
       );
 
       debugPrint('AGORA STEP 4: set role and enable audio');
-      // 4. Set the role before enabling the audio module
-      await _setClientRole(_currentRole);
-
-      // 5. Finally, enable audio
-      await _engine!.enableAudio();
-
-      // Set speakerphone last
-      await _engine!.setEnableSpeakerphone(true);
+      await _runAgoraStep('enable audio', () => _engine!.enableAudio());
+      await _runAgoraStep('set client role', () => _setClientRole(_currentRole));
+      await _runAgoraStep(
+        'set audio profile',
+        () => _engine!.setAudioProfile(
+          profile: AudioProfileType.audioProfileDefault,
+          scenario: AudioScenarioType.audioScenarioGameStreaming,
+        ),
+      );
 
       speakerEnabled.value = true;
       isInitialized.value = true;
@@ -106,12 +111,43 @@ class AgoraAudioHelper extends GetxService {
       debugPrint('AGORA INIT SUCCESS');
     } catch (e) {
       debugPrint('AGORA INIT ERROR => $e');
+      await resetEngine();
       rethrow;
     } finally {
       _isInitializing = false;
     }
   }
 
+  Future<void> _runAgoraStep(
+    String label,
+    Future<void> Function() action,
+  ) async {
+    try {
+      await action();
+    } catch (e) {
+      debugPrint('AGORA STEP FAILED [$label] => $e');
+      rethrow;
+    }
+  }
+
+  String _sanitizeAppId(String appId) {
+    return appId.trim().replaceAll(RegExp(r'[\u200B-\u200D\uFEFF\s]+'), '');
+  }
+
+  bool _looksLikeAgoraAppId(String appId) {
+    return RegExp(r'^[a-fA-F0-9]{32}$').hasMatch(appId);
+  }
+
+  void _applySpeakerphonePreference() {
+    final engine = _engine;
+    if (engine == null) return;
+
+    unawaited(
+      engine.setEnableSpeakerphone(speakerEnabled.value).catchError((Object e) {
+        debugPrint('AGORA SPEAKERPHONE ERROR => $e');
+      }),
+    );
+  }
 
   Future<void> _setClientRole(String role) async {
     if (_engine == null) return;
@@ -133,9 +169,6 @@ class AgoraAudioHelper extends GetxService {
       );
     }
   }
-
-
-
 
   Future<void> joinChannel({
     required String channelName,

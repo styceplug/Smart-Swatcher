@@ -1,23 +1,35 @@
-import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:get/get.dart';
 
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:smart_swatcher/utils/dimensions.dart';
-
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../../utils/colors.dart';
-import '../../utils/dimensions.dart';
-
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../utils/dimensions.dart';
 import '../utils/colors.dart';
+import '../utils/dimensions.dart';
 
 class CustomSnackBar {
   static OverlayEntry? _overlayEntry;
   static bool _isVisible = false;
+
+  static OverlayState? _resolveOverlay() {
+    final navigatorOverlay = Get.key.currentState?.overlay;
+    if (navigatorOverlay != null) {
+      return navigatorOverlay;
+    }
+
+    final overlayContext = Get.overlayContext;
+    if (overlayContext != null) {
+      final overlay = Overlay.maybeOf(overlayContext, rootOverlay: true);
+      if (overlay != null) {
+        return overlay;
+      }
+    }
+
+    final context = Get.context;
+    if (context != null) {
+      return Overlay.maybeOf(context, rootOverlay: true);
+    }
+
+    return null;
+  }
 
   static void _show({
     required String message,
@@ -25,11 +37,21 @@ class CustomSnackBar {
     required IconData icon,
   }) {
     if (_isVisible) return;
-    _isVisible = true;
 
-    final overlay = Overlay.of(Get.overlayContext!);
+    final overlay = _resolveOverlay();
+    if (overlay == null) {
+      debugPrint('CustomSnackBar: no overlay available, using toast fallback');
+      Fluttertoast.showToast(
+        msg: message,
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.TOP,
+      );
+      return;
+    }
+
+    _isVisible = true;
     final animationController = AnimationController(
-      vsync: overlay!,
+      vsync: overlay,
       duration: const Duration(milliseconds: 300),
     );
     final animation = Tween<Offset>(
@@ -54,11 +76,11 @@ class CustomSnackBar {
                 vertical: Dimensions.height12,
               ),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.95),
+                color: color.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(Dimensions.radius30),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.3),
+                    color: color.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -92,10 +114,13 @@ class CustomSnackBar {
     overlay.insert(_overlayEntry!);
     animationController.forward();
 
-    // Auto dismiss after 2s
     Future.delayed(const Duration(seconds: 2), () async {
-      await animationController.reverse();
-      _overlayEntry?.remove();
+      if (animationController.status != AnimationStatus.dismissed) {
+        await animationController.reverse();
+      }
+      if (_overlayEntry?.mounted ?? false) {
+        _overlayEntry?.remove();
+      }
       _overlayEntry = null;
       _isVisible = false;
       animationController.dispose();
