@@ -49,6 +49,8 @@ class AppConstants {
   static const String REQUEST_CONNECTION = '/api/connections';
   static String ACCEPT_CONNECTION(String targetId) => '/api/connections/$targetId/accept';
 
+  static String GET_PUBLIC_PROFILE(String profileId) => '/api/profiles/$profileId';
+
 
   static const String CREATE_EVENT = '/api/events';
   static const String GET_EVENT = '/api/events';

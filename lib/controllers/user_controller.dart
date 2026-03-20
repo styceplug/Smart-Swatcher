@@ -1,5 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/notification_controller.dart';
 import '../data/repo/user_repo.dart';
+import '../helpers/global_loader_controller.dart';
 import '../models/user_model.dart';
 import '../widgets/snackbars.dart';
 
@@ -12,7 +15,7 @@ class UserController extends GetxController {
       <RecommendedAccountModel>[].obs;
   final RxString selectedTypeFilter = ''.obs;
   final RxBool isFetchingSuggestions = false.obs;
-
+  var profile = Rxn<OtherProfileModel>();
   final RxSet<String> requestingConnectionIds = <String>{}.obs;
   final RxMap<String, String> connectionStatuses = <String, String>{}.obs;
 
@@ -20,6 +23,28 @@ class UserController extends GetxController {
   void onInit() {
     super.onInit();
     Future.microtask(() => fetchSuggestions());
+  }
+
+
+
+  Future<void> fetchProfile(String id) async {
+    try {
+      loader.showLoader();
+      final res = await userRepo.getProfile(id);
+
+      if (res != null) {
+        profile.value = res;
+      }
+    } catch (e) {
+      print('Profile error: $e');
+    } finally {
+      loader.hideLoader();
+    }
+  }
+
+  String resolveImage(String? path) {
+    if (path == null || path.isEmpty) return '';
+    return '${userRepo.apiClient.baseUrl}$path';
   }
 
   Future<void> fetchSuggestions({int limit = 20, String? type}) async {
@@ -148,6 +173,32 @@ class UserController extends GetxController {
       CustomSnackBar.failure(message: 'Failed to send connection request');
     } finally {
       requestingConnectionIds.remove(targetId);
+    }
+  }
+
+  Future<void> acceptConnection(String connectionId) async {
+    try {
+      loader.showLoader();
+
+      final response = await userRepo.acceptConnection(connectionId);
+
+      if (response.statusCode == 200) {
+        CustomSnackBar.success(message: 'Connection accepted');
+
+        NotificationController notificationController =
+        Get.find<NotificationController>();
+
+        await notificationController.refreshNotifications();
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to accept connection',
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to accept connection');
+      debugPrint('acceptConnection error: $e');
+    } finally {
+      loader.hideLoader();
     }
   }
 }

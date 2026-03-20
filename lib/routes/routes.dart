@@ -17,6 +17,7 @@ import 'package:smart_swatcher/screens/formulator/formulation/choose_cdl.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/grey_exceeds.dart';
 import 'package:smart_swatcher/screens/formulator/formulation_or_correction.dart';
 import 'package:smart_swatcher/screens/home/home_screen.dart';
+import 'package:smart_swatcher/screens/in_app/other_profile_screen.dart';
 import 'package:smart_swatcher/screens/in_app/recommended_accounts_screen.dart';
 import 'package:smart_swatcher/screens/reference/hair_formulator_guide.dart';
 import 'package:smart_swatcher/screens/reference/mixing_ratio_guide.dart';
@@ -140,6 +141,7 @@ class AppRoutes {
   static const String followersScreen = '/followers-screen';
   static const String savesScreen = '/saves-screen';
   static const String viewsScreen = '/views-screen';
+  static const String otherProfileScreen = '/other-profile-screen';
 
 
 
@@ -261,6 +263,13 @@ class AppRoutes {
       name: viewsScreen,
       page: () {
         return const ViewsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: otherProfileScreen,
+      page: () {
+        return const OtherProfileScreen();
       },
       transition: Transition.fadeIn,
     ),

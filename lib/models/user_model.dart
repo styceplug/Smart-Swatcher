@@ -122,3 +122,56 @@ class RecommendedAccountModel {
     return 'Stylist';
   }
 }
+
+class OtherProfileModel {
+  final String? id;
+  final String? type;
+  final String? name;
+  final String? username;
+  final String? description;
+  final String? about;
+  final String? role;
+  final bool? isElite;
+  final String? profileImageUrl;
+  final String? backgroundImageUrl;
+
+  final int? likes;
+  final int? posts;
+  final int? connections;
+
+  OtherProfileModel({
+    this.id,
+    this.type,
+    this.name,
+    this.username,
+    this.description,
+    this.about,
+    this.role,
+    this.isElite,
+    this.profileImageUrl,
+    this.backgroundImageUrl,
+    this.likes,
+    this.posts,
+    this.connections,
+  });
+
+  factory OtherProfileModel.fromJson(Map<String, dynamic> json) {
+    final totals = json['totals'];
+
+    return OtherProfileModel(
+      id: json['id'],
+      type: json['type'],
+      name: json['name'],
+      username: json['username'],
+      description: json['description'],
+      about: json['about'],
+      role: json['role'],
+      isElite: json['isElite'],
+      profileImageUrl: json['profileImageUrl'],
+      backgroundImageUrl: json['backgroundImageUrl'],
+      likes: totals?['likes'],
+      posts: totals?['generalPosts'],
+      connections: totals?['connections'],
+    );
+  }
+}

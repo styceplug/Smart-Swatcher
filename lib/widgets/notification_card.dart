@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/user_controller.dart';
 
 import '../controllers/notification_controller.dart';
 import '../models/notification_model.dart';
+import '../routes/routes.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 
@@ -17,8 +19,13 @@ class NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final NotificationController controller = Get.find<NotificationController>();
-    final imageUrl = controller.resolveImageUrl(notification.actor?.profileImageUrl);
+    UserController userController = Get.find<UserController>();
+
+    final imageUrl =
+    controller.resolveImageUrl(notification.actor?.profileImageUrl);
     final hasImage = imageUrl.isNotEmpty;
+
+    final isConnectionRequest = notification.type == 'connection_request';
 
     return Container(
       margin: EdgeInsets.only(bottom: Dimensions.height12),
@@ -27,81 +34,168 @@ class NotificationCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(Dimensions.radius15),
         border: Border.all(
-          color: notification.isRead ? AppColors.grey2 : AppColors.primary5.withOpacity(.15),
+          color: notification.isRead
+              ? AppColors.grey2
+              : AppColors.primary5.withOpacity(.15),
         ),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: Dimensions.height50,
-            width: Dimensions.width50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.grey2,
-              image: hasImage
-                  ? DecorationImage(
-                image: NetworkImage(imageUrl),
-                fit: BoxFit.cover,
-              )
-                  : null,
-            ),
-            child: !hasImage
-                ? Icon(Icons.person, color: AppColors.grey4)
-                : null,
-          ),
-          SizedBox(width: Dimensions.width10),
+          /// MAIN ROW
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: Dimensions.height50,
+                width: Dimensions.width50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.grey2,
+                  image: hasImage
+                      ? DecorationImage(
+                    image: NetworkImage(imageUrl),
+                    fit: BoxFit.cover,
+                  )
+                      : null,
+                ),
+                child: !hasImage
+                    ? Icon(Icons.person, color: AppColors.grey4)
+                    : null,
+              ),
+              SizedBox(width: Dimensions.width10),
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        notification.title ?? 'Notification',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: Dimensions.font14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.black1,
+                    /// TITLE
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            notification.title ?? 'Notification',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: Dimensions.font14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
+                        if (!notification.isRead)
+                          Container(
+                            height: 10,
+                            width: 10,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary5,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    SizedBox(height: Dimensions.height5),
+
+                    /// BODY
+                    Text(
+                      notification.body ?? '',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font13,
+                        color: AppColors.grey5,
                       ),
                     ),
-                    if (!notification.isRead)
-                      Container(
-                        height: 10,
-                        width: 10,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary5,
-                          shape: BoxShape.circle,
-                        ),
+
+                    SizedBox(height: Dimensions.height10),
+
+                    /// TIME
+                    Text(
+                      controller.formatNotificationTime(
+                        notification.createdAt,
                       ),
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font12,
+                        color: AppColors.grey4,
+                      ),
+                    ),
                   ],
                 ),
-                SizedBox(height: Dimensions.height5),
-                Text(
-                  notification.body ?? '',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: Dimensions.font13,
-                    color: AppColors.grey5,
-                    fontWeight: FontWeight.w400,
+              ),
+            ],
+          ),
+
+          /// 👇 ACTIONS (ONLY FOR CONNECTION REQUEST)
+          if (isConnectionRequest) ...[
+            SizedBox(height: Dimensions.height15),
+
+            Row(
+              children: [
+                /// VIEW PROFILE
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      final actorId = notification.actor?.id;
+                      final actorType = notification.actor?.type;
+
+                      if (actorId != null) {
+                        Get.toNamed(
+                          AppRoutes.otherProfileScreen,
+                          arguments: actorId,
+                        );
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: AppColors.primary5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                        BorderRadius.circular(Dimensions.radius10),
+                      ),
+                    ),
+                    child: Text(
+                      'View Profile',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font12,
+                        color: AppColors.primary5,
+                      ),
+                    ),
                   ),
                 ),
-                SizedBox(height: Dimensions.height10),
-                Text(
-                  controller.formatNotificationTime(notification.createdAt),
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: Dimensions.font12,
-                    color: AppColors.grey4,
+
+                SizedBox(width: Dimensions.width10),
+
+                /// ACCEPT
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final connectionId =
+                      notification.data?['connectionId'];
+
+                      if (connectionId != null) {
+                        await userController.acceptConnection(connectionId);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                        BorderRadius.circular(Dimensions.radius10),
+                      ),
+                    ),
+                    child: Text(
+                      'Accept',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font12,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
+          ],
         ],
       ),
     );
