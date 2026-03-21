@@ -192,9 +192,7 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                 Obx(() {
                   final remoteCount = agoraHelper.remoteUsersCount.value;
                   final joined = agoraHelper.isJoined.value;
-                  final total = (event.viewer?.isCreator ?? false)
-                      ? remoteCount + 1
-                      : remoteCount + 1;
+                  final total = event.liveParticipantCount;
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
