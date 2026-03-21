@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:smart_swatcher/controllers/post_controller.dart';
 import 'package:smart_swatcher/helpers/global_loader_controller.dart';
 import 'package:smart_swatcher/models/company_model.dart';
 import 'package:smart_swatcher/widgets/snackbars.dart';
@@ -25,7 +26,6 @@ class AuthController extends GetxController {
   AuthController({required this.authRepo});
 
   final GlobalLoaderController _loader = Get.find<GlobalLoaderController>();
-
   final Rxn<AccountType> currentAccountType = Rxn<AccountType>();
   final Rxn<File> selectedBackgroundImage = Rxn<File>();
   final Rx<StylistModel?> stylistProfile = Rx<StylistModel?>(null);
@@ -188,6 +188,7 @@ class AuthController extends GetxController {
         final token = response.body['token'] as String;
         await authRepo.saveUserToken(token);
         await getProfile();
+
       } else {
         Get.snackbar('Error', response.statusText ?? 'Registration failed');
       }
