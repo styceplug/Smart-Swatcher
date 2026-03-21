@@ -53,6 +53,10 @@ class EventController extends GetxController {
     fetchEvents();
   }
 
+  void _logEventDebug(String label, dynamic payload) {
+    if (payload == null) return;
+    debugPrint('$label DEBUG => $payload');
+  }
 
 
   Future<void> setupAndJoinAgoraFromCurrentRtc() async {
@@ -62,9 +66,9 @@ class EventController extends GetxController {
     }
 
     debugPrint('RTC DEBUG →');
-    debugPrint('appId: ${rtc.appId}');
+    debugPrint('appIdLength: ${rtc.appId?.trim().length ?? 0}');
     debugPrint('channelName: ${rtc.channelName}');
-    debugPrint('token: ${rtc.token}');
+    debugPrint('tokenLength: ${rtc.token?.length ?? 0}');
     debugPrint('uid: ${rtc.uid}');
     debugPrint('role: ${rtc.clientRole}');
 
@@ -124,6 +128,7 @@ class EventController extends GetxController {
       final response = await eventRepo.startEvent(eventId);
 
       if (response.statusCode == 200) {
+        _logEventDebug('startEventSession', response.body?['debug']);
         final eventJson = response.body['event'];
         final rtcJson = response.body['rtc'];
 
@@ -165,6 +170,7 @@ class EventController extends GetxController {
       final response = await eventRepo.joinEvent(eventId);
 
       if (response.statusCode == 200) {
+        _logEventDebug('joinEventSession', response.body?['debug']);
         selectedEvent.value = EventModel.fromJson(response.body['event']);
         currentRtc.value = EventRtcModel.fromJson(response.body['rtc']);
 
@@ -279,6 +285,31 @@ class EventController extends GetxController {
       await unsubscribeFromEvent(event.id!);
     } else {
       await subscribeToEvent(event.id!);
+    }
+  }
+
+  Future<void> refreshActiveEvent({bool showErrors = false}) async {
+    final eventId = selectedEvent.value?.id ?? createdEvent.value?.id;
+    if (eventId == null || eventId.isEmpty) return;
+
+    try {
+      final response = await eventRepo.getSingleEvent(eventId);
+      if (response.statusCode == 200 && response.body?['event'] != null) {
+        _logEventDebug('refreshActiveEvent', response.body?['debug']);
+        final updatedEvent = EventModel.fromJson(response.body['event']);
+        _replaceEventEverywhere(updatedEvent);
+        selectedEvent.value = updatedEvent;
+      } else if (showErrors) {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to refresh live event',
+        );
+      }
+    } catch (e, st) {
+      debugPrint('refreshActiveEvent error: $e');
+      debugPrintStack(stackTrace: st);
+      if (showErrors) {
+        CustomSnackBar.failure(message: 'Failed to refresh live event');
+      }
     }
   }
 

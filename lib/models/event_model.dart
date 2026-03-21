@@ -77,6 +77,49 @@ class EventViewerModel {
   }
 }
 
+class EventParticipantModel {
+  final String? id;
+  final String? type;
+  final String? role;
+  final int agoraUid;
+  final DateTime? joinedAt;
+  final String? name;
+  final String? username;
+  final String? profileImageUrl;
+  final bool isVerified;
+  final bool isCreator;
+
+  EventParticipantModel({
+    this.id,
+    this.type,
+    this.role,
+    this.agoraUid = 0,
+    this.joinedAt,
+    this.name,
+    this.username,
+    this.profileImageUrl,
+    this.isVerified = false,
+    this.isCreator = false,
+  });
+
+  factory EventParticipantModel.fromJson(Map<String, dynamic> json) {
+    return EventParticipantModel(
+      id: json['id']?.toString(),
+      type: json['type']?.toString(),
+      role: json['role']?.toString(),
+      agoraUid: int.tryParse(json['agoraUid']?.toString() ?? '0') ?? 0,
+      joinedAt: json['joinedAt'] != null
+          ? DateTime.tryParse(json['joinedAt'].toString())
+          : null,
+      name: json['name']?.toString(),
+      username: json['username']?.toString(),
+      profileImageUrl: json['profileImageUrl']?.toString(),
+      isVerified: json['isVerified'] ?? false,
+      isCreator: json['isCreator'] ?? false,
+    );
+  }
+}
+
 class EventModel {
   final String? id;
   final String? title;
@@ -90,6 +133,7 @@ class EventModel {
   final EventCreatorModel? creator;
   final int subscriberCount;
   final int liveParticipantCount;
+  final List<EventParticipantModel> liveParticipants;
   final EventViewerModel? viewer;
 
   final num? recommendationScore;
@@ -109,6 +153,7 @@ class EventModel {
     this.creator,
     this.subscriberCount = 0,
     this.liveParticipantCount = 0,
+    this.liveParticipants = const [],
     this.viewer,
     this.recommendationScore,
     this.recommendationReason,
@@ -139,6 +184,11 @@ class EventModel {
       int.tryParse(json['subscriberCount']?.toString() ?? '0') ?? 0,
       liveParticipantCount:
       int.tryParse(json['liveParticipantCount']?.toString() ?? '0') ?? 0,
+      liveParticipants: json['liveParticipants'] != null
+          ? List<Map<String, dynamic>>.from(json['liveParticipants'])
+              .map(EventParticipantModel.fromJson)
+              .toList()
+          : const [],
       viewer: json['viewer'] != null
           ? EventViewerModel.fromJson(json['viewer'])
           : null,

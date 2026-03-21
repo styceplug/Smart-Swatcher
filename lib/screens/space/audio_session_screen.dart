@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../controllers/event_controller.dart';
+import '../../models/event_model.dart';
+import '../../utils/app_constants.dart';
 import '../../utils/colors.dart';
 import '../../utils/dimensions.dart';
 import 'package:smart_swatcher/helpers/agora_audio_helper.dart';
@@ -18,8 +22,8 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
   final EventController controller = Get.find<EventController>();
   final AgoraAudioHelper agoraHelper = Get.find<AgoraAudioHelper>();
   late Worker _remoteJoinWorker;
+  Timer? _participantRefreshTimer;
 
-  @override
   Future<void> _leaveSession() async {
     await controller.leaveEventSession();
     if (mounted) Get.back();
@@ -34,24 +38,28 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    _remoteJoinWorker = ever(agoraHelper.remoteUsersCount, (count) {
-      if (count > 0) {
-        Get.snackbar(
-          'Live update',
-          'Someone joined the event',
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 2),
-        );
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await controller.refreshActiveEvent();
+      _startParticipantRefresh();
+    });
+    _remoteJoinWorker = ever(agoraHelper.remoteUsersCount, (_) {
+      controller.refreshActiveEvent();
     });
   }
 
   @override
   void dispose() {
+    _participantRefreshTimer?.cancel();
     _remoteJoinWorker.dispose();
     super.dispose();
+  }
+
+  void _startParticipantRefresh() {
+    _participantRefreshTimer?.cancel();
+    _participantRefreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      controller.refreshActiveEvent();
+    });
   }
 
   @override
@@ -72,12 +80,23 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
           }
 
           final isCreator = event.viewer?.isCreator ?? false;
-          final remoteCount = agoraHelper.remoteUsersCount.value;
           final joined = agoraHelper.isJoined.value;
           final speakerOn = agoraHelper.speakerEnabled.value;
           final isMuted = agoraHelper.micMuted.value;
-
-          final totalListeners = isCreator ? remoteCount + 1 : remoteCount;
+          final participants = [...event.liveParticipants]
+            ..sort((left, right) {
+              if (left.isCreator != right.isCreator) {
+                return left.isCreator ? -1 : 1;
+              }
+              return (left.joinedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+                  .compareTo(
+                right.joinedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+              );
+            });
+          final totalListeners =
+              event.liveParticipantCount > 0
+                  ? event.liveParticipantCount
+                  : participants.length;
 
           return Padding(
             padding: EdgeInsets.all(Dimensions.width20),
@@ -123,7 +142,7 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                     vertical: Dimensions.height5,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(.2),
+                    color: Colors.red.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
@@ -189,34 +208,23 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
 
                 SizedBox(height: Dimensions.height30),
 
-                Obx(() {
-                  final remoteCount = agoraHelper.remoteUsersCount.value;
-                  final joined = agoraHelper.isJoined.value;
-                  final total = (event.viewer?.isCreator ?? false)
-                      ? remoteCount + 1
-                      : remoteCount + 1;
+                Text(
+                  '$totalListeners in this live room',
+                  style: const TextStyle(color: Colors.white70),
+                ),
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$total in this live room',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        joined
-                            ? remoteCount > 0
-                            ? 'Someone is in the room with you'
-                            : 'Connected. Waiting for others...'
-                            : 'Connecting...',
-                        style: TextStyle(
-                          color: joined ? Colors.greenAccent : Colors.orangeAccent,
-                        ),
-                      ),
-                    ],
-                  );
-                }),
+                SizedBox(height: Dimensions.height5),
+
+                Text(
+                  joined
+                      ? participants.length > 1
+                          ? 'Live roster is updating'
+                          : 'Connected. Waiting for others...'
+                      : 'Connecting...',
+                  style: TextStyle(
+                    color: joined ? Colors.greenAccent : Colors.orangeAccent,
+                  ),
+                ),
 
                 SizedBox(height: Dimensions.height10),
 
@@ -229,7 +237,11 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                   ),
                 ),
 
-                const Spacer(),
+                SizedBox(height: Dimensions.height20),
+
+                Expanded(
+                  child: _buildParticipantsList(participants),
+                ),
 
                 Center(
                   child: Row(
@@ -302,6 +314,108 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
           color: disabled ? Colors.white38 : Colors.white,
         ),
       ),
+    );
+  }
+
+  Widget _buildParticipantsList(List<EventParticipantModel> participants) {
+    if (participants.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(Dimensions.width15),
+        decoration: BoxDecoration(
+          color: Colors.white10,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text(
+          'No participant data yet. Waiting for the live roster...',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      itemCount: participants.length,
+      separatorBuilder: (_, __) => SizedBox(height: Dimensions.height10),
+      itemBuilder: (context, index) {
+        final participant = participants[index];
+        final imageUrl = MediaUrlHelper.resolve(participant.profileImageUrl);
+        final subtitleParts = <String>[
+          if (participant.isCreator) 'Host',
+          if (!participant.isCreator && (participant.role?.isNotEmpty ?? false))
+            participant.role!,
+          if (participant.isVerified) 'Verified',
+        ];
+
+        return Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: Dimensions.width15,
+            vertical: Dimensions.height12,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white10,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white24,
+                backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
+                child: imageUrl == null
+                    ? Text(
+                        (participant.name?.isNotEmpty ?? false)
+                            ? participant.name![0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(color: Colors.white),
+                      )
+                    : null,
+              ),
+              SizedBox(width: Dimensions.width15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      participant.name?.isNotEmpty == true
+                          ? participant.name!
+                          : participant.username?.isNotEmpty == true
+                              ? participant.username!
+                              : 'Unknown participant',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (subtitleParts.isNotEmpty)
+                      Text(
+                        subtitleParts.join(' • '),
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                  ],
+                ),
+              ),
+              if (participant.isCreator)
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width10,
+                    vertical: Dimensions.height5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'HOST',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -35,7 +35,11 @@ class AgoraAudioHelper extends GetxService {
           isInitialized.value &&
           _currentAppId == sanitizedAppId) {
         debugPrint('AGORA REUSE EXISTING ENGINE');
-        await _runAgoraStep('set client role', () => _setClientRole(_currentRole));
+        await _runAgoraBestEffortStep(
+          'set client role',
+          () => _setClientRole(_currentRole),
+        );
+        await _configureAudioDefaults();
         return;
       }
 
@@ -68,18 +72,20 @@ class AgoraAudioHelper extends GetxService {
         RtcEngineEventHandler(
           onJoinChannelSuccess: (connection, elapsed) {
             isJoined.value = true;
-            micMuted.value = false;
-            speakerEnabled.value = true;
+            micMuted.value = _currentRole != 'broadcaster';
             _applySpeakerphonePreference();
+            _applyPostJoinAudioState();
             debugPrint('AGORA EVENT: joined channel');
           },
           onUserJoined: (connection, remoteUid, elapsed) {
+            debugPrint('AGORA USER JOINED => uid=$remoteUid elapsed=$elapsed');
             if (!remoteUserUids.contains(remoteUid)) {
               remoteUserUids.add(remoteUid);
             }
             remoteUsersCount.value = remoteUserUids.length;
           },
           onUserOffline: (connection, remoteUid, reason) {
+            debugPrint('AGORA USER OFFLINE => uid=$remoteUid reason=$reason');
             remoteUserUids.remove(remoteUid);
             remoteUsersCount.value = remoteUserUids.length;
           },
@@ -91,21 +97,58 @@ class AgoraAudioHelper extends GetxService {
           onError: (err, msg) {
             debugPrint('AGORA ERROR => code: $err, message: $msg');
           },
+          onConnectionStateChanged: (connection, state, reason) {
+            debugPrint('AGORA CONNECTION => state=$state reason=$reason');
+          },
+          onRemoteAudioStateChanged:
+              (connection, remoteUid, state, reason, elapsed) {
+            debugPrint(
+              'AGORA REMOTE AUDIO => uid=$remoteUid state=$state reason=$reason elapsed=$elapsed',
+            );
+          },
+          onAudioVolumeIndication:
+              (connection, speakers, speakerNumber, totalVolume) {
+            if (speakers.isEmpty) return;
+            final summary = speakers
+                .map((speaker) => '${speaker.uid}:${speaker.volume}')
+                .join(', ');
+            debugPrint(
+              'AGORA VOLUME => total=$totalVolume speakers=$summary count=$speakerNumber',
+            );
+          },
+          onRequestToken: (connection) {
+            debugPrint(
+              'AGORA TOKEN REQUESTED => channel=${connection.channelId} uid=${connection.localUid}',
+            );
+          },
         ),
       );
 
       debugPrint('AGORA STEP 4: set role and enable audio');
-      await _runAgoraStep('enable audio', () => _engine!.enableAudio());
-      await _runAgoraStep('set client role', () => _setClientRole(_currentRole));
-      await _runAgoraStep(
+      await _runAgoraBestEffortStep('enable audio', () => _engine!.enableAudio());
+      await _runAgoraBestEffortStep(
+        'set client role',
+        () => _setClientRole(_currentRole),
+      );
+      await _runAgoraBestEffortStep(
         'set audio profile',
         () => _engine!.setAudioProfile(
           profile: AudioProfileType.audioProfileDefault,
-          scenario: AudioScenarioType.audioScenarioGameStreaming,
+          scenario: AudioScenarioType.audioScenarioChatroom,
         ),
       );
+      await _runAgoraBestEffortStep(
+        'enable audio volume indication',
+        () => _engine!.enableAudioVolumeIndication(
+          interval: 400,
+          smooth: 3,
+          reportVad: true,
+        ),
+      );
+      await _configureAudioDefaults();
 
       speakerEnabled.value = true;
+      micMuted.value = _currentRole != 'broadcaster';
       isInitialized.value = true;
 
       debugPrint('AGORA INIT SUCCESS');
@@ -130,6 +173,17 @@ class AgoraAudioHelper extends GetxService {
     }
   }
 
+  Future<void> _runAgoraBestEffortStep(
+    String label,
+    Future<void> Function() action,
+  ) async {
+    try {
+      await action();
+    } catch (e) {
+      debugPrint('AGORA STEP SOFT FAIL [$label] => $e');
+    }
+  }
+
   String _sanitizeAppId(String appId) {
     return appId.trim().replaceAll(RegExp(r'[\u200B-\u200D\uFEFF\s]+'), '');
   }
@@ -146,6 +200,36 @@ class AgoraAudioHelper extends GetxService {
       engine.setEnableSpeakerphone(speakerEnabled.value).catchError((Object e) {
         debugPrint('AGORA SPEAKERPHONE ERROR => $e');
       }),
+    );
+  }
+
+  Future<void> _configureAudioDefaults() async {
+    await _runAgoraBestEffortStep(
+      'set default audio route to speakerphone',
+      () => _engine!.setDefaultAudioRouteToSpeakerphone(true),
+    );
+    await _runAgoraBestEffortStep(
+      'set speakerphone preference',
+      () => _engine!.setEnableSpeakerphone(speakerEnabled.value),
+    );
+  }
+
+  void _applyPostJoinAudioState() {
+    final engine = _engine;
+    if (engine == null) return;
+
+    final isBroadcaster = _currentRole == 'broadcaster';
+    unawaited(
+      engine.enableLocalAudio(isBroadcaster).catchError((Object e) {
+        debugPrint('AGORA LOCAL AUDIO ENABLE ERROR => $e');
+      }),
+    );
+    unawaited(
+      engine
+          .muteLocalAudioStream(isBroadcaster ? micMuted.value : true)
+          .catchError((Object e) {
+            debugPrint('AGORA LOCAL MUTE APPLY ERROR => $e');
+          }),
     );
   }
 
@@ -204,6 +288,7 @@ class AgoraAudioHelper extends GetxService {
                 ? ClientRoleType.clientRoleBroadcaster
                 : ClientRoleType.clientRoleAudience,
         autoSubscribeAudio: true,
+        enableAudioRecordingOrPlayout: true,
         publishMicrophoneTrack: _currentRole == 'broadcaster',
       );
 
