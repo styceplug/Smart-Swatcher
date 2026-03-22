@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 /*class Dimensions {
   static double screenWidth = Get.context!.width;
@@ -129,7 +128,6 @@ import 'package:get/get.dart';
   static double bottomNavIconWidth = screenWidth / 11.944;
 }*/
 
-import 'package:flutter/material.dart';
 import 'dart:math';
 
 class Dimensions {
@@ -170,6 +168,7 @@ class Dimensions {
 
   // Heights with minimum constraints
   static double get height5 => _scale(5, min: 4);
+  static double get height8 => _scale(8, min: 6);
   static double get height10 => _scale(10, min: 8);
   static double get height12 => _scale(12, min: 10);
   static double get height13 => _scale(13, min: 11);
@@ -178,6 +177,7 @@ class Dimensions {
   static double get height20 => _scale(20, min: 16);
   static double get height22 => _scale(22, min: 18);
   static double get height24 => _scale(24, min: 20);
+  static double get height25 => _scale(25, min: 21);
   static double get height28 => _scale(28, min: 24);
   static double get height30 => _scale(30, min: 25);
   static double get height33 => _scale(33, min: 28);
@@ -192,6 +192,7 @@ class Dimensions {
   static double get height67 => _scale(67, min: 57);
   static double get height70 => _scale(70, min: 60);
   static double get height76 => _scale(76, min: 65);
+  static double get height80 => _scale(80, min: 68);
   static double get height100 => _scale(100, min: 85);
   static double get height134 => _scale(134, min: 110);
   static double get height150 => _scale(150, min: 120);
@@ -206,6 +207,7 @@ class Dimensions {
 
   // Widths with minimum constraints
   static double get width5 => _scale(5, min: 4);
+  static double get width8 => _scale(8, min: 6);
   static double get width10 => _scale(10, min: 8);
   static double get width13 => _scale(13, min: 11);
   static double get width15 => _scale(15, min: 12);
@@ -239,6 +241,7 @@ class Dimensions {
   // Radius
   static double get radius5 => _scale(5, min: 4);
   static double get radius10 => _scale(10, min: 8);
+  static double get radius12 => _scale(12, min: 10);
   static double get radius15 => _scale(15, min: 12);
   static double get radius20 => _scale(20, min: 16);
   static double get radius30 => _scale(30, min: 24);

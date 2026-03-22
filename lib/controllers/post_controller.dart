@@ -28,7 +28,8 @@ class PostController extends GetxController {
   var currentPostComments = <CommentModel>[].obs;
   var isCommentsLoading = false.obs;
   var selectedMediaFiles = <File>[].obs;
-  final Set<String> _recordedImpressionIds = <String>{};
+  final Map<String, DateTime> _recordedImpressionTimes =
+      <String, DateTime>{};
   final RxSet<String> recordingImpressionIds = <String>{}.obs;
   final RxSet<String> deletingPostIds = <String>{}.obs;
   final RxSet<String> likingPostIds = <String>{}.obs;
@@ -44,8 +45,27 @@ class PostController extends GetxController {
 
 
 
+  static const Duration _impressionCooldown = Duration(hours: 6);
+
   bool hasRecordedImpression(String postId) {
-    return _recordedImpressionIds.contains(postId);
+    final recordedAt = _recordedImpressionTimes[postId];
+    if (recordedAt == null) {
+      return false;
+    }
+
+    return DateTime.now().difference(recordedAt) < _impressionCooldown;
+  }
+
+  bool canRecordImpression(String postId) {
+    if (postId.trim().isEmpty) {
+      return false;
+    }
+
+    if (recordingImpressionIds.contains(postId)) {
+      return false;
+    }
+
+    return !hasRecordedImpression(postId);
   }
 
   String? get currentActorId {
@@ -72,10 +92,10 @@ class PostController extends GetxController {
         authorId == actorId;
   }
 
-  Future<void> recordImpression(String postId) async {
-    if (postId.isEmpty) return;
-    if (_recordedImpressionIds.contains(postId)) return;
-    if (recordingImpressionIds.contains(postId)) return;
+  Future<bool> recordImpression(String postId) async {
+    if (!canRecordImpression(postId)) {
+      return false;
+    }
 
     recordingImpressionIds.add(postId);
 
@@ -83,20 +103,22 @@ class PostController extends GetxController {
       final response = await postRepo.recordPostImpression(postId);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _recordedImpressionIds.add(postId);
+        _recordedImpressionTimes[postId] = DateTime.now();
+        return true;
       }
     } catch (e) {
       print("Impression Error: $e");
     } finally {
       recordingImpressionIds.remove(postId);
     }
+
+    return false;
   }
 
   Future<void> recordImpressions(List<String> postIds) async {
     final validIds = postIds
         .where((id) => id.trim().isNotEmpty)
-        .where((id) => !_recordedImpressionIds.contains(id))
-        .where((id) => !recordingImpressionIds.contains(id))
+        .where(canRecordImpression)
         .toSet()
         .toList();
 
@@ -108,7 +130,10 @@ class PostController extends GetxController {
       final response = await postRepo.recordPostImpressions(validIds);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _recordedImpressionIds.addAll(validIds);
+        final timestamp = DateTime.now();
+        for (final id in validIds) {
+          _recordedImpressionTimes[id] = timestamp;
+        }
       }
     } catch (e) {
       print("Batch Impression Error: $e");
@@ -167,6 +192,31 @@ class PostController extends GetxController {
         list.refresh();
       }
     }
+  }
+
+  void _applyProfileLikeDelta(String postId, int delta) {
+    if (!Get.isRegistered<UserController>()) {
+      return;
+    }
+
+    final userController = Get.find<UserController>();
+    final activeProfile = userController.profile.value;
+    if (activeProfile == null) {
+      return;
+    }
+
+    final hasMatchingPost = _matchingPosts(
+      postId,
+    ).any((post) => post.author?.id == activeProfile.id);
+
+    if (!hasMatchingPost) {
+      return;
+    }
+
+    final nextLikes = ((activeProfile.likes ?? 0) + delta).clamp(0, 1 << 31);
+    userController.profile.value = activeProfile.copyWith(
+      likes: nextLikes,
+    );
   }
 
   // --- Helper: Extract Tags ---
@@ -432,6 +482,7 @@ class PostController extends GetxController {
     final originalStatus = matchingPosts.first.isLiked;
     final originalLikes = matchingPosts.first.metrics?.likes ?? 0;
     final optimisticLikes = originalStatus ? originalLikes - 1 : originalLikes + 1;
+    final optimisticDelta = originalStatus ? -1 : 1;
 
     likingPostIds.add(postId);
 
@@ -440,6 +491,7 @@ class PostController extends GetxController {
       post.metrics ??= PostMetrics();
       post.metrics!.likes = optimisticLikes < 0 ? 0 : optimisticLikes;
     });
+    _applyProfileLikeDelta(postId, optimisticDelta);
 
     try {
       Response response = await postRepo.likePost(postId);
@@ -448,18 +500,23 @@ class PostController extends GetxController {
         final likedStatus = response.body['liked'] == true;
         final likesCount =
             int.tryParse(response.body['likes'].toString()) ?? optimisticLikes;
+        final serverDelta = likesCount - optimisticLikes;
 
         _applyToMatchingPosts(postId, (post) {
           post.isLiked = likedStatus;
           post.metrics ??= PostMetrics();
           post.metrics!.likes = likesCount < 0 ? 0 : likesCount;
         });
+        if (serverDelta != 0) {
+          _applyProfileLikeDelta(postId, serverDelta);
+        }
       } else {
         _applyToMatchingPosts(postId, (post) {
           post.isLiked = originalStatus;
           post.metrics ??= PostMetrics();
           post.metrics!.likes = originalLikes;
         });
+        _applyProfileLikeDelta(postId, -optimisticDelta);
       }
     } catch (e) {
       print("Like Error: $e");
@@ -468,6 +525,7 @@ class PostController extends GetxController {
         post.metrics ??= PostMetrics();
         post.metrics!.likes = originalLikes;
       });
+      _applyProfileLikeDelta(postId, -optimisticDelta);
     } finally {
       likingPostIds.remove(postId);
     }
