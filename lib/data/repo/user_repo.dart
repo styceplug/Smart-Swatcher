@@ -58,4 +58,37 @@ class UserRepo {
       {},
     );
   }
+
+  Future<Response> deleteConnection(String connectionId) async {
+    return await apiClient.deleteData(
+      AppConstants.DELETE_CONNECTION(connectionId),
+    );
+  }
+
+  Future<Response> blockUser(String targetId) async {
+    return await apiClient.postData(
+      AppConstants.BLOCKS_URI,
+      <String, dynamic>{'targetId': targetId},
+    );
+  }
+
+  Future<int> getAcceptedConnectionsCount() async {
+    final response = await apiClient.getData(
+      '${AppConstants.GET_CONNECTIONS}?status=accepted',
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        response.body is Map
+            ? response.body['message']?.toString()
+            : response.statusText,
+      );
+    }
+
+    if (response.body is Map && response.body['count'] != null) {
+      return int.tryParse(response.body['count'].toString()) ?? 0;
+    }
+
+    return 0;
+  }
 }

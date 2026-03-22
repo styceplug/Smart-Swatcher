@@ -369,23 +369,13 @@ class _StudioScreenState extends State<StudioScreen>
                     ),
                     SizedBox(height: Dimensions.height20),
                     //reference card
-                    Container(
-                      height: Dimensions.height10 * 25,
-                      alignment: Alignment.topCenter,
-                      child: ListView.builder(
-                        itemCount: references.length,
-                        scrollDirection: Axis.vertical,
-                        padding: EdgeInsets.zero,
-                        physics: AlwaysScrollableScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          final item = references[index];
-                          return ReferenceCard(
-                            timeAgo: item["time"]!,
-                            title: item["title"]!,
-                            // optionally pass imageAsset: 'assets/images/hair.png',
-                          );
-                        },
-                      ),
+                    Column(
+                      children: references.map((item) {
+                        return ReferenceCard(
+                          timeAgo: item["time"]!,
+                          title: item["title"]!,
+                        );
+                      }).toList(),
                     ),
                   ],
                 ),

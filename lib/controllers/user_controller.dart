@@ -211,6 +211,15 @@ class UserController extends GetxController {
     }
 
     requestingConnectionIds.add(targetId);
+    final previousStatus = connectionStatuses[targetId];
+    final previousRelationship =
+        profile.value?.id == targetId ? profile.value?.viewer : null;
+
+    connectionStatuses[targetId] = 'requested_by_viewer';
+    _updateProfileRelationship(
+      targetId,
+      _buildRelationshipFromStatus('requested_by_viewer'),
+    );
 
     try {
       final response = await userRepo.requestConnection(targetId);
@@ -260,6 +269,20 @@ class UserController extends GetxController {
         return false;
       }
     } catch (e) {
+      if (previousStatus == null) {
+        connectionStatuses.remove(targetId);
+      } else {
+        connectionStatuses[targetId] = previousStatus;
+      }
+
+      if (previousRelationship != null) {
+        _updateProfileRelationship(targetId, previousRelationship);
+      } else {
+        _updateProfileRelationship(
+          targetId,
+          _buildRelationshipFromStatus('none'),
+        );
+      }
       CustomSnackBar.failure(message: 'Failed to send connection request');
       return false;
     } finally {
@@ -358,6 +381,94 @@ class UserController extends GetxController {
     } catch (e) {
       CustomSnackBar.failure(message: 'Failed to decline connection');
       debugPrint('declineConnection error: $e');
+      return false;
+    } finally {
+      loader.hideLoader();
+    }
+  }
+
+  Future<bool> deleteConnection(
+    String connectionId, {
+    String? targetId,
+    bool refreshProfile = false,
+    String successMessage = 'Connection removed',
+  }) async {
+    if (connectionId.trim().isEmpty) {
+      return false;
+    }
+
+    try {
+      loader.showLoader();
+
+      final response = await userRepo.deleteConnection(connectionId);
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        final normalizedTargetId =
+            targetId ?? _extractConnectionTargetId(response.body);
+
+        if (normalizedTargetId != null) {
+          connectionStatuses[normalizedTargetId] = 'none';
+          _updateProfileRelationship(
+            normalizedTargetId,
+            _buildRelationshipFromStatus('none'),
+          );
+
+          if (refreshProfile || profile.value?.id == normalizedTargetId) {
+            await fetchProfile(normalizedTargetId, showLoader: false);
+          }
+        }
+
+        final notificationController = Get.find<NotificationController>();
+        await notificationController.refreshNotifications();
+        CustomSnackBar.success(message: successMessage);
+        return true;
+      }
+
+      CustomSnackBar.failure(
+        message: response.body?['message'] ?? 'Failed to update connection',
+      );
+      return false;
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to update connection');
+      debugPrint('deleteConnection error: $e');
+      return false;
+    } finally {
+      loader.hideLoader();
+    }
+  }
+
+  Future<bool> blockUser(
+    String targetId, {
+    bool closeProfile = false,
+  }) async {
+    if (targetId.trim().isEmpty) {
+      return false;
+    }
+
+    try {
+      loader.showLoader();
+
+      final response = await userRepo.blockUser(targetId);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        connectionStatuses[targetId] = 'none';
+        if (profile.value?.id == targetId) {
+          profile.value = profile.value?.copyWith(
+            viewer: _buildRelationshipFromStatus('none'),
+          );
+        }
+        CustomSnackBar.success(message: 'Account blocked');
+        if (closeProfile && Get.isOverlaysClosed == false) {
+          Get.back();
+        }
+        return true;
+      }
+
+      CustomSnackBar.failure(
+        message: response.body?['message'] ?? 'Failed to block account',
+      );
+      return false;
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to block account');
       return false;
     } finally {
       loader.hideLoader();

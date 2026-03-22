@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
 import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
@@ -8,6 +10,7 @@ import 'package:smart_swatcher/widgets/expandable_fab.dart';
 
 import '../../../controllers/event_controller.dart';
 import '../../../controllers/post_controller.dart';
+import '../../../controllers/profile_content_controller.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/post_card.dart';
@@ -26,6 +29,34 @@ class _ColorClubState extends State<ColorClub>
   bool get wantKeepAlive => true;
 
   PostController postController = Get.find<PostController>();
+  final AuthController authController = Get.find<AuthController>();
+  final ProfileContentController profileContentController =
+      Get.find<ProfileContentController>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadOwnMedia();
+    });
+  }
+
+  Future<void> _loadOwnMedia() async {
+    final ownerId = postController.currentActorId;
+    final ownerType = authController.currentAccountType.value == AccountType.company
+        ? 'company'
+        : 'stylist';
+
+    if (ownerId == null || ownerId.trim().isEmpty) {
+      return;
+    }
+
+    await profileContentController.loadForOwner(
+      ownerId: ownerId,
+      ownerType: ownerType,
+      includeProducts: ownerType == 'company',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,18 +139,245 @@ class _ColorClubState extends State<ColorClub>
                 children: [
                   FeedTab(),
                   liveRoom(),
-                  Center(
-                    child: Text(
-                      'Media',
-                      style: TextStyle(fontFamily: 'Poppins'),
-                    ),
-                  ),
+                  const _ColorClubMediaTab(),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ColorClubMediaTab extends StatelessWidget {
+  const _ColorClubMediaTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<ProfileContentController>();
+
+    return Stack(
+      children: [
+        Obx(() {
+          if (controller.isLoadingMedia.value && controller.displayMedia.isEmpty) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary5),
+            );
+          }
+
+          return RefreshIndicator(
+            color: AppColors.primary5,
+            onRefresh: controller.refreshCurrentOwner,
+            child: controller.displayMedia.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width20,
+                      vertical: Dimensions.height40,
+                    ),
+                    children: [
+                      Center(
+                        child: Text(
+                          'No display media yet',
+                          style: TextStyle(color: AppColors.grey4),
+                        ),
+                      ),
+                    ],
+                  )
+                : GridView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      Dimensions.width20,
+                      Dimensions.height20,
+                      Dimensions.width20,
+                      Dimensions.height100,
+                    ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: Dimensions.width15,
+                      mainAxisSpacing: Dimensions.height15,
+                      childAspectRatio: 0.8,
+                    ),
+                    itemCount: controller.displayMedia.length,
+                    itemBuilder: (_, index) {
+                      final item = controller.displayMedia[index];
+                      final imageUrl = MediaUrlHelper.resolve(item.url);
+
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                Dimensions.radius15,
+                              ),
+                              child: imageUrl == null
+                                  ? Container(
+                                      color: AppColors.grey2,
+                                      alignment: Alignment.center,
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        color: AppColors.grey4,
+                                      ),
+                                    )
+                                  : Image.network(
+                                      imageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: AppColors.grey2,
+                                        alignment: Alignment.center,
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: AppColors.grey4,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          Positioned(
+                            top: Dimensions.height10,
+                            right: Dimensions.width10,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: Dimensions.width8,
+                                vertical: Dimensions.height5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(
+                                  Dimensions.radius20,
+                                ),
+                              ),
+                              child: Text(
+                                item.visibility,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: Dimensions.font10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+          );
+        }),
+        Positioned(
+          bottom: Dimensions.height100,
+          right: Dimensions.width20,
+          child: FloatingActionButton(
+            heroTag: 'media_upload_fab',
+            backgroundColor: AppColors.primary5,
+            onPressed: () => _showUploadSheet(context),
+            child: Icon(
+              CupertinoIcons.plus,
+              color: AppColors.white,
+              size: Dimensions.iconSize20,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showUploadSheet(BuildContext context) async {
+    String visibility = 'General';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(Dimensions.radius20),
+        ),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.all(Dimensions.width20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Upload display media',
+                    style: TextStyle(
+                      fontSize: Dimensions.font18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: Dimensions.height10),
+                  Text(
+                    'Choose who can view this media in your profile and Color Club media tab.',
+                    style: TextStyle(
+                      color: AppColors.grey4,
+                      fontSize: Dimensions.font13,
+                    ),
+                  ),
+                  SizedBox(height: Dimensions.height20),
+                  Wrap(
+                    spacing: Dimensions.width10,
+                    children: ['General', 'Elite'].map((value) {
+                      final selected = visibility == value;
+                      return ChoiceChip(
+                        label: Text(value),
+                        selected: selected,
+                        onSelected: (_) {
+                          setSheetState(() {
+                            visibility = value;
+                          });
+                        },
+                        selectedColor: AppColors.primary5.withValues(alpha: 0.14),
+                      );
+                    }).toList(),
+                  ),
+                  SizedBox(height: Dimensions.height25),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            Navigator.of(sheetContext).pop();
+                            await Get.find<ProfileContentController>()
+                                .pickAndUploadDisplayMedia(
+                              visibility: visibility,
+                              source: ImageSource.gallery,
+                            );
+                          },
+                          child: const Text('Gallery'),
+                        ),
+                      ),
+                      SizedBox(width: Dimensions.width10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.of(sheetContext).pop();
+                            await Get.find<ProfileContentController>()
+                                .pickAndUploadDisplayMedia(
+                              visibility: visibility,
+                              source: ImageSource.camera,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary5,
+                          ),
+                          child: const Text(
+                            'Camera',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

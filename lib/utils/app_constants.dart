@@ -33,6 +33,8 @@ class AppConstants {
   static const String REMEMBER_KEY = 'remember-me';
   static const String STYLIST_KEY = 'stylist-key';
   static const String COMPANY_KEY = 'company-key';
+  static const String COMPANY_DASHBOARD_COACH_SHOWN =
+      'company-dashboard-coach-shown';
 
 
 
@@ -50,8 +52,13 @@ class AppConstants {
   static const String REQUEST_CONNECTION = '/api/connections';
   static String ACCEPT_CONNECTION(String targetId) => '/api/connections/$targetId/accept';
   static String DECLINE_CONNECTION(String targetId) => '/api/connections/$targetId/decline';
+  static String DELETE_CONNECTION(String targetId) => '/api/connections/$targetId';
+  static const String BLOCKS_URI = '/api/blocks';
 
   static String GET_PUBLIC_PROFILE(String profileId) => '/api/profiles/$profileId';
+  static const String DISPLAY_MEDIA_URI = '/api/display-media';
+  static const String TIPS_URI = '/api/tips';
+  static const String PRODUCTS_URI = '/api/products';
 
   static const String GET_CONVERSATIONS = '/api/conversations';
   static const String GET_PRIVATE_CONVERSATIONS = '/api/conversations/private';
@@ -87,6 +94,8 @@ class AppConstants {
       '/api/notifications/$notificationId/read';
   static const String COMPANY_ANALYTICS_OVERVIEW =
       '/api/company-analytics/overview';
+  static const String COMPANY_ANALYTICS_BREAKDOWN =
+      '/api/company-analytics/breakdown';
 
 
 

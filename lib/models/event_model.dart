@@ -126,6 +126,7 @@ class EventModel {
   final String? description;
   final String? coverImageUrl;
   final String? visibility;
+  final bool audioOnly;
   final DateTime? scheduledStartAt;
   final DateTime? startedAt;
   final DateTime? endedAt;
@@ -146,6 +147,7 @@ class EventModel {
     this.description,
     this.coverImageUrl,
     this.visibility,
+    this.audioOnly = true,
     this.scheduledStartAt,
     this.startedAt,
     this.endedAt,
@@ -167,6 +169,7 @@ class EventModel {
       description: json['description']?.toString(),
       coverImageUrl: json['coverImageUrl']?.toString(),
       visibility: json['visibility']?.toString(),
+      audioOnly: json['audioOnly'] ?? true,
       scheduledStartAt: json['scheduledStartAt'] != null
           ? DateTime.tryParse(json['scheduledStartAt'].toString())
           : null,

@@ -22,7 +22,9 @@ class ClientFolderController extends GetxController {
   var isFetching = false.obs;
   var formulationsList = <FormulationModel>[].obs;
   var recentFormulations = <FormulationModel>[].obs;
+  var allFormulations = <FormulationModel>[].obs;
   var isFetchingRecentFormulations = false.obs;
+  var isFetchingAllFormulations = false.obs;
   final RxSet<String> refreshingPredictionIds = <String>{}.obs;
   var clientImage = Rxn<File>();
   Map<String, dynamic>? suggestedMetrics;
@@ -391,6 +393,57 @@ class ClientFolderController extends GetxController {
     }
   }
 
+  Future<void> fetchAllFormulations() async {
+    if (isFetchingAllFormulations.value) {
+      return;
+    }
+
+    isFetchingAllFormulations.value = true;
+
+    try {
+      if (foldersList.isEmpty) {
+        allFormulations.clear();
+        return;
+      }
+
+      final responses = await Future.wait(
+        foldersList
+            .where((folder) => folder.id != null && folder.id!.trim().isNotEmpty)
+            .map((folder) => repo.getFormulations(folder.id!)),
+      );
+
+      final aggregated = <FormulationModel>[];
+
+      for (final response in responses) {
+        if (response.statusCode != 200) {
+          continue;
+        }
+
+        final data = response.body['formulations'] ?? response.body;
+        if (data is List) {
+          aggregated.addAll(
+            data.map((item) => FormulationModel.fromJson(item)).toList(),
+          );
+        }
+      }
+
+      aggregated.sort((a, b) {
+        final aDate = DateTime.tryParse(a.createdAt ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = DateTime.tryParse(b.createdAt ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate);
+      });
+
+      allFormulations.assignAll(aggregated);
+      await _refreshPredictionStates(allFormulations);
+    } catch (e) {
+      print("All formulations error: $e");
+    } finally {
+      isFetchingAllFormulations.value = false;
+    }
+  }
+
   Future<void> getFolders() async {
     isFetching.value = true;
     try {
@@ -403,6 +456,7 @@ class ClientFolderController extends GetxController {
           data.map((e) => ClientFolderModel.fromJson(e)).toList(),
         );
         await fetchRecentFormulations();
+        await fetchAllFormulations();
       } else {
         print("Failed to fetch folders: ${response.statusCode}");
       }

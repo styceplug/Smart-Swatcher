@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,20 +25,92 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> {
   final PostController postController = Get.find<PostController>();
-  bool _hasTriggeredImpression = false;
+  ScrollPosition? _scrollPosition;
+  Timer? _visibilityDebounce;
+  bool _impressionTriggered = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _attachScrollListener();
+    _scheduleVisibilityCheck(const Duration(milliseconds: 250));
+  }
 
-    if (_hasTriggeredImpression) {
+  @override
+  void dispose() {
+    _visibilityDebounce?.cancel();
+    _detachScrollListener();
+    super.dispose();
+  }
+
+  void _attachScrollListener() {
+    final nextPosition = Scrollable.maybeOf(context)?.position;
+    if (_scrollPosition == nextPosition) {
       return;
     }
 
-    _hasTriggeredImpression = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      postController.recordImpression(widget.post.id);
-    });
+    _detachScrollListener();
+    _scrollPosition = nextPosition;
+    _scrollPosition?.addListener(_handleScroll);
+  }
+
+  void _detachScrollListener() {
+    _scrollPosition?.removeListener(_handleScroll);
+    _scrollPosition = null;
+  }
+
+  void _handleScroll() {
+    _scheduleVisibilityCheck(const Duration(milliseconds: 180));
+  }
+
+  void _scheduleVisibilityCheck(Duration delay) {
+    if (_impressionTriggered || !mounted) {
+      return;
+    }
+
+    _visibilityDebounce?.cancel();
+    _visibilityDebounce = Timer(delay, _checkAndRecordIfVisible);
+  }
+
+  Future<void> _checkAndRecordIfVisible() async {
+    if (!mounted || _impressionTriggered) {
+      return;
+    }
+
+    if (!postController.canRecordImpression(widget.post.id)) {
+      _impressionTriggered = true;
+      return;
+    }
+
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return;
+    }
+
+    final mediaQuery = MediaQuery.of(context);
+    final rect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    final viewport = Rect.fromLTWH(
+      0,
+      mediaQuery.padding.top,
+      mediaQuery.size.width,
+      mediaQuery.size.height - mediaQuery.padding.top - mediaQuery.padding.bottom,
+    );
+    final visibleRect = rect.intersect(viewport);
+    if (visibleRect.isEmpty || rect.width <= 0 || rect.height <= 0) {
+      return;
+    }
+
+    final visibleFraction =
+        (visibleRect.width * visibleRect.height) / (rect.width * rect.height);
+    if (visibleFraction < 0.65) {
+      return;
+    }
+
+    _impressionTriggered = true;
+    final recorded = await postController.recordImpression(widget.post.id);
+    if (!recorded && mounted) {
+      _impressionTriggered = false;
+    }
   }
 
   @override
