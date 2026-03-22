@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/app_controller.dart';
 import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/controllers/folder_controller.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
-import 'package:smart_swatcher/widgets/custom_button.dart';
 
 import '../../../routes/routes.dart';
 import '../../../widgets/advert_card.dart';
@@ -24,6 +25,8 @@ class _StudioScreenState extends State<StudioScreen>
   bool get wantKeepAlive => true;
 
   AuthController authController = Get.find<AuthController>();
+  final ClientFolderController folderController =
+      Get.find<ClientFolderController>();
 
   final List<AdvertItem> adverts = [
     AdvertItem(
@@ -64,15 +67,35 @@ class _StudioScreenState extends State<StudioScreen>
 
   @override
   void initState() {
-    // authController.getProfile();
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   authController.getProfile();
-    // });
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      folderController.fetchRecentFormulations();
+    });
+  }
+
+  void _openFormulatorTab() {
+    Get.find<AppController>().changeCurrentAppPage(1);
+  }
+
+  String _resolveFormulationImage(String? path) {
+    if (path == null || path.trim().isEmpty) {
+      return '';
+    }
+
+    if (path.startsWith('http')) {
+      return path;
+    }
+
+    if (path.startsWith('/')) {
+      return '${AppConstants.BASE_URL}$path';
+    }
+
+    return '${AppConstants.BASE_URL}/$path';
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Obx((){
       return  SingleChildScrollView(
         child: Container(
@@ -161,37 +184,176 @@ class _StudioScreenState extends State<StudioScreen>
                       ],
                     ),
                     SizedBox(height: Dimensions.height40),
-                    Text(
-                      'No formulation yet, Add a photo',
-                      style: TextStyle(
-                        fontSize: Dimensions.font16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.grey4,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    SizedBox(height: Dimensions.height20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Add a Photo',
-                          style: TextStyle(
-                            fontSize: Dimensions.font16,
-                            fontWeight: FontWeight.w600,
+                    Obx(() {
+                      if (folderController.isFetchingRecentFormulations.value &&
+                          folderController.recentFormulations.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(
                             color: AppColors.primary5,
-                            fontFamily: 'Poppins',
-                            decoration: TextDecoration.underline,
                           ),
+                        );
+                      }
+
+                      if (folderController.recentFormulations.isEmpty) {
+                        return Column(
+                          children: [
+                            Text(
+                              'No formulation yet, add a photo',
+                              style: TextStyle(
+                                fontSize: Dimensions.font16,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.grey4,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                            SizedBox(height: Dimensions.height20),
+                            InkWell(
+                              onTap: _openFormulatorTab,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Add a Photo',
+                                    style: TextStyle(
+                                      fontSize: Dimensions.font16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary5,
+                                      fontFamily: 'Poppins',
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  SizedBox(width: Dimensions.width5),
+                                  Icon(
+                                    Icons.photo_library_outlined,
+                                    color: AppColors.primary5,
+                                    size: Dimensions.iconSize20,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return SizedBox(
+                        height: Dimensions.height100 * 1.6,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: folderController.recentFormulations.length,
+                          separatorBuilder: (_, __) =>
+                              SizedBox(width: Dimensions.width15),
+                          itemBuilder: (context, index) {
+                            final formulation =
+                                folderController.recentFormulations[index];
+                            final imageUrl = _resolveFormulationImage(
+                              formulation.hasPredictionImage
+                                  ? formulation.predictionImageUrl
+                                  : formulation.imageUrl,
+                            );
+
+                            return GestureDetector(
+                              onTap: _openFormulatorTab,
+                              child: Container(
+                                width: Dimensions.width100 * 1.45,
+                                padding: EdgeInsets.all(Dimensions.width13),
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(
+                                    Dimensions.radius15,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.05),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          Dimensions.radius10,
+                                        ),
+                                        child: imageUrl.isEmpty
+                                            ? Container(
+                                                color: AppColors.grey2,
+                                                alignment: Alignment.center,
+                                                child: Icon(
+                                                  Icons.image_outlined,
+                                                  color: AppColors.grey4,
+                                                ),
+                                              )
+                                            : Image.network(
+                                                imageUrl,
+                                                width: double.infinity,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    Container(
+                                                  color: AppColors.grey2,
+                                                  alignment: Alignment.center,
+                                                  child: Icon(
+                                                    Icons.broken_image,
+                                                    color: AppColors.grey4,
+                                                  ),
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                    SizedBox(height: Dimensions.height10),
+                                    Text(
+                                      'Lvl ${formulation.naturalBaseLevel} to ${formulation.desiredLevel}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: Dimensions.font14,
+                                        fontWeight: FontWeight.w600,
+                                        fontFamily: 'Poppins',
+                                      ),
+                                    ),
+                                    SizedBox(height: Dimensions.height5),
+                                    Text(
+                                      formulation.desiredTone?.trim().isNotEmpty ==
+                                              true
+                                          ? formulation.desiredTone!
+                                          : 'Formulation',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: Dimensions.font12,
+                                        color: AppColors.grey4,
+                                        fontFamily: 'Poppins',
+                                      ),
+                                    ),
+                                    SizedBox(height: Dimensions.height5),
+                                    Text(
+                                      formulation.isPredictionActive
+                                          ? 'Generating preview...'
+                                          : formulation.predictionImageStatus ==
+                                                  'failed'
+                                              ? 'Preview failed'
+                                              : 'Ready',
+                                      style: TextStyle(
+                                        fontSize: Dimensions.font12,
+                                        color: formulation.isPredictionActive
+                                            ? AppColors.primary5
+                                            : formulation.predictionImageStatus ==
+                                                    'failed'
+                                                ? Colors.red
+                                                : AppColors.grey4,
+                                        fontFamily: 'Poppins',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                        SizedBox(width: Dimensions.width5),
-                        Icon(
-                          Icons.photo_library_outlined,
-                          color: AppColors.primary5,
-                          size: Dimensions.iconSize20,
-                        ),
-                      ],
-                    ),
+                      );
+                    }),
                     SizedBox(height: Dimensions.height40),
                     Row(
                       children: [

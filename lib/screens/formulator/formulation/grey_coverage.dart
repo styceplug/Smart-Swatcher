@@ -1,15 +1,11 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:iconsax/iconsax.dart';
 
 import '../../../routes/routes.dart';
-import '../../../utils/app_constants.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/custom_button.dart';
-import '../../../widgets/post_card.dart';
 
 
 class GreyCoverage extends StatefulWidget {
@@ -56,7 +52,12 @@ class _GreyCoverageState extends State<GreyCoverage> {
 
     wizardData['greyPercentage'] = selectedValue;
 
-    Get.toNamed(AppRoutes.greyExceeds, arguments: wizardData);
+    if ((selectedValue ?? 0) > 10) {
+      Get.toNamed(AppRoutes.greyExceeds, arguments: wizardData);
+      return;
+    }
+
+    Get.toNamed(AppRoutes.chooseCdl, arguments: wizardData);
   }
 
   @override
@@ -210,7 +211,11 @@ class _GreyCoverageState extends State<GreyCoverage> {
                       child: Container(
                         padding: EdgeInsets.symmetric(vertical: Dimensions.height15),
                         decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(color: AppColors.grey2.withOpacity(0.5))),
+                          border: Border(
+                            bottom: BorderSide(
+                              color: AppColors.grey2.withValues(alpha: 0.5),
+                            ),
+                          ),
                         ),
                         child: Row(
                           children: [

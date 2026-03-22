@@ -46,10 +46,26 @@ class AppConstants {
   static const String STYLIST_PROFILE_URI = '/api/stylists/me';
   static const String COMPANY_PROFILE_URI = '/api/companies/me';
   static const String GET_RECOMMENDED_PROFILE = '/api/connections/suggestions';
+  static const String GET_CONNECTIONS = '/api/connections';
   static const String REQUEST_CONNECTION = '/api/connections';
   static String ACCEPT_CONNECTION(String targetId) => '/api/connections/$targetId/accept';
+  static String DECLINE_CONNECTION(String targetId) => '/api/connections/$targetId/decline';
 
   static String GET_PUBLIC_PROFILE(String profileId) => '/api/profiles/$profileId';
+
+  static const String GET_CONVERSATIONS = '/api/conversations';
+  static const String GET_PRIVATE_CONVERSATIONS = '/api/conversations/private';
+  static const String GET_GROUP_CONVERSATIONS = '/api/conversations/groups';
+  static const String CREATE_PRIVATE_CONVERSATION = '/api/conversations/private';
+  static const String CREATE_PRIVATE_CONVERSATION_WITH_MESSAGE =
+      '/api/conversations/private/with-message';
+  static const String CREATE_GROUP_CONVERSATION = '/api/conversations/groups';
+  static String GET_CONVERSATION_MESSAGES(String conversationId) =>
+      '/api/conversations/$conversationId/messages';
+  static String SEND_CONVERSATION_MESSAGE(String conversationId) =>
+      '/api/conversations/$conversationId/messages';
+  static String DELETE_CONVERSATION(String conversationId) =>
+      '/api/conversations/$conversationId';
 
 
   static const String CREATE_EVENT = '/api/events';
@@ -67,6 +83,10 @@ class AppConstants {
 
 
   static const String GET_NOTIFICATIONS = '/api/notifications';
+  static String MARK_NOTIFICATION_READ(String notificationId) =>
+      '/api/notifications/$notificationId/read';
+  static const String COMPANY_ANALYTICS_OVERVIEW =
+      '/api/company-analytics/overview';
 
 
 
@@ -109,4 +129,3 @@ class MediaUrlHelper {
     return '$baseUrl/$value';
   }
 }
-

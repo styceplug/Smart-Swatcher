@@ -3,10 +3,14 @@ import 'dart:io';
 
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/controllers/user_controller.dart';
 import 'package:smart_swatcher/data/repo/post_repo.dart';
 import 'package:smart_swatcher/helpers/global_loader_controller.dart';
+import 'package:smart_swatcher/routes/routes.dart';
 import 'package:uuid/uuid.dart';
 import '../models/post_model.dart';
+import '../widgets/snackbars.dart';
 
 class PostController extends GetxController {
   final PostRepo postRepo = Get.find<PostRepo>();
@@ -18,12 +22,17 @@ class PostController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxString selectedAudience = 'General'.obs;
   var postsList = <PostModel>[].obs;
+  var ownPostsList = <PostModel>[].obs;
   var isFeedLoading = false.obs;
+  var isOwnPostsLoading = false.obs;
   var currentPostComments = <CommentModel>[].obs;
   var isCommentsLoading = false.obs;
   var selectedMediaFiles = <File>[].obs;
   final Set<String> _recordedImpressionIds = <String>{};
   final RxSet<String> recordingImpressionIds = <String>{}.obs;
+  final RxSet<String> deletingPostIds = <String>{}.obs;
+  final RxSet<String> likingPostIds = <String>{}.obs;
+  final RxSet<String> savingPostIds = <String>{}.obs;
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -37,6 +46,30 @@ class PostController extends GetxController {
 
   bool hasRecordedImpression(String postId) {
     return _recordedImpressionIds.contains(postId);
+  }
+
+  String? get currentActorId {
+    final authController = Get.find<AuthController>();
+
+    switch (authController.currentAccountType.value) {
+      case AccountType.stylist:
+        return authController.stylistProfile.value?.id;
+      case AccountType.company:
+        return authController.companyProfile.value?.id;
+      case null:
+        return authController.companyProfile.value?.id ??
+            authController.stylistProfile.value?.id;
+    }
+  }
+
+  bool isOwnPost(PostModel post) {
+    final actorId = currentActorId;
+    final authorId = post.author?.id;
+
+    return actorId != null &&
+        actorId.trim().isNotEmpty &&
+        authorId != null &&
+        authorId == actorId;
   }
 
   Future<void> recordImpression(String postId) async {
@@ -99,6 +132,43 @@ class PostController extends GetxController {
   void removeMedia(int index) => selectedMediaFiles.removeAt(index);
   void setAudience(String value) => selectedAudience.value = value;
 
+  Iterable<RxList<PostModel>> _allPostCollections() sync* {
+    yield postsList;
+    yield ownPostsList;
+
+    if (Get.isRegistered<UserController>()) {
+      yield Get.find<UserController>().profilePosts;
+    }
+  }
+
+  List<PostModel> _matchingPosts(String postId) {
+    final matches = <PostModel>[];
+
+    for (final list in _allPostCollections()) {
+      matches.addAll(list.where((post) => post.id == postId));
+    }
+
+    return matches;
+  }
+
+  void _applyToMatchingPosts(
+    String postId,
+    void Function(PostModel post) updater,
+  ) {
+    for (final list in _allPostCollections()) {
+      var touched = false;
+
+      for (final post in list.where((item) => item.id == postId)) {
+        updater(post);
+        touched = true;
+      }
+
+      if (touched) {
+        list.refresh();
+      }
+    }
+  }
+
   // --- Helper: Extract Tags ---
   List<String> _extractTags(String caption) {
     RegExp exp = RegExp(r"\B#\w\w+");
@@ -109,7 +179,7 @@ class PostController extends GetxController {
 
   Future<void> createPost(String caption) async {
     if (caption.trim().isEmpty && selectedMediaFiles.isEmpty) {
-      Get.snackbar("Error", "Please add a caption or photo");
+      CustomSnackBar.failure(message: "Please add a caption or photo");
       return;
     }
 
@@ -140,18 +210,26 @@ class PostController extends GetxController {
       Response response = await postRepo.createPost(fields, selectedMediaFiles);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        Get.back(); // Close screen
-        Get.snackbar("Success", "Post created successfully!");
         selectedMediaFiles.clear();
-        fetchFeed(); // Refresh the feed
+        await fetchFeed();
+
+        final navigator = Get.key.currentState;
+        if (navigator != null && navigator.canPop()) {
+          navigator.pop();
+        }
+
+        CustomSnackBar.success(message: "Post created successfully!");
       } else {
-        // Parse error message
-        String msg = response.body is Map ? response.body['message'] ?? response.statusText : response.statusText;
-        Get.snackbar("Error", msg ?? "Failed to post");
+        String msg = response.body is Map
+            ? (response.body['message']?.toString() ??
+                response.statusText?.toString() ??
+                "Failed to post")
+            : (response.statusText?.toString() ?? "Failed to post");
+        CustomSnackBar.failure(message: msg);
       }
     } catch (e) {
       print("Create Post Error: $e");
-      Get.snackbar("Error", "An unexpected error occurred");
+      CustomSnackBar.failure(message: "An unexpected error occurred");
     } finally {
       isLoading.value = false;
       update();
@@ -190,14 +268,15 @@ class PostController extends GetxController {
             currentPostComments.assignAll(commentList.map((e) => CommentModel.fromJson(e)).toList());
           }
 
-          // 2. Update the Post's Comment Count (Metrics) in the Feed
-          // We find the post in the main list and update it so the UI counts increase
-          int index = postsList.indexWhere((p) => p.id == postId);
-          if (index != -1) {
-            // Update the specific post with new data (including new metrics)
-            postsList[index] = PostModel.fromJson(postData);
-            postsList.refresh(); // Trigger UI updates
-          }
+          final updatedPost = PostModel.fromJson(postData);
+          _applyToMatchingPosts(postId, (post) {
+            post.metrics = updatedPost.metrics;
+            post.media = updatedPost.media;
+            post.tags = updatedPost.tags;
+            post.isLiked = updatedPost.isLiked;
+            post.isSaved = updatedPost.isSaved;
+            post.formula = updatedPost.formula;
+          });
         }
       }
     } catch (e) {
@@ -225,80 +304,232 @@ class PostController extends GetxController {
     }
   }
 
+  Future<List<PostModel>> fetchPostsForAuthor({
+    required String authorId,
+    String? authorType,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final response = await postRepo.getPosts(
+      limit: limit,
+      offset: offset,
+      authorId: authorId,
+      authorType: authorType,
+    );
+
+    if (response.statusCode != 200) {
+      final message = response.body is Map
+          ? response.body['message']?.toString()
+          : response.statusText;
+      throw Exception(message ?? 'Failed to load posts');
+    }
+
+    final List<dynamic> data = response.body['posts'] ?? <dynamic>[];
+    return data.map((e) => PostModel.fromJson(e)).toList();
+  }
+
+  Future<void> fetchOwnPosts({
+    String? authorId,
+    String? authorType,
+    int limit = 50,
+  }) async {
+    final resolvedAuthorId = authorId ?? currentActorId;
+
+    if (resolvedAuthorId == null || resolvedAuthorId.trim().isEmpty) {
+      ownPostsList.clear();
+      return;
+    }
+
+    final resolvedAuthorType = authorType ??
+        (() {
+          final authController = Get.find<AuthController>();
+          switch (authController.currentAccountType.value) {
+            case AccountType.company:
+              return 'company';
+            case AccountType.stylist:
+              return 'stylist';
+            case null:
+              return authController.companyProfile.value != null
+                  ? 'company'
+                  : 'stylist';
+          }
+        })();
+
+    isOwnPostsLoading.value = true;
+
+    try {
+      ownPostsList.assignAll(
+        await fetchPostsForAuthor(
+          authorId: resolvedAuthorId,
+          authorType: resolvedAuthorType,
+          limit: limit,
+        ),
+      );
+    } catch (e) {
+      print("Own Posts Error: $e");
+      ownPostsList.clear();
+    } finally {
+      isOwnPostsLoading.value = false;
+    }
+  }
+
+  Future<bool> deletePost(String postId) async {
+    if (postId.trim().isEmpty || deletingPostIds.contains(postId)) {
+      return false;
+    }
+
+    deletingPostIds.add(postId);
+
+    try {
+      final response = await postRepo.deletePost(postId);
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        postsList.removeWhere((post) => post.id == postId);
+        postsList.refresh();
+        ownPostsList.removeWhere((post) => post.id == postId);
+        ownPostsList.refresh();
+
+        if (Get.isRegistered<UserController>()) {
+          final profilePosts = Get.find<UserController>().profilePosts;
+          profilePosts.removeWhere((post) => post.id == postId);
+          profilePosts.refresh();
+        }
+
+        CustomSnackBar.success(message: 'Post deleted successfully');
+
+        if (Get.currentRoute == AppRoutes.commentsScreen) {
+          final navigator = Get.key.currentState;
+          if (navigator != null && navigator.canPop()) {
+            navigator.pop();
+          }
+        }
+
+        return true;
+      }
+
+      final message = response.body is Map
+          ? response.body['message']?.toString()
+          : response.statusText;
+      CustomSnackBar.failure(message: message ?? 'Failed to delete post');
+      return false;
+    } catch (e) {
+      CustomSnackBar.failure(message: 'Failed to delete post');
+      return false;
+    } finally {
+      deletingPostIds.remove(postId);
+    }
+  }
+
   Future<void> toggleLike(String postId) async {
-    int index = postsList.indexWhere((p) => p.id == postId);
-    if (index == -1) return;
+    if (likingPostIds.contains(postId)) {
+      return;
+    }
+
+    final matchingPosts = _matchingPosts(postId);
+    if (matchingPosts.isEmpty) {
+      return;
+    }
+
+    final originalStatus = matchingPosts.first.isLiked;
+    final originalLikes = matchingPosts.first.metrics?.likes ?? 0;
+    final optimisticLikes = originalStatus ? originalLikes - 1 : originalLikes + 1;
+
+    likingPostIds.add(postId);
+
+    _applyToMatchingPosts(postId, (post) {
+      post.isLiked = !originalStatus;
+      post.metrics ??= PostMetrics();
+      post.metrics!.likes = optimisticLikes < 0 ? 0 : optimisticLikes;
+    });
 
     try {
       Response response = await postRepo.likePost(postId);
 
       if (response.statusCode == 200) {
-        // Backend Response: {liked: true, likes: 1}
-        bool likedStatus = response.body['liked'];
-        int likesCount = response.body['likes'];
+        final likedStatus = response.body['liked'] == true;
+        final likesCount =
+            int.tryParse(response.body['likes'].toString()) ?? optimisticLikes;
 
-        // 1. Update the local model
-        var post = postsList[index];
-        post.isLiked = likedStatus;
-        post.metrics?.likes = likesCount;
-
-        // 2. IMPORTANT: Force the List to notify listeners (The UI)
-        postsList.refresh();
+        _applyToMatchingPosts(postId, (post) {
+          post.isLiked = likedStatus;
+          post.metrics ??= PostMetrics();
+          post.metrics!.likes = likesCount < 0 ? 0 : likesCount;
+        });
+      } else {
+        _applyToMatchingPosts(postId, (post) {
+          post.isLiked = originalStatus;
+          post.metrics ??= PostMetrics();
+          post.metrics!.likes = originalLikes;
+        });
       }
     } catch (e) {
       print("Like Error: $e");
+      _applyToMatchingPosts(postId, (post) {
+        post.isLiked = originalStatus;
+        post.metrics ??= PostMetrics();
+        post.metrics!.likes = originalLikes;
+      });
+    } finally {
+      likingPostIds.remove(postId);
     }
   }
 
   Future<void> toggleSave(String postId) async {
-    int index = postsList.indexWhere((p) => p.id == postId);
-    if (index == -1) return;
-
-    // 1. Optimistic Update
-    var post = postsList[index];
-    bool originalStatus = post.isSaved;
-
-    post.isSaved = !post.isSaved;
-    if (post.metrics != null) {
-      post.metrics!.saves = post.isSaved
-          ? post.metrics!.saves + 1
-          : post.metrics!.saves - 1;
+    if (savingPostIds.contains(postId)) {
+      return;
     }
-    postsList.refresh();
+
+    final matchingPosts = _matchingPosts(postId);
+    if (matchingPosts.isEmpty) {
+      return;
+    }
+
+    final originalStatus = matchingPosts.first.isSaved;
+    final originalSaves = matchingPosts.first.metrics?.saves ?? 0;
+    final optimisticSaves = originalStatus ? originalSaves - 1 : originalSaves + 1;
+
+    savingPostIds.add(postId);
+
+    _applyToMatchingPosts(postId, (post) {
+      post.isSaved = !originalStatus;
+      post.metrics ??= PostMetrics();
+      post.metrics!.saves = optimisticSaves < 0 ? 0 : optimisticSaves;
+    });
 
     try {
       Response response = await postRepo.savePost(postId);
 
-      // 2. Handle Success (Sync with Server)
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // FIX: The API returns { "saved": true, "saves": 1 } directly
-        // We read 'saves' directly from body, NOT body['metrics']['saves']
-
         var body = response.body;
-        if (body is Map && body['saves'] != null) {
-          post.metrics?.saves = body['saves']; // Sync exact count from server
-          postsList.refresh();
+        if (body is Map) {
+          final savedStatus = body['saved'] == true;
+          final savesCount =
+              int.tryParse(body['saves'].toString()) ?? optimisticSaves;
+
+          _applyToMatchingPosts(postId, (post) {
+            post.isSaved = savedStatus;
+            post.metrics ??= PostMetrics();
+            post.metrics!.saves = savesCount < 0 ? 0 : savesCount;
+          });
         }
       }
-      // 3. Handle Failure (Revert)
       else {
-        _revertSave(post, originalStatus);
+        _revertSave(postId, originalStatus, originalSaves);
       }
     } catch (e) {
       print("Save Error: $e");
-      _revertSave(post, originalStatus);
+      _revertSave(postId, originalStatus, originalSaves);
+    } finally {
+      savingPostIds.remove(postId);
     }
   }
 
-  void _revertSave(PostModel post, bool originalStatus) {
-    post.isSaved = originalStatus;
-    if (post.metrics != null) {
-      post.metrics!.saves = post.isSaved
-          ? post.metrics!.saves + 1
-          : post.metrics!.saves - 1;
-    }
-    postsList.refresh();
-    Get.snackbar("Error", "Failed to save post");
+  void _revertSave(String postId, bool originalStatus, int originalSaves) {
+    _applyToMatchingPosts(postId, (post) {
+      post.isSaved = originalStatus;
+      post.metrics ??= PostMetrics();
+      post.metrics!.saves = originalSaves;
+    });
+    CustomSnackBar.failure(message: "Failed to save post");
   }
 
 

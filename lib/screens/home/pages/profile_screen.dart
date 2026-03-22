@@ -9,7 +9,6 @@ import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/post_card.dart';
-import 'package:smart_swatcher/models/post_model.dart';
 import 'package:smart_swatcher/widgets/tips_card.dart';
 import '../../../routes/routes.dart';
 
@@ -25,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   late TabController _tabController;
   final AuthController authController = Get.find<AuthController>();
   PostController postController = Get.find<PostController>();
+  String? _lastLoadedProfileId;
 
   @override
   bool get wantKeepAlive => true;
@@ -41,9 +41,29 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
+  void _ensureOwnPostsLoaded() {
+    final profileId = authController.stylistProfile.value?.id;
+    if (profileId == null || profileId.trim().isEmpty) {
+      return;
+    }
+
+    if (_lastLoadedProfileId == profileId) {
+      return;
+    }
+
+    _lastLoadedProfileId = profileId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      postController.fetchOwnPosts(
+        authorId: profileId,
+        authorType: 'stylist',
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAlive
+    _ensureOwnPostsLoaded();
 
     return Scaffold(
       body: NestedScrollView(
@@ -122,7 +142,7 @@ class _ProfileHeader extends StatelessWidget {
           height: Dimensions.screenHeight / 2.2,
           padding: EdgeInsets.only(bottom: Dimensions.height20),
           decoration: BoxDecoration(
-            color: bgColor.withOpacity(0.3),
+            color: bgColor.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(Dimensions.radius20),
             image: DecorationImage(
               fit: BoxFit.cover,
@@ -185,7 +205,13 @@ class _ProfileHeader extends StatelessWidget {
             customTitle: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Iconsax.user_add, size: Dimensions.iconSize20 * 1.4),
+                InkWell(
+                  onTap: () => Get.toNamed(AppRoutes.recommendedAccountScreen),
+                  child: Icon(
+                    Iconsax.user_add,
+                    size: Dimensions.iconSize20 * 1.4,
+                  ),
+                ),
                 Row(
                   children: [
                     InkWell(
@@ -352,7 +378,7 @@ class _ProfileHeader extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontSize: Dimensions.font14,
                     fontWeight: FontWeight.w300,
-                    color: AppColors.black1.withOpacity(0.7),
+                    color: AppColors.black1.withValues(alpha: 0.7),
                   ),
                 ),
                 SizedBox(height: Dimensions.height20),
@@ -460,18 +486,16 @@ class FormulasTab extends StatelessWidget {
     final PostController controller = Get.find<PostController>();
 
     return Obx(() {
-      if (controller.isFeedLoading.value) {
+      if (controller.isOwnPostsLoading.value) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.primary5),
         );
       }
 
-      // Filter: Only show posts that have formula data
-      // Note: Adjust logic if your backend identifies formulas differently (e.g. post.type == 'formula')
       final formulaPosts =
-          controller.postsList
+          controller.ownPostsList
               .where(
-                (p) => p.base != null || p.lights != null || p.toner != null,
+                (p) => p.hasFormula || p.base != null || p.lights != null || p.toner != null,
               )
               .toList();
 
@@ -487,13 +511,17 @@ class FormulasTab extends StatelessWidget {
         );
       }
 
-      return ListView.builder(
-        physics: const ClampingScrollPhysics(),
-        padding: EdgeInsets.zero,
-        itemCount: formulaPosts.length,
-        itemBuilder: (context, index) {
-          return FormulasCard(post: formulaPosts[index]);
-        },
+      return RefreshIndicator(
+        color: AppColors.primary5,
+        onRefresh: () => controller.fetchOwnPosts(authorType: 'stylist'),
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: formulaPosts.length,
+          itemBuilder: (context, index) {
+            return FormulasCard(post: formulaPosts[index]);
+          },
+        ),
       );
     });
   }
@@ -507,29 +535,41 @@ class FeedTab extends StatelessWidget {
     final PostController controller = Get.find<PostController>();
 
     return Obx(() {
-      if (controller.isFeedLoading.value) {
+      if (controller.isOwnPostsLoading.value) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.primary5),
         );
       }
 
-      if (controller.postsList.isEmpty) {
-        return Center(
-          child: Text(
-            "No posts found",
-            style: TextStyle(color: AppColors.grey4),
-          ),
-        );
-      }
-
       return Stack(
         children: [
-          ListView.builder(
-            padding: EdgeInsets.only(bottom: Dimensions.height70),
-            itemCount: controller.postsList.length,
-            itemBuilder: (context, index) {
-              return PostCard(post: controller.postsList[index]);
-            },
+          RefreshIndicator(
+            color: AppColors.primary5,
+            onRefresh: () => controller.fetchOwnPosts(authorType: 'stylist'),
+            child: controller.ownPostsList.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width20,
+                      vertical: Dimensions.height40,
+                    ),
+                    children: [
+                      Center(
+                        child: Text(
+                          "No posts found",
+                          style: TextStyle(color: AppColors.grey4),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(bottom: Dimensions.height70),
+                    itemCount: controller.ownPostsList.length,
+                    itemBuilder: (context, index) {
+                      return PostCard(post: controller.ownPostsList[index]);
+                    },
+                  ),
           ),
 
           // Floating Action Button
@@ -594,24 +634,69 @@ class MediaTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: EdgeInsets.all(Dimensions.width20),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: Dimensions.width20,
-        mainAxisSpacing: Dimensions.height20,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: 4, // Dummy count
-      itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.grey2,
-            borderRadius: BorderRadius.circular(Dimensions.radius15),
-          ),
+    final controller = Get.find<PostController>();
+
+    return Obx(() {
+      final media = controller.ownPostsList
+          .expand((post) => post.media)
+          .where((item) => item.url.trim().isNotEmpty)
+          .toList();
+
+      if (controller.isOwnPostsLoading.value) {
+        return const Center(
+          child: CircularProgressIndicator(color: AppColors.primary5),
         );
-      },
-    );
+      }
+
+      return RefreshIndicator(
+        color: AppColors.primary5,
+        onRefresh: () => controller.fetchOwnPosts(authorType: 'stylist'),
+        child: media.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimensions.width20,
+                  vertical: Dimensions.height40,
+                ),
+                children: [
+                  Center(
+                    child: Text(
+                      'No media found',
+                      style: TextStyle(color: AppColors.grey4),
+                    ),
+                  ),
+                ],
+              )
+            : GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(Dimensions.width20),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: Dimensions.width20,
+                  mainAxisSpacing: Dimensions.height20,
+                  childAspectRatio: 0.8,
+                ),
+                itemCount: media.length,
+                itemBuilder: (context, index) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
+                    child: Image.network(
+                      media[index].url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: AppColors.grey2,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.broken_image,
+                          color: AppColors.grey4,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+      );
+    });
   }
 }
 

@@ -1,20 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
-import 'package:smart_swatcher/widgets/alert_card.dart';
-import 'package:smart_swatcher/widgets/custom_button.dart';
-import 'package:smart_swatcher/widgets/empty_state_widget.dart';
 import 'package:smart_swatcher/widgets/expandable_fab.dart';
 
 import '../../../controllers/event_controller.dart';
 import '../../../controllers/post_controller.dart';
-import '../../../controllers/room_controller.dart';
-import '../../../models/post_model.dart';
-import '../../../models/room_model.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/post_card.dart';
@@ -36,6 +29,7 @@ class _ColorClubState extends State<ColorClub>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Container(
       padding: EdgeInsets.fromLTRB(
         0,
@@ -74,11 +68,16 @@ class _ColorClubState extends State<ColorClub>
                         ),
                       ),
                       SizedBox(width: Dimensions.width15),
-                      Image.asset(
-                        AppConstants.getPngAsset('message-icon'),
-                        height: Dimensions.height10 * 2.5,
-                        width: Dimensions.width10 * 2.5,
-                        color: Colors.black,
+                      InkWell(
+                        onTap: () {
+                          Get.toNamed(AppRoutes.conversationsScreen);
+                        },
+                        child: Image.asset(
+                          AppConstants.getPngAsset('message-icon'),
+                          height: Dimensions.height10 * 2.5,
+                          width: Dimensions.width10 * 2.5,
+                          color: Colors.black,
+                        ),
                       ),
                     ],
                   ),
@@ -157,12 +156,17 @@ class FeedTab extends StatelessWidget {
             }
 
             // C. List State
-            return ListView.builder(
-              padding: EdgeInsets.only(bottom: Dimensions.height100), // Add padding for FAB
-              itemCount: controller.postsList.length,
-              itemBuilder: (context, index) {
-                return PostCard(post: controller.postsList[index]);
-              },
+            return RefreshIndicator(
+              color: AppColors.primary5,
+              onRefresh: controller.fetchFeed,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(bottom: Dimensions.height100),
+                itemCount: controller.postsList.length,
+                itemBuilder: (context, index) {
+                  return PostCard(post: controller.postsList[index]);
+                },
+              ),
             );
           }),
 
@@ -278,5 +282,3 @@ Widget liveRoom() {
     ],
   );
 }
-
-

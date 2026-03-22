@@ -64,10 +64,11 @@ class _FormulationPreviewState extends State<FormulationPreview> {
     Map<String, dynamic> savePayload = {
       "folderId": folderId,
       "status": "draft",
+      "generatePredictionImage": true,
 
       // Images
       "imageUrl": inputs['imageUrl'] ?? "",
-      "predictionImageUrl": outputs['predictionImageUrl'] ?? "",
+      "predictionImageUrl": null,
       "finalImageUrl": "",
 
       // User Inputs
@@ -102,6 +103,9 @@ class _FormulationPreviewState extends State<FormulationPreview> {
   // Helper to get Full URL
   String _getFullUrl(String? path) {
     if (path == null || path.isEmpty) return "";
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
     if (path.startsWith('/')) {
       return '${AppConstants.BASE_URL}$path';
     }
@@ -118,6 +122,8 @@ class _FormulationPreviewState extends State<FormulationPreview> {
 
     String originalImg = _getFullUrl(inputs['imageUrl']);
     String predictionImg = _getFullUrl(outputs['predictionImageUrl']);
+    final predictionStatus = outputs['predictionImageStatus']?.toString();
+    final predictionError = outputs['predictionImageError']?.toString();
 
     return Scaffold(
       appBar: CustomAppbar(
@@ -133,7 +139,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
             InkWell(
               onTap: _onSave,
               child: Text(
-                'Save',
+                'Save & Generate',
                 style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.w500, color: AppColors.primary5),
               ),
             ),
@@ -177,6 +183,30 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                     child: Padding(padding: EdgeInsets.all(8), child: Chip(label: Text("Desired Level"))),
                   ),
                 ),
+              if (predictionImg.isEmpty && predictionStatus != null)
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height10,
+                  ),
+                  child: Text(
+                    predictionStatus == 'failed' &&
+                            predictionError != null &&
+                            predictionError.isNotEmpty
+                        ? predictionError
+                        : predictionStatus == 'queued' ||
+                                predictionStatus == 'in_progress'
+                            ? 'Prediction image is still generating.'
+                            : '',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: Dimensions.font13,
+                      color: predictionStatus == 'failed'
+                          ? Colors.red
+                          : AppColors.grey4,
+                    ),
+                  ),
+                ),
 
               SizedBox(height: Dimensions.height20),
 
@@ -195,6 +225,27 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: Dimensions.font16),
                         ),
                       ],
+                    ),
+
+                    SizedBox(height: Dimensions.height10),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(Dimensions.width15),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary1,
+                        borderRadius: BorderRadius.circular(
+                          Dimensions.radius15,
+                        ),
+                      ),
+                      child: Text(
+                        'This screen is a formulation preview only. OpenAI image generation starts after you tap Save & Generate.',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: Dimensions.font13,
+                          color: AppColors.grey4,
+                          height: 1.5,
+                        ),
+                      ),
                     ),
 
                     SizedBox(height: Dimensions.height10),

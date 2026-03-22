@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:smart_swatcher/controllers/user_controller.dart';
 
 import '../models/user_model.dart';
+import '../routes/routes.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 import 'custom_button.dart';
@@ -22,22 +23,25 @@ class RecommendedAccountCard extends StatelessWidget {
     final imageUrl = controller.resolveImageUrl(account.profileImageUrl);
     final hasImage = imageUrl.isNotEmpty;
 
-    return Container(
-      margin: EdgeInsets.only(bottom: Dimensions.height15),
-      padding: EdgeInsets.all(Dimensions.height15),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(Dimensions.radius15),
-        border: Border.all(color: AppColors.grey2.withOpacity(0.6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
+    return InkWell(
+      borderRadius: BorderRadius.circular(Dimensions.radius15),
+      onTap: () => Get.toNamed(AppRoutes.otherProfileScreen, arguments: account.id),
+      child: Container(
+        margin: EdgeInsets.only(bottom: Dimensions.height15),
+        padding: EdgeInsets.all(Dimensions.height15),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(Dimensions.radius15),
+          border: Border.all(color: AppColors.grey2.withValues(alpha: 0.6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -120,8 +124,11 @@ class RecommendedAccountCard extends StatelessWidget {
                 final isLoading = controller.isRequestingConnection(account.id);
                 final status = controller.getConnectionStatus(account.id);
 
-                final isPending = status == 'pending';
-                final isConnected = status == 'accepted';
+                final isPending = status == 'pending' ||
+                    status == 'requested_by_viewer' ||
+                    status == 'requested_by_them';
+                final isConnected =
+                    status == 'accepted' || status == 'connected';
 
                 final buttonText = isLoading
                     ? 'Sending...'
@@ -187,7 +194,7 @@ class RecommendedAccountCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.primary5.withOpacity(0.08),
+                      color: AppColors.primary5.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(Dimensions.radius20),
                     ),
                     child: Text(
@@ -204,6 +211,7 @@ class RecommendedAccountCard extends StatelessWidget {
             ),
           ],
         ],
+        ),
       ),
     );
   }

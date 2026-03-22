@@ -269,8 +269,18 @@ class _FolderScreenState extends State<FolderScreen> {
               return GestureDetector(
                 onTap: () {
                   var bundle = {
-                    'inputs': form.inputData ?? {},
-                    'outputs': form.resultData ?? {},
+                    'inputs': {
+                      ...?form.inputData,
+                      'imageUrl': form.imageUrl ?? form.inputData?['imageUrl'],
+                    },
+                    'outputs': {
+                      ...?form.resultData,
+                      'predictionImageUrl':
+                          form.predictionImageUrl ??
+                          form.resultData?['predictionImageUrl'],
+                      'predictionImageStatus': form.predictionImageStatus,
+                      'predictionImageError': form.predictionImageError,
+                    },
                   };
                   Get.toNamed(AppRoutes.formulationPreview, arguments: bundle);
                 },
@@ -283,7 +293,7 @@ class _FolderScreenState extends State<FolderScreen> {
                     borderRadius: BorderRadius.circular(Dimensions.radius15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
+                        color: Colors.grey.withValues(alpha: 0.1),
                         spreadRadius: 1,
                         blurRadius: 5,
                         offset: Offset(0, 2),
@@ -339,12 +349,12 @@ class _FolderScreenState extends State<FolderScreen> {
                                         errorBuilder:
                                             (c, o, s) => Container(
                                               color: AppColors.primary4
-                                                  .withOpacity(0.2),
+                                                  .withValues(alpha: 0.2),
                                             ),
                                       )
                                       : Container(
-                                        color: AppColors.primary4.withOpacity(
-                                          0.1,
+                                        color: AppColors.primary4.withValues(
+                                          alpha: 0.1,
                                         ),
                                       ),
                             ),
@@ -378,6 +388,26 @@ class _FolderScreenState extends State<FolderScreen> {
                                 fontSize: Dimensions.font12,
                                 fontWeight: FontWeight.w500,
                                 color: AppColors.grey4,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              form.isPredictionActive
+                                  ? 'Generating preview...'
+                                  : form.predictionImageStatus == 'failed'
+                                      ? 'Preview failed'
+                                      : form.hasPredictionImage
+                                          ? 'Preview ready'
+                                          : 'Source image only',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: Dimensions.font12,
+                                fontWeight: FontWeight.w500,
+                                color: form.isPredictionActive
+                                    ? AppColors.primary5
+                                    : form.predictionImageStatus == 'failed'
+                                        ? Colors.red
+                                        : AppColors.grey4,
                               ),
                             ),
                           ],

@@ -67,6 +67,34 @@ class NotificationController extends GetxController {
     await fetchNotifications();
   }
 
+  Future<void> markNotificationRead(String notificationId) async {
+    if (notificationId.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final response = await notificationRepo.markNotificationRead(notificationId);
+      if (response.statusCode != 200) {
+        return;
+      }
+
+      final index = notifications.indexWhere(
+        (notification) => notification.id == notificationId,
+      );
+      if (index == -1 || notifications[index].isRead) {
+        return;
+      }
+
+      notifications[index] = notifications[index].copyWith(readAt: DateTime.now());
+      notifications.refresh();
+      if (unreadCount.value > 0) {
+        unreadCount.value -= 1;
+      }
+    } catch (e) {
+      debugPrint('markNotificationRead error: $e');
+    }
+  }
+
   List<AppNotificationModel> get allNotifications => notifications;
 
   List<AppNotificationModel> get connectionNotifications =>

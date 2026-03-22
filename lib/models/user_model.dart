@@ -103,7 +103,7 @@ class RecommendedAccountModel {
 
   String get displayLocation {
     final parts = [state, country]
-        .where((e) => e != null && e!.trim().isNotEmpty)
+        .where((e) => e != null && e.trim().isNotEmpty)
         .map((e) => e!.trim())
         .toList();
 
@@ -138,6 +138,7 @@ class OtherProfileModel {
   final int? likes;
   final int? posts;
   final int? connections;
+  final ProfileViewerRelationshipModel viewer;
 
   OtherProfileModel({
     this.id,
@@ -153,6 +154,7 @@ class OtherProfileModel {
     this.likes,
     this.posts,
     this.connections,
+    this.viewer = const ProfileViewerRelationshipModel(),
   });
 
   factory OtherProfileModel.fromJson(Map<String, dynamic> json) {
@@ -172,6 +174,165 @@ class OtherProfileModel {
       likes: totals?['likes'],
       posts: totals?['generalPosts'],
       connections: totals?['connections'],
+      viewer: ProfileViewerRelationshipModel.fromJson(
+        json['viewer'] is Map<String, dynamic>
+            ? json['viewer'] as Map<String, dynamic>
+            : null,
+      ),
     );
+  }
+
+  OtherProfileModel copyWith({
+    String? id,
+    String? type,
+    String? name,
+    String? username,
+    String? description,
+    String? about,
+    String? role,
+    bool? isElite,
+    String? profileImageUrl,
+    String? backgroundImageUrl,
+    int? likes,
+    int? posts,
+    int? connections,
+    ProfileViewerRelationshipModel? viewer,
+  }) {
+    return OtherProfileModel(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      name: name ?? this.name,
+      username: username ?? this.username,
+      description: description ?? this.description,
+      about: about ?? this.about,
+      role: role ?? this.role,
+      isElite: isElite ?? this.isElite,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      backgroundImageUrl: backgroundImageUrl ?? this.backgroundImageUrl,
+      likes: likes ?? this.likes,
+      posts: posts ?? this.posts,
+      connections: connections ?? this.connections,
+      viewer: viewer ?? this.viewer,
+    );
+  }
+}
+
+enum ProfilePrimaryAction {
+  none,
+  connect,
+  requested,
+  accept,
+  message,
+}
+
+class ProfileViewerRelationshipModel {
+  final bool isSelf;
+  final String? connectionId;
+  final String connectionStatus;
+  final bool requestedByViewer;
+  final bool requestedByThem;
+  final bool isConnected;
+  final bool canRequestConnection;
+  final bool canAcceptConnection;
+  final bool canMessage;
+
+  const ProfileViewerRelationshipModel({
+    this.isSelf = false,
+    this.connectionId,
+    this.connectionStatus = 'none',
+    this.requestedByViewer = false,
+    this.requestedByThem = false,
+    this.isConnected = false,
+    this.canRequestConnection = false,
+    this.canAcceptConnection = false,
+    this.canMessage = false,
+  });
+
+  factory ProfileViewerRelationshipModel.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return const ProfileViewerRelationshipModel();
+    }
+
+    return ProfileViewerRelationshipModel(
+      isSelf: json['isSelf'] == true,
+      connectionId: json['connectionId']?.toString(),
+      connectionStatus: json['connectionStatus']?.toString() ?? 'none',
+      requestedByViewer: json['requestedByViewer'] == true,
+      requestedByThem: json['requestedByThem'] == true,
+      isConnected: json['isConnected'] == true,
+      canRequestConnection: json['canRequestConnection'] == true,
+      canAcceptConnection: json['canAcceptConnection'] == true,
+      canMessage: json['canMessage'] == true,
+    );
+  }
+
+  ProfileViewerRelationshipModel copyWith({
+    bool? isSelf,
+    String? connectionId,
+    String? connectionStatus,
+    bool? requestedByViewer,
+    bool? requestedByThem,
+    bool? isConnected,
+    bool? canRequestConnection,
+    bool? canAcceptConnection,
+    bool? canMessage,
+  }) {
+    return ProfileViewerRelationshipModel(
+      isSelf: isSelf ?? this.isSelf,
+      connectionId: connectionId ?? this.connectionId,
+      connectionStatus: connectionStatus ?? this.connectionStatus,
+      requestedByViewer: requestedByViewer ?? this.requestedByViewer,
+      requestedByThem: requestedByThem ?? this.requestedByThem,
+      isConnected: isConnected ?? this.isConnected,
+      canRequestConnection: canRequestConnection ?? this.canRequestConnection,
+      canAcceptConnection: canAcceptConnection ?? this.canAcceptConnection,
+      canMessage: canMessage ?? this.canMessage,
+    );
+  }
+
+  ProfilePrimaryAction get primaryAction {
+    if (isSelf) {
+      return ProfilePrimaryAction.none;
+    }
+    if (canMessage || isConnected || connectionStatus == 'connected') {
+      return ProfilePrimaryAction.message;
+    }
+    if (canAcceptConnection || requestedByThem) {
+      return ProfilePrimaryAction.accept;
+    }
+    if (requestedByViewer || connectionStatus == 'requested_by_viewer') {
+      return ProfilePrimaryAction.requested;
+    }
+    if (canRequestConnection || connectionStatus == 'none') {
+      return ProfilePrimaryAction.connect;
+    }
+    return ProfilePrimaryAction.connect;
+  }
+
+  bool get isPrimaryActionEnabled {
+    switch (primaryAction) {
+      case ProfilePrimaryAction.requested:
+      case ProfilePrimaryAction.none:
+        return false;
+      case ProfilePrimaryAction.connect:
+      case ProfilePrimaryAction.accept:
+      case ProfilePrimaryAction.message:
+        return true;
+    }
+  }
+
+  String get primaryActionLabel {
+    switch (primaryAction) {
+      case ProfilePrimaryAction.none:
+        return '';
+      case ProfilePrimaryAction.connect:
+        return 'Connect';
+      case ProfilePrimaryAction.requested:
+        return 'Requested';
+      case ProfilePrimaryAction.accept:
+        return 'Accept';
+      case ProfilePrimaryAction.message:
+        return 'Message';
+    }
   }
 }

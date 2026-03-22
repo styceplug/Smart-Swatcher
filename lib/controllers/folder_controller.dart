@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,6 +21,9 @@ class ClientFolderController extends GetxController {
   var isLoading = false.obs;
   var isFetching = false.obs;
   var formulationsList = <FormulationModel>[].obs;
+  var recentFormulations = <FormulationModel>[].obs;
+  var isFetchingRecentFormulations = false.obs;
+  final RxSet<String> refreshingPredictionIds = <String>{}.obs;
   var clientImage = Rxn<File>();
   Map<String, dynamic>? suggestedMetrics;
 
@@ -27,6 +31,99 @@ class ClientFolderController extends GetxController {
   void onInit() {
     super.onInit();
     getFolders();
+  }
+
+  void _replaceInList(
+    RxList<FormulationModel> list,
+    FormulationModel formulation,
+  ) {
+    final index = list.indexWhere((item) => item.id == formulation.id);
+    if (index == -1) {
+      list.insert(0, formulation);
+    } else {
+      list[index] = formulation;
+    }
+    list.refresh();
+  }
+
+  void _upsertFormulation(FormulationModel formulation) {
+    _replaceInList(formulationsList, formulation);
+    _replaceInList(recentFormulations, formulation);
+  }
+
+  Future<FormulationModel?> _fetchFormulationById(
+    String formulationId, {
+    bool refreshPrediction = false,
+  }) async {
+    if (formulationId.trim().isEmpty) {
+      return null;
+    }
+
+    final response = await repo.getFormulation(
+      formulationId,
+      refreshPrediction: refreshPrediction,
+    );
+
+    if (response.statusCode != 200 || response.body is! Map) {
+      return null;
+    }
+
+    final payload = response.body['formulation'];
+    if (payload is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final formulation = FormulationModel.fromJson(payload);
+    print(
+      '[FORMULATION_CTRL] prediction.state '
+      '{formulationId: ${formulation.id}, '
+      'status: ${formulation.predictionImageStatus}, '
+      'error: ${formulation.predictionImageError}}',
+    );
+    _upsertFormulation(formulation);
+    return formulation;
+  }
+
+  Future<void> trackPredictionJob(
+    String formulationId, {
+    bool notifyOnFailure = false,
+  }) async {
+    if (formulationId.trim().isEmpty ||
+        refreshingPredictionIds.contains(formulationId)) {
+      return;
+    }
+
+    refreshingPredictionIds.add(formulationId);
+
+    try {
+      for (int attempt = 0; attempt < 12; attempt++) {
+        final formulation = await _fetchFormulationById(
+          formulationId,
+          refreshPrediction: true,
+        );
+
+        if (formulation == null) {
+          break;
+        }
+
+        if (!formulation.isPredictionActive) {
+          if (notifyOnFailure &&
+              formulation.predictionImageStatus == 'failed' &&
+              (formulation.predictionImageError?.trim().isNotEmpty ?? false)) {
+            CustomSnackBar.failure(
+              message: formulation.predictionImageError!,
+            );
+          }
+          break;
+        }
+
+        await Future.delayed(const Duration(seconds: 4));
+      }
+    } catch (e) {
+      print('Prediction tracking error: $e');
+    } finally {
+      refreshingPredictionIds.remove(formulationId);
+    }
   }
 
   Future<void> getPreview(Map<String, dynamic> requestData) async {
@@ -66,6 +163,20 @@ class ClientFolderController extends GetxController {
       Response response = await repo.saveFormulation(requestBody);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
+        if (response.body is Map && response.body['debug'] != null) {
+          print('[FORMULATION_CTRL] save.debug ${response.body['debug']}');
+        }
+
+        FormulationModel? savedFormulation;
+
+        if (response.body is Map &&
+            response.body['formulation'] is Map<String, dynamic>) {
+          savedFormulation = FormulationModel.fromJson(
+            response.body['formulation'] as Map<String, dynamic>,
+          );
+          _upsertFormulation(savedFormulation);
+        }
+
         CustomSnackBar.success(message: "Formulation saved successfully!");
 
         Get.until((route) => Get.currentRoute == AppRoutes.folderScreen);
@@ -73,6 +184,52 @@ class ClientFolderController extends GetxController {
         if (Get.isRegistered<ClientFolderController>()) {
           String folderId = requestBody['folderId'];
           Get.find<ClientFolderController>().fetchFormulations(folderId);
+          Get.find<ClientFolderController>().fetchRecentFormulations();
+        }
+
+        if (savedFormulation != null) {
+          if (savedFormulation.predictionImageStatus == 'not_requested' &&
+              (savedFormulation.imageUrl?.trim().isNotEmpty ?? false)) {
+            print(
+              '[FORMULATION_CTRL] prediction.retry.auto '
+              '{formulationId: ${savedFormulation.id}}',
+            );
+            final retryResponse = await repo.retryPredictionImage(
+              savedFormulation.id,
+            );
+
+            if (retryResponse.body is Map && retryResponse.body['debug'] != null) {
+              print(
+                '[FORMULATION_CTRL] retry.debug '
+                '${retryResponse.body['debug']}',
+              );
+            }
+
+            if ((retryResponse.statusCode == 200 ||
+                    retryResponse.statusCode == 202) &&
+                retryResponse.body is Map &&
+                retryResponse.body['formulation'] is Map<String, dynamic>) {
+              savedFormulation = FormulationModel.fromJson(
+                retryResponse.body['formulation'] as Map<String, dynamic>,
+              );
+              _upsertFormulation(savedFormulation);
+            }
+          }
+
+          if (savedFormulation.isPredictionActive) {
+            unawaited(
+              trackPredictionJob(
+                savedFormulation.id,
+                notifyOnFailure: true,
+              ),
+            );
+          } else if (savedFormulation.predictionImageStatus == 'failed' &&
+              (savedFormulation.predictionImageError?.trim().isNotEmpty ??
+                  false)) {
+            CustomSnackBar.failure(
+              message: savedFormulation.predictionImageError!,
+            );
+          }
         }
       } else {
         CustomSnackBar.failure(
@@ -149,21 +306,88 @@ class ClientFolderController extends GetxController {
   }
 
   Future<void> fetchFormulations(String folderId) async {
-    loader.showLoader;
+    if (folderId.trim().isEmpty) {
+      formulationsList.clear();
+      return;
+    }
+
+    loader.showLoader();
     try {
       Response response = await repo.getFormulations(folderId);
       if (response.statusCode == 200) {
         var data = response.body['formulations'] ?? response.body;
         if (data is List) {
-          formulationsList.assignAll(
-            data.map((e) => FormulationModel.fromJson(e)).toList(),
-          );
+          final formulations =
+              data.map((e) => FormulationModel.fromJson(e)).toList();
+          formulationsList.assignAll(formulations);
+          await _refreshPredictionStates(formulations);
         }
       }
     } catch (e) {
       print("Error fetching formulations: $e");
     } finally {
       loader.hideLoader();
+    }
+  }
+
+  Future<void> _refreshPredictionStates(
+    List<FormulationModel> formulations,
+  ) async {
+    for (final formulation in formulations) {
+      if (formulation.isPredictionActive) {
+        unawaited(trackPredictionJob(formulation.id));
+      }
+    }
+  }
+
+  Future<void> fetchRecentFormulations({int limit = 5}) async {
+    if (isFetchingRecentFormulations.value) {
+      return;
+    }
+
+    isFetchingRecentFormulations.value = true;
+
+    try {
+      if (foldersList.isEmpty) {
+        recentFormulations.clear();
+        return;
+      }
+
+      final responses = await Future.wait(
+        foldersList
+            .where((folder) => folder.id != null && folder.id!.trim().isNotEmpty)
+            .map((folder) => repo.getFormulations(folder.id!)),
+      );
+
+      final aggregated = <FormulationModel>[];
+
+      for (final response in responses) {
+        if (response.statusCode != 200) {
+          continue;
+        }
+
+        final data = response.body['formulations'] ?? response.body;
+        if (data is List) {
+          aggregated.addAll(
+            data.map((item) => FormulationModel.fromJson(item)).toList(),
+          );
+        }
+      }
+
+      aggregated.sort((a, b) {
+        final aDate = DateTime.tryParse(a.createdAt ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = DateTime.tryParse(b.createdAt ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate);
+      });
+
+      recentFormulations.assignAll(aggregated.take(limit).toList());
+      await _refreshPredictionStates(recentFormulations);
+    } catch (e) {
+      print("Recent formulations error: $e");
+    } finally {
+      isFetchingRecentFormulations.value = false;
     }
   }
 
@@ -178,6 +402,7 @@ class ClientFolderController extends GetxController {
         foldersList.assignAll(
           data.map((e) => ClientFolderModel.fromJson(e)).toList(),
         );
+        await fetchRecentFormulations();
       } else {
         print("Failed to fetch folders: ${response.statusCode}");
       }
@@ -219,7 +444,7 @@ class ClientFolderController extends GetxController {
 
       if (response.statusCode == 201) {
         CustomSnackBar.success(message: "Folder created successfully!");
-        getFolders();
+        await getFolders();
         return true;
       } else {
         String msg = response.body['message'] ?? response.statusText;

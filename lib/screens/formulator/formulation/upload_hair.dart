@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:smart_swatcher/controllers/folder_controller.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 
-import '../../../routes/routes.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
@@ -20,9 +18,7 @@ class UploadHair extends StatefulWidget {
 
 
 class _UploadHairState extends State<UploadHair> {
-  // 1. USE FormulationController (Contains the pickImage logic)
-  // Ensure you put this controller in your binding or init it here
-  final ClientFolderController controller = Get.put(ClientFolderController());
+  final ClientFolderController controller = Get.find<ClientFolderController>();
 
   void _showPickerOptions() {
     showModalBottomSheet(
@@ -104,7 +100,7 @@ class _UploadHairState extends State<UploadHair> {
                         height: Dimensions.height100 * 3,
                         width: Dimensions.width100 * 3,
                         decoration: BoxDecoration(
-                          color: AppColors.grey2.withOpacity(0.3),
+                          color: AppColors.grey2.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppColors.grey4),
                           image: hasImage

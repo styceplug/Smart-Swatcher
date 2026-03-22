@@ -14,6 +14,7 @@ class PostModel {
   PostMetrics? metrics;
   bool isLiked;
   bool isSaved;
+  PostFormula? formula;
   String? base;
   String? lights;
   String? toner;
@@ -29,6 +30,7 @@ class PostModel {
     this.metrics,
     this.isLiked = false,
     this.isSaved = false,
+    this.formula,
     this.base,
     this.lights,
     this.toner,
@@ -47,7 +49,23 @@ class PostModel {
       media: json['media'] != null
           ? (json['media'] as List).map((e) => MediaItem.fromJson(e)).toList()
           : [],
-      tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
+      formula: json['formula'] is Map<String, dynamic>
+          ? PostFormula.fromJson(json['formula'] as Map<String, dynamic>)
+          : null,
+      tags: json['tags'] != null
+          ? (json['tags'] as List)
+              .map((tag) {
+                if (tag is String) {
+                  return tag;
+                }
+                if (tag is Map && tag['name'] != null) {
+                  return tag['name'].toString();
+                }
+                return '';
+              })
+              .where((tag) => tag.trim().isNotEmpty)
+              .toList()
+          : [],
       isLiked: viewer['liked'] ?? false,
       isSaved: viewer['saved'] ?? false,
       metrics: json['metrics'] != null ? PostMetrics.fromJson(json['metrics']) : null,
@@ -57,11 +75,12 @@ class PostModel {
     );
   }
 
+  bool get hasFormula => formula != null;
 
   int get saveCount => metrics?.saves ?? 0;
 
   String get username => author?.username ?? "Unknown";
-  String get userRole => author?.type?.capitalizeFirst ?? "Stylist"; // e.g., "Stylist"
+  String get userRole => (author?.type ?? "stylist").capitalizeFirst ?? "Stylist"; // e.g., "Stylist"
   String get userProfileImage => author?.profileImageUrl ?? "";
 
   String? get displayImageUrl {
@@ -98,6 +117,130 @@ class PostModel {
   }
 }
 
+class PostFormula {
+  final String id;
+  final String? formulationType;
+  final String? imageUrl;
+  final String? predictionImageUrl;
+  final String? predictionImageStatus;
+  final String? predictionImageError;
+  final int? naturalBaseLevel;
+  final int? greyPercentage;
+  final int? desiredLevel;
+  final int? developerVolume;
+  final String? shadeType;
+  final String? desiredTone;
+  final String? mixingRatio;
+  final String? noteToStylist;
+  final Map<String, dynamic>? resultData;
+  final List<PostFormulaStep> steps;
+  final List<MediaItem> media;
+
+  const PostFormula({
+    required this.id,
+    this.formulationType,
+    this.imageUrl,
+    this.predictionImageUrl,
+    this.predictionImageStatus,
+    this.predictionImageError,
+    this.naturalBaseLevel,
+    this.greyPercentage,
+    this.desiredLevel,
+    this.developerVolume,
+    this.shadeType,
+    this.desiredTone,
+    this.mixingRatio,
+    this.noteToStylist,
+    this.resultData,
+    this.steps = const [],
+    this.media = const [],
+  });
+
+  factory PostFormula.fromJson(Map<String, dynamic> json) {
+    return PostFormula(
+      id: json['id']?.toString() ?? '',
+      formulationType: json['formulationType']?.toString(),
+      imageUrl: json['imageUrl']?.toString(),
+      predictionImageUrl: json['predictionImageUrl']?.toString(),
+      predictionImageStatus: json['predictionImageStatus']?.toString(),
+      predictionImageError: json['predictionImageError']?.toString(),
+      naturalBaseLevel: _asInt(json['naturalBaseLevel']),
+      greyPercentage: _asInt(json['greyPercentage']),
+      desiredLevel: _asInt(json['desiredLevel']),
+      developerVolume: _asInt(json['developerVolume']),
+      shadeType: json['shadeType']?.toString(),
+      desiredTone: json['desiredTone']?.toString(),
+      mixingRatio: json['mixingRatio']?.toString(),
+      noteToStylist: json['noteToStylist']?.toString(),
+      resultData: json['resultData'] is Map<String, dynamic>
+          ? json['resultData'] as Map<String, dynamic>
+          : null,
+      steps: json['steps'] is List
+          ? (json['steps'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(PostFormulaStep.fromJson)
+              .toList()
+          : const [],
+      media: json['media'] is List
+          ? (json['media'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(MediaItem.fromJson)
+              .toList()
+          : const [],
+    );
+  }
+
+  bool get isGenerating =>
+      predictionImageStatus == 'queued' || predictionImageStatus == 'in_progress';
+
+  String? get displayImageUrl {
+    final preferred = predictionImageUrl;
+    if (preferred != null && preferred.trim().isNotEmpty) {
+      return preferred.startsWith('/')
+          ? '${AppConstants.BASE_URL}$preferred'
+          : preferred;
+    }
+
+    final fallback = imageUrl;
+    if (fallback == null || fallback.trim().isEmpty) {
+      return null;
+    }
+
+    return fallback.startsWith('/')
+        ? '${AppConstants.BASE_URL}$fallback'
+        : fallback;
+  }
+
+  static int? _asInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
+  }
+}
+
+class PostFormulaStep {
+  final int stepOrder;
+  final String? stepType;
+  final String? title;
+  final String? description;
+
+  const PostFormulaStep({
+    required this.stepOrder,
+    this.stepType,
+    this.title,
+    this.description,
+  });
+
+  factory PostFormulaStep.fromJson(Map<String, dynamic> json) {
+    return PostFormulaStep(
+      stepOrder: PostFormula._asInt(json['stepOrder']) ?? 0,
+      stepType: json['stepType']?.toString(),
+      title: json['title']?.toString(),
+      description: json['description']?.toString(),
+    );
+  }
+}
+
 class Author {
   String id;
   String type;
@@ -126,14 +269,15 @@ class Author {
     );
   }
   String? get displayImageUrl {
-    if (profileImageUrl!.isNotEmpty) {
-      String rawUrl = profileImageUrl!;
-      if (rawUrl.startsWith('/')) {
-        return '${AppConstants.BASE_URL}$rawUrl';
-      }
-      return rawUrl;
+    if (profileImageUrl == null || profileImageUrl!.isEmpty) {
+      return null;
     }
-    return null;
+
+    String rawUrl = profileImageUrl!;
+    if (rawUrl.startsWith('/')) {
+      return '${AppConstants.BASE_URL}$rawUrl';
+    }
+    return rawUrl;
   }
 
 }
@@ -252,4 +396,3 @@ class PostDraft {
     audience: json['audience'],
   );
 }
-

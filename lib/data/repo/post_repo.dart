@@ -29,8 +29,24 @@ class PostRepo {
     });
   }
 
-  Future<Response> getPosts({int limit = 20, int offset = 0}) async {
-    return await apiClient.getData('/api/posts?limit=$limit&offset=$offset');
+  Future<Response> getPosts({
+    int limit = 20,
+    int offset = 0,
+    String? authorId,
+    String? authorType,
+  }) async {
+    final uri = Uri(
+      path: '/api/posts',
+      queryParameters: <String, String>{
+        'limit': '$limit',
+        'offset': '$offset',
+        if (authorId != null && authorId.trim().isNotEmpty) 'authorId': authorId,
+        if (authorType != null && authorType.trim().isNotEmpty)
+          'authorType': authorType,
+      },
+    ).toString();
+
+    return await apiClient.getData(uri);
   }
 
 
@@ -67,6 +83,10 @@ class PostRepo {
 
   Future<Response> addComment(String postId, String body) async {
     return await apiClient.postData('/api/posts/$postId/comments', {"body": body});
+  }
+
+  Future<Response> deletePost(String postId) async {
+    return await apiClient.deleteData('/api/posts/$postId');
   }
 
   Future<List<PostDraft>> getDrafts() async {

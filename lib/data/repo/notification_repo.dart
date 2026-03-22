@@ -16,4 +16,11 @@ class NotificationRepo {
       '${AppConstants.GET_NOTIFICATIONS}?limit=$limit&unreadOnly=$unreadOnly',
     );
   }
+
+  Future<Response> markNotificationRead(String notificationId) async {
+    return await apiClient.postData(
+      AppConstants.MARK_NOTIFICATION_READ(notificationId),
+      {},
+    );
+  }
 }

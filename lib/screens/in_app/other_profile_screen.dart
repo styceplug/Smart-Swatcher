@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:smart_swatcher/controllers/post_controller.dart';
+import 'package:smart_swatcher/controllers/conversation_controller.dart';
 import 'package:smart_swatcher/controllers/user_controller.dart';
+import 'package:smart_swatcher/widgets/post_card.dart';
 
 import '../../models/user_model.dart';
 import '../../utils/colors.dart';
 import '../../utils/dimensions.dart';
-import '../../widgets/post_card.dart';
+import '../../widgets/snackbars.dart';
 import '../../widgets/tips_card.dart';
 
 
@@ -211,7 +212,7 @@ class _OtherProfileHeader extends StatelessWidget {
                       vertical: Dimensions.height5,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary5.withOpacity(.08),
+                      color: AppColors.primary5.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(Dimensions.radius20),
                     ),
                     child: Text(
@@ -231,7 +232,7 @@ class _OtherProfileHeader extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: Dimensions.font14,
-                    color: AppColors.black1.withOpacity(0.75),
+                    color: AppColors.black1.withValues(alpha: 0.75),
                   ),
                 ),
 
@@ -248,16 +249,12 @@ class _OtherProfileHeader extends StatelessWidget {
 
                 SizedBox(height: Dimensions.height20),
 
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () => controller.requestConnection(profile.id!),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary5,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                    ),
-                    child: const Text("Connect", style: TextStyle(color: Colors.white)),
+                if (!profile.viewer.isSelf) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: _ProfileActionButton(profile: profile),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -272,6 +269,83 @@ class _OtherProfileHeader extends StatelessWidget {
         Text(count, style: TextStyle(fontSize: Dimensions.font17, fontWeight: FontWeight.w600)),
         Text(label, style: TextStyle(fontSize: Dimensions.font14, color: AppColors.grey5)),
       ],
+    );
+  }
+}
+
+class _ProfileActionButton extends StatelessWidget {
+  const _ProfileActionButton({required this.profile});
+
+  final OtherProfileModel profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final userController = Get.find<UserController>();
+    final conversationController = Get.find<ConversationController>();
+    final action = profile.viewer.primaryAction;
+    final targetId = profile.id ?? '';
+    final isBusy = userController.isRequestingConnection(targetId);
+    final isEnabled = profile.viewer.isPrimaryActionEnabled && !isBusy;
+    final isGhost = action == ProfilePrimaryAction.requested;
+
+    final label = isBusy ? 'Please wait...' : profile.viewer.primaryActionLabel;
+
+    if (label.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ElevatedButton(
+      onPressed: isEnabled
+          ? () async {
+              switch (action) {
+                case ProfilePrimaryAction.connect:
+                  await userController.requestConnection(
+                    targetId,
+                    refreshProfile: true,
+                  );
+                  break;
+                case ProfilePrimaryAction.accept:
+                  final connectionId = profile.viewer.connectionId;
+                  if (connectionId == null || connectionId.trim().isEmpty) {
+                    CustomSnackBar.failure(
+                      message: 'Connection request information is missing.',
+                    );
+                    return;
+                  }
+                  await userController.acceptConnection(
+                    connectionId,
+                    targetId: targetId,
+                    refreshProfile: true,
+                  );
+                  break;
+                case ProfilePrimaryAction.message:
+                  await conversationController.startPrivateConversation(
+                    targetId: targetId,
+                  );
+                  break;
+                case ProfilePrimaryAction.none:
+                case ProfilePrimaryAction.requested:
+                  break;
+              }
+            }
+          : null,
+      style: ElevatedButton.styleFrom(
+        elevation: 0,
+        backgroundColor: isGhost ? AppColors.grey2 : AppColors.primary5,
+        disabledBackgroundColor: isGhost ? AppColors.grey2 : AppColors.grey4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Dimensions.radius10),
+        ),
+        padding: EdgeInsets.symmetric(vertical: Dimensions.height15),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isGhost ? AppColors.grey5 : Colors.white,
+          fontSize: Dimensions.font14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
@@ -321,39 +395,45 @@ class FeedTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // final UserController controller = Get.find<UserController>();
-    // final PostController postController = Get.find<PostController>();
+    final controller = Get.find<UserController>();
 
-    return SizedBox();
-
-  /*  return Obx(() {
-      if (postController.isFeedLoading.value) {
+    return Obx(() {
+      if (controller.isFetchingProfilePosts.value &&
+          controller.profilePosts.isEmpty) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.primary5),
         );
       }
 
-      if (postController.postsList.isEmpty) {
-        return Center(
-          child: Text(
-            "No posts found",
-            style: TextStyle(color: AppColors.grey4),
-          ),
-        );
-      }
-
-      return Stack(
-        children: [
-          ListView.builder(
-            padding: EdgeInsets.only(bottom: Dimensions.height70),
-            itemCount: postController.postsList.length,
-            itemBuilder: (context, index) {
-              return PostCard(post: postController.postsList[index]);
-            },
-          ),
-        ],
+      return RefreshIndicator(
+        color: AppColors.primary5,
+        onRefresh: controller.refreshActiveProfile,
+        child: controller.profilePosts.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimensions.width20,
+                  vertical: Dimensions.height40,
+                ),
+                children: [
+                  Center(
+                    child: Text(
+                      'No posts found',
+                      style: TextStyle(color: AppColors.grey4),
+                    ),
+                  ),
+                ],
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(bottom: Dimensions.height70),
+                itemCount: controller.profilePosts.length,
+                itemBuilder: (context, index) {
+                  return PostCard(post: controller.profilePosts[index]);
+                },
+              ),
       );
-    });*/
+    });
   }
 }
 
@@ -399,23 +479,47 @@ class MediaTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: EdgeInsets.all(Dimensions.width20),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: Dimensions.width20,
-        mainAxisSpacing: Dimensions.height20,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: 4, // Dummy count
-      itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.grey2,
-            borderRadius: BorderRadius.circular(Dimensions.radius15),
+    final controller = Get.find<UserController>();
+
+    return Obx(() {
+      final media = controller.profilePosts
+          .expand((post) => post.media)
+          .where((item) => item.url.trim().isNotEmpty)
+          .toList();
+
+      if (media.isEmpty) {
+        return Center(
+          child: Text(
+            'No media found',
+            style: TextStyle(color: AppColors.grey4),
           ),
         );
-      },
-    );
+      }
+
+      return GridView.builder(
+        padding: EdgeInsets.all(Dimensions.width20),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: Dimensions.width20,
+          mainAxisSpacing: Dimensions.height20,
+          childAspectRatio: 0.8,
+        ),
+        itemCount: media.length,
+        itemBuilder: (context, index) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(Dimensions.radius15),
+            child: Image.network(
+              media[index].url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: AppColors.grey2,
+                alignment: Alignment.center,
+                child: Icon(Icons.broken_image, color: AppColors.grey4),
+              ),
+            ),
+          );
+        },
+      );
+    });
   }
 }

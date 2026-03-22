@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:smart_swatcher/controllers/post_controller.dart';
@@ -9,6 +10,7 @@ import '../models/post_model.dart';
 import '../utils/app_constants.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
+import 'snackbars.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -27,13 +29,14 @@ class _PostCardState extends State<PostCard> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    if (!_hasTriggeredImpression) {
-      _hasTriggeredImpression = true;
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        postController.recordImpression(widget.post.id);
-      });
+    if (_hasTriggeredImpression) {
+      return;
     }
+
+    _hasTriggeredImpression = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      postController.recordImpression(widget.post.id);
+    });
   }
 
   @override
@@ -41,7 +44,6 @@ class _PostCardState extends State<PostCard> {
     final profileImageUrl = MediaUrlHelper.resolve(
       widget.post.author?.profileImageUrl,
     );
-    final postImageUrl = MediaUrlHelper.resolve(widget.post.displayImageUrl);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -55,84 +57,22 @@ class _PostCardState extends State<PostCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                height: Dimensions.height40,
-                width: Dimensions.width40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.grey3,
-                  image: profileImageUrl != null
-                      ? DecorationImage(
-                    image: NetworkImage(profileImageUrl),
-                    fit: BoxFit.cover,
-                  )
-                      : null,
-                ),
-                child: profileImageUrl == null
-                    ? Icon(Icons.person, color: AppColors.grey4)
-                    : null,
-              ),
-              SizedBox(width: Dimensions.width10),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.post.author?.name ?? '',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: Dimensions.font15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          widget.post.userRole,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: Dimensions.font13,
-                            fontWeight: FontWeight.w300,
-                            color: AppColors.grey4,
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: Dimensions.width5,
-                          ),
-                          child: Icon(
-                            Icons.circle,
-                            size: 4,
-                            color: AppColors.grey4,
-                          ),
-                        ),
-                        Text(
-                          widget.post.timeAgo,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: Dimensions.font13,
-                            fontWeight: FontWeight.w300,
-                            color: AppColors.grey4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              InkWell(
-                onTap: () => _showMoreOptions(context),
-                child: Icon(Icons.more_horiz, color: AppColors.black1),
-              ),
-            ],
+          _PostHeader(
+            profileImageUrl: profileImageUrl,
+            title: widget.post.author?.name ?? '',
+            subtitle: widget.post.userRole,
+            timeAgo: widget.post.timeAgo,
+            onProfileTap: () => _openPostAuthorProfile(
+              widget.post.author?.id,
+              postController,
+            ),
+            onMoreTap: () => _showPostOptions(
+              context,
+              widget.post,
+              postController,
+            ),
           ),
-
           SizedBox(height: Dimensions.height10),
-
           if (widget.post.caption.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(bottom: Dimensions.height10),
@@ -144,8 +84,7 @@ class _PostCardState extends State<PostCard> {
                 ),
               ),
             ),
-
-          if (postImageUrl != null)
+          if (widget.post.displayImageUrl != null)
             Container(
               height: Dimensions.height40 * 5,
               width: Dimensions.screenWidth,
@@ -153,14 +92,12 @@ class _PostCardState extends State<PostCard> {
                 borderRadius: BorderRadius.circular(Dimensions.radius15),
                 color: AppColors.grey3,
                 image: DecorationImage(
-                  image: NetworkImage(postImageUrl),
+                  image: NetworkImage(widget.post.displayImageUrl!),
                   fit: BoxFit.cover,
                 ),
               ),
             ),
-
           SizedBox(height: Dimensions.height10),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -172,21 +109,17 @@ class _PostCardState extends State<PostCard> {
                         : Icons.favorite_border,
                     widget.post.likeCount.toString(),
                     widget.post.isLiked ? Colors.red : AppColors.grey4,
-                        () {
-                      postController.toggleLike(widget.post.id);
-                    },
+                    () => postController.toggleLike(widget.post.id),
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
                     Iconsax.message,
                     widget.post.commentCount.toString(),
                     AppColors.grey4,
-                        () {
-                      Get.toNamed(
-                        AppRoutes.commentsScreen,
-                        arguments: widget.post,
-                      );
-                    },
+                    () => Get.toNamed(
+                      AppRoutes.commentsScreen,
+                      arguments: widget.post,
+                    ),
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
@@ -197,9 +130,7 @@ class _PostCardState extends State<PostCard> {
                     widget.post.isSaved
                         ? AppColors.black1
                         : AppColors.grey4,
-                        () {
-                      postController.toggleSave(widget.post.id);
-                    },
+                    () => postController.toggleSave(widget.post.id),
                   ),
                 ],
               ),
@@ -234,6 +165,24 @@ class FormulasCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profileImageUrl = MediaUrlHelper.resolve(post.author?.profileImageUrl);
+    final postController = Get.find<PostController>();
+    final formula = post.formula;
+    final formulaRows = <MapEntry<String, String>>[
+      if (formula?.naturalBaseLevel != null)
+        MapEntry("Base Level", formula!.naturalBaseLevel.toString()),
+      if (formula?.greyPercentage != null)
+        MapEntry("Grey", '${formula!.greyPercentage}%'),
+      if (formula?.desiredLevel != null)
+        MapEntry("Desired Level", formula!.desiredLevel.toString()),
+      if (formula?.desiredTone?.trim().isNotEmpty == true)
+        MapEntry("Tone", formula!.desiredTone!),
+      if (formula?.developerVolume != null)
+        MapEntry("Developer", '${formula!.developerVolume} Vol'),
+      if (formula?.mixingRatio?.trim().isNotEmpty == true)
+        MapEntry("Mix Ratio", formula!.mixingRatio!),
+      if (formula?.predictionImageStatus?.trim().isNotEmpty == true)
+        MapEntry("Preview", formula!.predictionImageStatus!),
+    ];
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -247,82 +196,15 @@ class FormulasCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                height: Dimensions.height40,
-                width: Dimensions.width40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.grey3,
-                  image: profileImageUrl != null
-                      ? DecorationImage(
-                    image: NetworkImage(profileImageUrl),
-                    fit: BoxFit.cover,
-                  )
-                      : null,
-                ),
-                child: profileImageUrl == null
-                    ? Icon(Icons.person, color: AppColors.grey4)
-                    : null,
-              ),
-              SizedBox(width: Dimensions.width10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post.username,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: Dimensions.font14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          post.userRole,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: Dimensions.font13,
-                            fontWeight: FontWeight.w300,
-                            color: AppColors.grey4,
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: Dimensions.width5,
-                          ),
-                          child: Icon(
-                            Icons.circle,
-                            size: 4,
-                            color: AppColors.grey4,
-                          ),
-                        ),
-                        Text(
-                          post.timeAgo,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: Dimensions.font13,
-                            fontWeight: FontWeight.w300,
-                            color: AppColors.grey4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              InkWell(
-                onTap: () => _showMoreOptions(context),
-                child: Icon(Icons.more_horiz),
-              ),
-            ],
+          _PostHeader(
+            profileImageUrl: profileImageUrl,
+            title: post.username,
+            subtitle: post.userRole,
+            timeAgo: post.timeAgo,
+            onProfileTap: () => _openPostAuthorProfile(post.author?.id, postController),
+            onMoreTap: () => _showPostOptions(context, post, postController),
           ),
-
           SizedBox(height: Dimensions.height10),
-
           Text(
             post.caption,
             style: TextStyle(
@@ -330,10 +212,8 @@ class FormulasCard extends StatelessWidget {
               fontSize: Dimensions.font14,
             ),
           ),
-
           SizedBox(height: Dimensions.height10),
-
-          if ((post.base != null) || (post.lights != null) || (post.toner != null))
+          if (formula != null || post.base != null || post.lights != null || post.toner != null)
             Container(
               width: Dimensions.screenWidth,
               padding: EdgeInsets.all(Dimensions.width20),
@@ -344,41 +224,60 @@ class FormulasCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (post.base != null) _buildFormulaRow("Base", post.base!),
-                  if (post.lights != null) _buildFormulaRow("Lights", post.lights!),
-                  if (post.toner != null) _buildFormulaRow("Toner", post.toner!),
+                  if (formula != null) ...[
+                    for (final row in formulaRows)
+                      _buildFormulaRow(row.key, row.value),
+                    if (formula.noteToStylist?.trim().isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          formula.noteToStylist!,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: Dimensions.font12,
+                            color: AppColors.grey4,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                  ] else ...[
+                    if (post.base != null) _buildFormulaRow("Base", post.base!),
+                    if (post.lights != null) _buildFormulaRow("Lights", post.lights!),
+                    if (post.toner != null) _buildFormulaRow("Toner", post.toner!),
+                  ],
                 ],
               ),
             ),
-
           SizedBox(height: Dimensions.height10),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   _actionButton(
-                    Icons.favorite_border,
+                    post.isLiked ? Icons.favorite : Icons.favorite_border,
                     post.likeCount.toString(),
-                    Colors.red,
-                        () {},
+                    post.isLiked ? Colors.red : AppColors.grey4,
+                    () => postController.toggleLike(post.id),
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
                     Iconsax.message,
                     post.commentCount.toString(),
                     AppColors.grey4,
-                        () {
-                      Get.toNamed(AppRoutes.commentsScreen, arguments: post);
-                    },
+                    () => Get.toNamed(
+                      AppRoutes.commentsScreen,
+                      arguments: post,
+                    ),
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
-                    Icons.bookmark_border,
+                    post.isSaved ? Icons.bookmark : Icons.bookmark_border,
                     post.saveCount.toString(),
-                    AppColors.grey4,
-                        () {},
+                    post.isSaved ? AppColors.black1 : AppColors.grey4,
+                    () => postController.toggleSave(post.id),
                   ),
                 ],
               ),
@@ -396,11 +295,11 @@ class FormulasCard extends StatelessWidget {
 
   Widget _buildFormulaRow(String label, String value) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(bottom: 5),
       child: RichText(
         text: TextSpan(
           text: "$label: ",
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontFamily: 'Poppins',
@@ -408,7 +307,7 @@ class FormulasCard extends StatelessWidget {
           children: [
             TextSpan(
               text: value,
-              style: TextStyle(fontWeight: FontWeight.normal),
+              style: const TextStyle(fontWeight: FontWeight.normal),
             ),
           ],
         ),
@@ -440,83 +339,15 @@ class CommentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                height: Dimensions.height40,
-                width: Dimensions.width40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.grey3,
-                  image: profileImageUrl != null
-                      ? DecorationImage(
-                    image: NetworkImage(profileImageUrl),
-                    fit: BoxFit.cover,
-                  )
-                      : null,
-                ),
-                child: profileImageUrl == null
-                    ? Icon(Icons.person, color: AppColors.grey4)
-                    : null,
-              ),
-              SizedBox(width: Dimensions.width10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          comment.author?.name ?? '',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: Dimensions.font14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: Dimensions.width10,
-                          ),
-                          child: Icon(
-                            Icons.circle,
-                            size: 4,
-                            color: AppColors.grey4,
-                          ),
-                        ),
-                        Text(
-                          comment.timeAgo,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: Dimensions.font13,
-                            fontWeight: FontWeight.w300,
-                            color: AppColors.grey4,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      comment.author?.username ?? '',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: Dimensions.font13,
-                        fontWeight: FontWeight.w300,
-                        color: AppColors.grey4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              InkWell(
-                onTap: () => _showMoreOptions(context),
-                child: Icon(Icons.more_horiz),
-              ),
-            ],
+          _PostHeader(
+            profileImageUrl: profileImageUrl,
+            title: comment.author?.name ?? '',
+            subtitle: comment.author?.username ?? '',
+            timeAgo: comment.timeAgo,
+            onProfileTap: () {},
+            onMoreTap: () => _showGenericOptions(context),
           ),
-
           SizedBox(height: Dimensions.height10),
-
           Text(
             comment.body,
             style: TextStyle(
@@ -524,9 +355,7 @@ class CommentCard extends StatelessWidget {
               fontSize: Dimensions.font14,
             ),
           ),
-
           SizedBox(height: Dimensions.height10),
-
           Row(
             children: [
               Icon(
@@ -534,9 +363,12 @@ class CommentCard extends StatelessWidget {
                 color: AppColors.grey4,
                 size: Dimensions.iconSize16,
               ),
-              SizedBox(width: 5),
-              Text("0", style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
-              SizedBox(width: 20),
+              const SizedBox(width: 5),
+              const Text(
+                "0",
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
+              const SizedBox(width: 20),
               Text(
                 "Reply",
                 style: TextStyle(
@@ -554,17 +386,125 @@ class CommentCard extends StatelessWidget {
   }
 }
 
+class _PostHeader extends StatelessWidget {
+  const _PostHeader({
+    required this.profileImageUrl,
+    required this.title,
+    required this.subtitle,
+    required this.timeAgo,
+    required this.onProfileTap,
+    required this.onMoreTap,
+  });
+
+  final String? profileImageUrl;
+  final String title;
+  final String subtitle;
+  final String timeAgo;
+  final VoidCallback onProfileTap;
+  final VoidCallback onMoreTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: onProfileTap,
+            child: Row(
+              children: [
+                Container(
+                  height: Dimensions.height40,
+                  width: Dimensions.width40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.grey3,
+                    image: profileImageUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(profileImageUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: profileImageUrl == null
+                      ? Icon(Icons.person, color: AppColors.grey4)
+                      : null,
+                ),
+                SizedBox(width: Dimensions.width10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: Dimensions.font15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: Dimensions.font13,
+                              fontWeight: FontWeight.w300,
+                              color: AppColors.grey4,
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: Dimensions.width5,
+                            ),
+                            child: Icon(
+                              Icons.circle,
+                              size: 4,
+                              color: AppColors.grey4,
+                            ),
+                          ),
+                          Text(
+                            timeAgo,
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: Dimensions.font13,
+                              fontWeight: FontWeight.w300,
+                              color: AppColors.grey4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        InkWell(
+          onTap: onMoreTap,
+          child: Icon(Icons.more_horiz, color: AppColors.black1),
+        ),
+      ],
+    );
+  }
+}
+
 class OptionTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback? onTap;
+  final Color? iconColor;
+  final Color? titleColor;
 
   const OptionTile({
-    Key? key,
+    super.key,
     required this.icon,
     required this.title,
     this.onTap,
-  }) : super(key: key);
+    this.iconColor,
+    this.titleColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -573,9 +513,8 @@ class OptionTile extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: Dimensions.width15),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Icon(icon, size: Dimensions.iconSize20),
+            Icon(icon, size: Dimensions.iconSize20, color: iconColor),
             SizedBox(width: Dimensions.width10),
             Text(
               title,
@@ -583,6 +522,7 @@ class OptionTile extends StatelessWidget {
                 fontSize: Dimensions.font15,
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w500,
+                color: titleColor,
               ),
             ),
           ],
@@ -601,7 +541,7 @@ Widget _actionButton(
   return InkWell(
     onTap: onTap,
     child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.grey4),
@@ -609,10 +549,10 @@ Widget _actionButton(
       child: Row(
         children: [
           Icon(icon, color: color, size: 16),
-          SizedBox(width: 5),
+          const SizedBox(width: 5),
           Text(
             count,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
               fontFamily: 'Poppins',
@@ -624,28 +564,46 @@ Widget _actionButton(
   );
 }
 
-void _showMoreOptions(BuildContext context) {
-  showModalBottomSheet(
+void _openPostAuthorProfile(String? authorId, PostController controller) {
+  if (authorId == null || authorId.trim().isEmpty) {
+    return;
+  }
+
+  if (authorId == controller.currentActorId) {
+    return;
+  }
+
+  Get.toNamed(AppRoutes.otherProfileScreen, arguments: authorId);
+}
+
+Future<void> _showPostOptions(
+  BuildContext context,
+  PostModel post,
+  PostController controller,
+) async {
+  final isOwnPost = controller.isOwnPost(post);
+
+  await showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
-    builder: (context) {
+    builder: (sheetContext) {
       return Container(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
           child: Column(
             children: [
               Container(
-                padding: EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: AppColors.grey2)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'More..',
+                    const Text(
+                      'More',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 17,
@@ -653,22 +611,133 @@ void _showMoreOptions(BuildContext context) {
                       ),
                     ),
                     InkWell(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () => Navigator.pop(sheetContext),
                       child: Icon(Icons.cancel, color: AppColors.grey4),
                     ),
                   ],
                 ),
               ),
-              OptionTile(icon: CupertinoIcons.plus, title: 'Follow Profile'),
-              OptionTile(icon: Iconsax.bookmark, title: 'Save'),
-              OptionTile(icon: CupertinoIcons.share, title: 'Share'),
-              OptionTile(icon: CupertinoIcons.link, title: 'Copy Link'),
-              OptionTile(
-                icon: CupertinoIcons.heart_slash,
-                title: 'Not Interested',
+              if (isOwnPost)
+                OptionTile(
+                  icon: Icons.delete_outline,
+                  title: 'Delete Post',
+                  iconColor: AppColors.error,
+                  titleColor: AppColors.error,
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final shouldDelete = await Get.dialog<bool>(
+                      AlertDialog(
+                        title: const Text('Delete post'),
+                        content: const Text(
+                          'This post will be removed permanently.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Get.back(result: false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Get.back(result: true),
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(color: Color(0xFFD93A2F)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (shouldDelete == true) {
+                      await controller.deletePost(post.id);
+                    }
+                  },
+                )
+              else ...[
+                OptionTile(
+                  icon: post.isSaved ? Icons.bookmark : Icons.bookmark_border,
+                  title: post.isSaved ? 'Unsave' : 'Save',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    controller.toggleSave(post.id);
+                  },
+                ),
+                OptionTile(
+                  icon: CupertinoIcons.link,
+                  title: 'Copy Link',
+                  onTap: () async {
+                    await Clipboard.setData(
+                      ClipboardData(
+                        text: '${AppConstants.BASE_URL}/posts/${post.id}',
+                      ),
+                    );
+                    Navigator.pop(sheetContext);
+                    CustomSnackBar.success(message: 'Post link copied');
+                  },
+                ),
+                OptionTile(
+                  icon: Icons.outlined_flag,
+                  title: 'Report',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    CustomSnackBar.processing(
+                      message: 'Report flow will be added next.',
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+void _showGenericOptions(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (sheetContext) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppColors.grey2)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'More',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.pop(sheetContext),
+                      child: Icon(Icons.cancel, color: AppColors.grey4),
+                    ),
+                  ],
+                ),
               ),
-              OptionTile(icon: Icons.block, title: 'Block'),
-              OptionTile(icon: Icons.outlined_flag, title: 'Report'),
+              OptionTile(
+                icon: Icons.outlined_flag,
+                title: 'Report',
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  CustomSnackBar.processing(
+                    message: 'Report flow will be added next.',
+                  );
+                },
+              ),
             ],
           ),
         ),

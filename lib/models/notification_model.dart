@@ -84,6 +84,36 @@ class AppNotificationModel {
 
   bool get isRead => readAt != null;
 
+  AppNotificationModel copyWith({
+    String? id,
+    String? recipientId,
+    String? recipientType,
+    NotificationActorModel? actor,
+    String? type,
+    String? title,
+    String? body,
+    Map<String, dynamic>? data,
+    DateTime? readAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return AppNotificationModel(
+      id: id ?? this.id,
+      recipientId: recipientId ?? this.recipientId,
+      recipientType: recipientType ?? this.recipientType,
+      actor: actor ?? this.actor,
+      type: type ?? this.type,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      data: data ?? this.data,
+      readAt: readAt ?? this.readAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  String? get connectionStatus => data?['connectionStatus']?.toString();
+
   bool get isConnectionNotification =>
       type == 'connection_request' || type == 'connection_accepted';
 

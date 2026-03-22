@@ -43,4 +43,25 @@ class FolderRepo {
   Future<Response> getFormulations(String folderId) async {
     return await apiClient.getData('/api/folders/$folderId/formulations');
   }
+
+  Future<Response> getFormulation(
+    String formulationId, {
+    bool refreshPrediction = false,
+  }) async {
+    final uri = Uri(
+      path: '/api/formulations/$formulationId',
+      queryParameters: refreshPrediction
+          ? <String, String>{'refreshPrediction': 'true'}
+          : null,
+    ).toString();
+
+    return await apiClient.getData(uri);
+  }
+
+  Future<Response> retryPredictionImage(String formulationId) async {
+    return await apiClient.postData(
+      '/api/formulations/$formulationId/prediction-image/retry',
+      {},
+    );
+  }
 }

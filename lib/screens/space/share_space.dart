@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
-import 'package:smart_swatcher/widgets/reminder_card.dart';
 import 'package:smart_swatcher/widgets/share_event_card.dart';
 
 import '../../controllers/event_controller.dart';
@@ -59,7 +58,9 @@ class ShareSpaceScreen extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: Dimensions.width40),
                 child: Text(
                   isLive
-                      ? 'Your event is live now. Jump back in.'
+                      ? (isCreator
+                          ? 'Your event is live now. Jump back in.'
+                          : 'This event is live now. Jump in.')
                       : 'Event Created. Time to share it with your people',
                   textAlign: TextAlign.center,
                   style: TextStyle(

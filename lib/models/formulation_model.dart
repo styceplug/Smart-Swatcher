@@ -4,6 +4,13 @@ class FormulationModel {
   String status;
   String? imageUrl;
   String? predictionImageUrl;
+  String predictionImageStatus;
+  String? predictionImagePrompt;
+  String? predictionImageRevisedPrompt;
+  String? predictionOpenAiResponseId;
+  String? predictionImageError;
+  String? predictionRequestedAt;
+  String? predictionCompletedAt;
   String? finalImageUrl;
 
   num naturalBaseLevel;
@@ -30,6 +37,13 @@ class FormulationModel {
     required this.status,
     this.imageUrl,
     this.predictionImageUrl,
+    this.predictionImageStatus = 'not_requested',
+    this.predictionImagePrompt,
+    this.predictionImageRevisedPrompt,
+    this.predictionOpenAiResponseId,
+    this.predictionImageError,
+    this.predictionRequestedAt,
+    this.predictionCompletedAt,
     this.finalImageUrl,
     this.naturalBaseLevel = 0,
     this.greyPercentage = 0,
@@ -55,6 +69,13 @@ class FormulationModel {
       status: json['status'] ?? "draft",
       imageUrl: json['imageUrl'],
       predictionImageUrl: json['predictionImageUrl'],
+      predictionImageStatus: json['predictionImageStatus'] ?? 'not_requested',
+      predictionImagePrompt: json['predictionImagePrompt'],
+      predictionImageRevisedPrompt: json['predictionImageRevisedPrompt'],
+      predictionOpenAiResponseId: json['predictionOpenAiResponseId'],
+      predictionImageError: json['predictionImageError'],
+      predictionRequestedAt: json['predictionRequestedAt'],
+      predictionCompletedAt: json['predictionCompletedAt'],
       finalImageUrl: json['finalImageUrl'],
 
       naturalBaseLevel: json['naturalBaseLevel'] ?? 0,
@@ -76,4 +97,10 @@ class FormulationModel {
       createdAt: json['createdAt'],
     );
   }
+
+  bool get isPredictionActive =>
+      predictionImageStatus == 'queued' || predictionImageStatus == 'in_progress';
+
+  bool get hasPredictionImage =>
+      predictionImageUrl != null && predictionImageUrl!.trim().isNotEmpty;
 }

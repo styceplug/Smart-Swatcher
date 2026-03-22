@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
@@ -9,7 +8,6 @@ import 'package:smart_swatcher/widgets/empty_state_widget.dart';
 import 'package:smart_swatcher/widgets/folder_card.dart';
 
 import '../../../controllers/folder_controller.dart';
-import '../../../models/folder_model.dart';
 import '../../../routes/routes.dart';
 import '../../../widgets/custom_button.dart';
 
@@ -22,8 +20,7 @@ class FormulatorScreen extends StatefulWidget {
 
 class _FormulatorScreenState extends State<FormulatorScreen>
     with AutomaticKeepAliveClientMixin {
-  // 1. Inject Controller
-  final ClientFolderController controller = Get.put(ClientFolderController());
+  final ClientFolderController controller = Get.find<ClientFolderController>();
 
   // 2. Search State
   final TextEditingController searchInputCtrl = TextEditingController();

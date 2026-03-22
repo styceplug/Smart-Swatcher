@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
 
+import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,192 +10,313 @@ import '../../utils/app_constants.dart';
 import 'api_checker.dart';
 
 class ApiClient extends GetConnect implements GetxService {
-    late String token;
-    final String appBaseUrl;
-    late SharedPreferences sharedPreferences;
+  static int _requestCounter = 0;
 
-    late Map<String, String> _mainHeaders;
+  late String token;
+  final String appBaseUrl;
+  late SharedPreferences sharedPreferences;
 
-    ApiClient({required this.appBaseUrl, required this.sharedPreferences}) {
-      baseUrl = appBaseUrl;
-      timeout = const Duration(seconds: 30);
-      token = sharedPreferences.getString(AppConstants.authToken) ?? "";
+  late Map<String, String> _mainHeaders;
 
-      _mainHeaders = {
-        'Content-Type': 'application/json; charset=UTF-8',
-        if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
-    }
+  ApiClient({required this.appBaseUrl, required this.sharedPreferences}) {
+    baseUrl = appBaseUrl;
+    timeout = const Duration(seconds: 30);
+    token = sharedPreferences.getString(AppConstants.authToken) ?? "";
 
-    void updateHeader(String token) {
-      _mainHeaders = {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token',
-      };
-      sharedPreferences.setString(AppConstants.authToken, token);
-      if (kDebugMode) {
-        print('🔑 Header updated with token: $token');
-      }
-    }
+    _mainHeaders = {
+      'Content-Type': 'application/json; charset=UTF-8',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
-    Future<Response> getData(String uri, {Map<String, String>? headers}) async {
+  void updateHeader(String token) {
+    _mainHeaders = {
+      'Content-Type': 'application/json; charset=UTF-8',
+      'Authorization': 'Bearer $token',
+    };
+    sharedPreferences.setString(AppConstants.authToken, token);
+    _logLine('[API][AUTH] Header updated with bearer token');
+  }
+
+  Future<Response> getData(String uri, {Map<String, String>? headers}) async {
+    return _runRequest(
+      method: 'GET',
+      uri: uri,
+      headers: headers ?? _mainHeaders,
+      action: () => get(uri, headers: headers ?? _mainHeaders),
+    );
+  }
+
+  Future<Response> postData(
+    String uri,
+    dynamic body, {
+    Map<String, String>? headers,
+  }) async {
+    return _runRequest(
+      method: 'POST',
+      uri: uri,
+      headers: headers ?? _mainHeaders,
+      body: body,
+      action: () => post(uri, body, headers: headers ?? _mainHeaders),
+    );
+  }
+
+  Future<Response> patchData(
+    String uri,
+    dynamic body, {
+    Map<String, String>? headers,
+  }) async {
+    return _runRequest(
+      method: 'PATCH',
+      uri: uri,
+      headers: headers ?? _mainHeaders,
+      body: body,
+      action: () => patch(uri, body, headers: headers ?? _mainHeaders),
+    );
+  }
+
+  Future<Response> putData(
+    String uri,
+    dynamic body, {
+    Map<String, String>? headers,
+  }) async {
+    return _runRequest(
+      method: 'PUT',
+      uri: uri,
+      headers: headers ?? _mainHeaders,
+      body: body,
+      action: () => put(uri, body, headers: headers ?? _mainHeaders),
+    );
+  }
+
+  Future<Response> postMultipartData(
+    String uri,
+    http.MultipartRequest request,
+  ) async {
+    final requestId = _nextRequestId();
+    final startedAt = DateTime.now();
+
+    try {
+      final headers = Map<String, String>.from(_mainHeaders);
+      headers.remove('Content-Type');
+      headers['Accept'] = 'application/json';
+      request.headers.addAll(headers);
+
+      _logRequest(
+        requestId: requestId,
+        method: 'MULTIPART POST',
+        uri: uri,
+        headers: request.headers,
+        body: {
+          'fields': request.fields,
+          'files': request.files
+              .map(
+                (file) => {
+                  'field': file.field,
+                  'filename': file.filename,
+                  'length': file.length,
+                  'contentType': file.contentType.toString(),
+                },
+              )
+              .toList(),
+        },
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      dynamic body = response.body;
       try {
-        print('📡 GET: $baseUrl$uri');
-        print('📤 Headers: ${headers ?? _mainHeaders}');
-        final response = await get(uri, headers: headers ?? _mainHeaders);
-        print("✅ Response: ${response.statusCode}, ${response.body}");
-        return response;
-      } catch (e) {
-        print("❌ ERROR in getData($uri): $e");
-        ApiChecker.checkApi(Response(statusCode: 1, statusText: e.toString()));
-        return Response(statusCode: 1, statusText: e.toString());
-      }
+        body = jsonDecode(response.body);
+      } catch (_) {}
+
+      final payload = Response(
+        statusCode: response.statusCode,
+        body: body,
+        statusText: response.reasonPhrase,
+      );
+
+      _logResponse(
+        requestId: requestId,
+        method: 'MULTIPART POST',
+        uri: uri,
+        startedAt: startedAt,
+        response: payload,
+      );
+      ApiChecker.checkApi(payload);
+      return payload;
+    } catch (error, stackTrace) {
+      _logFailure(
+        requestId: requestId,
+        method: 'MULTIPART POST',
+        uri: uri,
+        startedAt: startedAt,
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return Response(statusCode: 1, statusText: error.toString());
+    }
+  }
+
+  Map<String, String> get mainHeadersForMultipart {
+    final h = Map<String, String>.from(_mainHeaders);
+    h.remove('Content-Type');
+    return h;
+  }
+
+  Future<Response> deleteData(
+    String uri, {
+    Map<String, String>? headers,
+  }) async {
+    return _runRequest(
+      method: 'DELETE',
+      uri: uri,
+      headers: headers ?? _mainHeaders,
+      action: () => delete(uri, headers: headers ?? _mainHeaders),
+    );
+  }
+
+  Future<Response> _runRequest({
+    required String method,
+    required String uri,
+    required Map<String, String> headers,
+    Object? body,
+    required Future<Response> Function() action,
+  }) async {
+    final requestId = _nextRequestId();
+    final startedAt = DateTime.now();
+
+    try {
+      _logRequest(
+        requestId: requestId,
+        method: method,
+        uri: uri,
+        headers: headers,
+        body: body,
+      );
+
+      final response = await action();
+
+      _logResponse(
+        requestId: requestId,
+        method: method,
+        uri: uri,
+        startedAt: startedAt,
+        response: response,
+      );
+      ApiChecker.checkApi(response);
+      return response;
+    } catch (error, stackTrace) {
+      _logFailure(
+        requestId: requestId,
+        method: method,
+        uri: uri,
+        startedAt: startedAt,
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return Response(statusCode: 1, statusText: error.toString());
+    }
+  }
+
+  int _nextRequestId() {
+    _requestCounter += 1;
+    return _requestCounter;
+  }
+
+  String _formatRequestId(int requestId) {
+    return requestId.toString().padLeft(4, '0');
+  }
+
+  String _resolveUri(String uri) {
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      return uri;
+    }
+    return '$baseUrl$uri';
+  }
+
+  void _logRequest({
+    required int requestId,
+    required String method,
+    required String uri,
+    required Map<String, String> headers,
+    Object? body,
+  }) {
+    final label = _formatRequestId(requestId);
+    _logLine('[API][$label][$method] REQUEST ${_resolveUri(uri)}');
+    _logLine('[API][$label][$method] HEADERS ${_stringify(headers)}');
+    if (body != null) {
+      _logLine('[API][$label][$method] BODY ${_stringify(body)}');
+    }
+  }
+
+  void _logResponse({
+    required int requestId,
+    required String method,
+    required String uri,
+    required DateTime startedAt,
+    required Response response,
+  }) {
+    final label = _formatRequestId(requestId);
+    final duration = DateTime.now().difference(startedAt).inMilliseconds;
+    _logLine(
+      '[API][$label][$method] RESPONSE ${response.statusCode} ${_resolveUri(uri)} (${duration}ms)',
+    );
+    if (response.statusText != null && response.statusText!.trim().isNotEmpty) {
+      _logLine('[API][$label][$method] STATUS_TEXT ${response.statusText}');
+    }
+    _logLine('[API][$label][$method] RESPONSE_BODY ${_stringify(response.body)}');
+  }
+
+  void _logFailure({
+    required int requestId,
+    required String method,
+    required String uri,
+    required DateTime startedAt,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    final label = _formatRequestId(requestId);
+    final duration = DateTime.now().difference(startedAt).inMilliseconds;
+    _logLine('[API][$label][$method] ERROR ${_resolveUri(uri)} (${duration}ms)');
+    _logLine('[API][$label][$method] ERROR_BODY ${error.toString()}');
+    _logLine('[API][$label][$method] STACK ${stackTrace.toString()}');
+  }
+
+  String _stringify(Object? value) {
+    if (value == null) {
+      return 'null';
     }
 
-    Future<Response> postData(String uri, dynamic body, {Map<String, String>? headers}) async {
-      try {
-        Response response = await post(uri, body, headers: headers ?? _mainHeaders);
-        if (kDebugMode) {
-          print('posting $appBaseUrl$uri $body ${headers ?? _mainHeaders}');
-          print("response body ${response.body}");
-
-          final responseSize = utf8.encode(response.body.toString()).length;
-          print('Response Size for $uri: $responseSize bytes (${(responseSize / 1024).toStringAsFixed(2)} KB)');
-        }
-        ApiChecker.checkApi(Response(statusCode: 1, statusText: response.toString()));
-
-
-        return response;
-      } catch (e,s) {
-        if (kDebugMode) {
-          print('from api post client');
-          print(s);
-          print(e.toString());
-        }
-
-        return Response(statusCode: 1, statusText: e.toString());
-      }
+    if (value is String) {
+      return value;
     }
 
-    Future<Response> patchData(String uri, dynamic body, {Map<String, String>? headers}) async {
-      try {
-        Response response = await patch(uri, body, headers: headers ?? _mainHeaders);
+    try {
+      return const JsonEncoder.withIndent('  ').convert(value);
+    } catch (_) {
+      return value.toString();
+    }
+  }
 
-        if (kDebugMode) {
-          print('patching $appBaseUrl$uri $body ${headers ?? _mainHeaders}');
-          print("response body ${response.body}");
-
-          final responseSize = utf8.encode(response.body.toString()).length;
-          print('Response Size for $uri: $responseSize bytes (${(responseSize / 1024).toStringAsFixed(2)} KB)');
-        }
-
-        return response;
-      } catch (e, s) {
-        if (kDebugMode) {
-          print('from api patch client');
-          print(s);
-          print(e.toString());
-        }
-        return Response(statusCode: 1, statusText: e.toString());
-      }
+  void _logLine(String message) {
+    if (!kDebugMode) {
+      return;
     }
 
-    Future<Response> putData(String uri, dynamic body, {Map<String, String>? headers}) async {
-      try {
-
-        Response response = await put(uri, body, headers: headers ?? _mainHeaders);
-        if (kDebugMode) {
-          print("putting ${response.body}");
-          print("response body ${response.body}");
-
-          final responseSize = utf8.encode(response.body.toString()).length;
-          print('Response Size for $uri: $responseSize bytes (${(responseSize / 1024).toStringAsFixed(2)} KB)');
-        }
-        ApiChecker.checkApi(response);
-        return response;
-      } catch (e) {
-        if (kDebugMode) {
-          print('from api put client');
-print(e.toString());
-        }
-        return Response(statusCode: 1, statusText: e.toString());
-      }
+    const chunkSize = 700;
+    if (message.length <= chunkSize) {
+      debugPrintSynchronously(message);
+      return;
     }
 
-    Future<Response> postMultipartData(String uri, http.MultipartRequest request) async {
-      try {
-        // ✅ Copy headers but REMOVE JSON content-type
-        final headers = Map<String, String>.from(_mainHeaders);
-        headers.remove('Content-Type');
-
-        // Optional: accept json
-        headers['Accept'] = 'application/json';
-
-        request.headers.addAll(headers);
-
-        if (kDebugMode) {
-          print('🧾 POST Multipart to $uri: ${request.fields}');
-          print('🧾 Files: ${request.files.map((f) => f.field).join(', ')}');
-          print('🧾 Headers: ${request.headers}');
-        }
-
-        final streamedResponse = await request.send();
-        final response = await http.Response.fromStream(streamedResponse);
-
-        if (kDebugMode) {
-          print('📦 Response Status: ${response.statusCode}');
-          print('📦 Response: ${response.body}');
-        }
-
-        dynamic body = response.body;
-        try {
-          body = jsonDecode(response.body);
-        } catch (_) {}
-
-        return Response(
-          statusCode: response.statusCode,
-          body: body,
-          statusText: response.reasonPhrase,
-        );
-      } catch (e) {
-        if (kDebugMode) {
-          print('❌ Multipart POST Error: $e');
-        }
-        return Response(statusCode: 1, statusText: e.toString());
-      }
+    for (int start = 0; start < message.length; start += chunkSize) {
+      final end = start + chunkSize < message.length
+          ? start + chunkSize
+          : message.length;
+      debugPrintSynchronously(message.substring(start, end));
     }
-
-    Map<String, String> get mainHeadersForMultipart {
-      final h = Map<String, String>.from(_mainHeaders);
-      h.remove('Content-Type'); // multipart must set its own boundary
-      return h;
-    }
-
-
-
-    Future<Response> deleteData(String uri, {Map<String, String>? headers}) async {
-      try {
-        print('🗑️ DELETE: $baseUrl$uri');
-        print('📤 Headers: ${headers ?? _mainHeaders}');
-        Response response = await delete(uri, headers: headers ?? _mainHeaders);
-
-        if (kDebugMode) {
-          print("🗑️ Response: ${response.statusCode}, ${response.body}");
-          final responseSize = utf8.encode(response.body.toString()).length;
-          print('Response Size for $uri: $responseSize bytes (${(responseSize / 1024).toStringAsFixed(2)} KB)');
-        }
-
-        return response;
-      } catch (e) {
-        if (kDebugMode) {
-          print('❌ ERROR in deleteData($uri): $e');
-        }
-        return Response(statusCode: 1, statusText: e.toString());
-      }
-    }
-
-
-
+  }
 }
 
 class MultipartBody {

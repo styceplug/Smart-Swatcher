@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_swatcher/controllers/app_controller.dart';
-import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
-import 'package:flutter/cupertino.dart';
 
 import '../../controllers/folder_controller.dart';
 import '../../widgets/custom_textfield.dart';
@@ -21,8 +19,7 @@ class CreateFolderScreen extends StatefulWidget {
 }
 
 class _CreateFolderScreenState extends State<CreateFolderScreen> {
-  // 1. Initialize Controller
-  final ClientFolderController controller = Get.put(ClientFolderController());
+  final ClientFolderController controller = Get.find<ClientFolderController>();
 
   AppController appController = Get.find<AppController>();
 
@@ -226,7 +223,7 @@ class _CreateFolderScreenState extends State<CreateFolderScreen> {
                     });
                   },
                   activeTrackColor: AppColors.primary5,
-                  activeColor: AppColors.white,
+                  activeThumbColor: AppColors.white,
                   inactiveThumbColor: AppColors.white,
                   inactiveTrackColor: AppColors.grey2,
                 ),

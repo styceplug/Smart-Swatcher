@@ -1,14 +1,19 @@
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/company_analytics_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_swatcher/controllers/event_controller.dart';
 import 'package:smart_swatcher/controllers/folder_controller.dart';
+import 'package:smart_swatcher/controllers/conversation_controller.dart';
 import 'package:smart_swatcher/controllers/user_controller.dart';
 import 'package:smart_swatcher/data/repo/auth_repo.dart';
+import 'package:smart_swatcher/data/repo/company_analytics_repo.dart';
+import 'package:smart_swatcher/data/repo/conversation_repo.dart';
 import 'package:smart_swatcher/data/repo/event_repo.dart';
 import 'package:smart_swatcher/data/repo/folder_repo.dart';
 import 'package:smart_swatcher/data/repo/post_repo.dart';
 import 'package:smart_swatcher/data/repo/user_repo.dart';
 import 'package:smart_swatcher/helpers/agora_audio_helper.dart';
+import 'package:smart_swatcher/helpers/chat_socket_service.dart';
 
 import '../controllers/app_controller.dart';
 import '../controllers/auth_controller.dart';
@@ -35,18 +40,24 @@ Future<void> init() async {
     ),
   );
   Get.put(AgoraAudioHelper(), permanent: true);
+  Get.put(
+    ChatSocketService(sharedPreferences: Get.find()),
+    permanent: true,
+  );
 
   // repos
   Get.lazyPut(
     () => AppRepo(apiClient: Get.find(), sharedPreferences: Get.find()),
   );
   Get.lazyPut(() => VersionRepo(apiClient: Get.find()));
-  Get.lazyPut(() => PostRepo(apiClient: Get.find()));
+  Get.lazyPut(() => PostRepo(apiClient: Get.find()), fenix: true);
   Get.lazyPut(
     () => AuthRepo(apiClient: Get.find(), sharedPreferences: Get.find()),
   );
-  Get.lazyPut(() => FolderRepo(apiClient: Get.find()));
+  Get.lazyPut(() => FolderRepo(apiClient: Get.find()), fenix: true);
+  Get.lazyPut(() => CompanyAnalyticsRepo(apiClient: Get.find()), fenix: true);
   Get.lazyPut(() => UserRepo(apiClient: Get.find()), fenix: true);
+  Get.lazyPut(() => ConversationRepo(apiClient: Get.find()), fenix: true);
   Get.put(EventRepo(apiClient: Get.find()), permanent: true);
   Get.lazyPut(() => NotificationRepo(apiClient: Get.find()), fenix: true);
 
@@ -55,10 +66,24 @@ Future<void> init() async {
   Get.lazyPut(() => AppController(appRepo: Get.find()));
   Get.lazyPut(() => VersionController(versionRepo: Get.find()));
   Get.lazyPut(() => GlobalLoaderController());
-  Get.lazyPut(() => PostController());
+  Get.lazyPut(() => PostController(), fenix: true);
   Get.lazyPut(() => AuthController(authRepo: Get.find()), fenix: true);
-  Get.lazyPut(() => ClientFolderController());
-  Get.lazyPut(() => UserController(userRepo: Get.find()), fenix: true);
+  Get.lazyPut(() => ClientFolderController(), fenix: true);
+  Get.lazyPut(
+    () => CompanyAnalyticsController(companyAnalyticsRepo: Get.find()),
+    fenix: true,
+  );
+  Get.lazyPut(
+    () => UserController(userRepo: Get.find(), postRepo: Get.find()),
+    fenix: true,
+  );
+  Get.lazyPut(
+    () => ConversationController(
+      conversationRepo: Get.find(),
+      chatSocketService: Get.find(),
+    ),
+    fenix: true,
+  );
   Get.put(EventController(eventRepo: Get.find()), permanent: true);
   Get.lazyPut(
     () => NotificationController(notificationRepo: Get.find()),

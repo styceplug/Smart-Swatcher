@@ -1,6 +1,5 @@
-import '../utils/app_constants.dart';
-
 class StylistModel {
+  String? id;
   String? fullName;
   String? username;
   String? email;
@@ -19,6 +18,7 @@ class StylistModel {
   String? profileImageUrl;
 
   StylistModel({
+    this.id,
     this.fullName,
     this.username,
     this.email,
@@ -39,6 +39,7 @@ class StylistModel {
 
   Map<String, dynamic> toJson() {
     return {
+      if (id != null) "id": id,
       if (fullName != null) "fullName": fullName,
       if (username != null) "username": username,
       if (email != null) "email": email,
@@ -60,6 +61,7 @@ class StylistModel {
 
   factory StylistModel.fromJson(Map<String, dynamic> json) {
     return StylistModel(
+      id: json['id']?.toString(),
       fullName: json['fullName'],
       username: json['username'],
       email: json['email'],

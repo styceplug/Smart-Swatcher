@@ -51,4 +51,11 @@ class UserRepo {
       {},
     );
   }
+
+  Future<Response> declineConnection(String connectionId) async {
+    return await apiClient.postData(
+      AppConstants.DECLINE_CONNECTION(connectionId),
+      {},
+    );
+  }
 }

@@ -19,13 +19,17 @@ class NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final NotificationController controller = Get.find<NotificationController>();
-    UserController userController = Get.find<UserController>();
+    final UserController userController = Get.find<UserController>();
 
     final imageUrl =
     controller.resolveImageUrl(notification.actor?.profileImageUrl);
     final hasImage = imageUrl.isNotEmpty;
 
     final isConnectionRequest = notification.type == 'connection_request';
+    final connectionId = notification.data?['connectionId']?.toString();
+    final connectionStatus = notification.connectionStatus;
+    final isAccepted = connectionStatus == 'accepted';
+    final isDeclined = connectionStatus == 'declined';
 
     return Container(
       margin: EdgeInsets.only(bottom: Dimensions.height12),
@@ -36,7 +40,7 @@ class NotificationCard extends StatelessWidget {
         border: Border.all(
           color: notification.isRead
               ? AppColors.grey2
-              : AppColors.primary5.withOpacity(.15),
+              : AppColors.primary5.withValues(alpha: 0.15),
         ),
       ),
       child: Column(
@@ -131,12 +135,14 @@ class NotificationCard extends StatelessWidget {
 
             Row(
               children: [
-                /// VIEW PROFILE
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      if (notification.id != null) {
+                        await controller.markNotificationRead(notification.id!);
+                      }
+
                       final actorId = notification.actor?.id;
-                      final actorType = notification.actor?.type;
 
                       if (actorId != null) {
                         Get.toNamed(
@@ -165,34 +171,99 @@ class NotificationCard extends StatelessWidget {
 
                 SizedBox(width: Dimensions.width10),
 
-                /// ACCEPT
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final connectionId =
-                      notification.data?['connectionId'];
+                  child: isAccepted || isDeclined
+                      ? ElevatedButton(
+                          onPressed: null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                isAccepted ? AppColors.success2 : AppColors.grey4,
+                            disabledBackgroundColor:
+                                isAccepted ? AppColors.success2 : AppColors.grey4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(Dimensions.radius10),
+                            ),
+                          ),
+                          child: Text(
+                            isAccepted ? 'Accepted' : 'Declined',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: Dimensions.font12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : OutlinedButton(
+                          onPressed: connectionId == null
+                              ? null
+                              : () async {
+                                  final success =
+                                      await userController.declineConnection(
+                                    connectionId,
+                                    targetId: notification.actor?.id,
+                                  );
+                                  if (success && notification.id != null) {
+                                    await controller.markNotificationRead(
+                                      notification.id!,
+                                    );
+                                  }
+                                },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: AppColors.error),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(Dimensions.radius10),
+                            ),
+                          ),
+                          child: Text(
+                            'Decline',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: Dimensions.font12,
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ),
+                ),
 
-                      if (connectionId != null) {
-                        await userController.acceptConnection(connectionId);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                        BorderRadius.circular(Dimensions.radius10),
+                if (!isAccepted && !isDeclined) ...[
+                  SizedBox(width: Dimensions.width10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: connectionId == null
+                          ? null
+                          : () async {
+                              final success =
+                                  await userController.acceptConnection(
+                                connectionId,
+                                targetId: notification.actor?.id,
+                              );
+                              if (success && notification.id != null) {
+                                await controller.markNotificationRead(
+                                  notification.id!,
+                                );
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary5,
+                        disabledBackgroundColor: AppColors.grey4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(Dimensions.radius10),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      'Accept',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: Dimensions.font12,
-                        color: Colors.white,
+                      child: Text(
+                        'Accept',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: Dimensions.font12,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ],

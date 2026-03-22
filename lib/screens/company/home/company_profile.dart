@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -7,10 +6,7 @@ import 'package:smart_swatcher/controllers/post_controller.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
-import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/post_card.dart';
-import 'package:smart_swatcher/models/post_model.dart';
-import 'package:smart_swatcher/widgets/reminder_card.dart';
 import 'package:smart_swatcher/widgets/tips_card.dart';
 import '../../../routes/routes.dart';
 
@@ -26,6 +22,7 @@ class _CompanyProfileState extends State<CompanyProfile>
   late TabController _tabController;
   final AuthController authController = Get.find<AuthController>();
   PostController postController = Get.find<PostController>();
+  String? _lastLoadedProfileId;
 
   @override
   bool get wantKeepAlive => true;
@@ -42,9 +39,29 @@ class _CompanyProfileState extends State<CompanyProfile>
     super.dispose();
   }
 
+  void _ensureOwnPostsLoaded() {
+    final profileId = authController.companyProfile.value?.id;
+    if (profileId == null || profileId.trim().isEmpty) {
+      return;
+    }
+
+    if (_lastLoadedProfileId == profileId) {
+      return;
+    }
+
+    _lastLoadedProfileId = profileId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      postController.fetchOwnPosts(
+        authorId: profileId,
+        authorType: 'company',
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAlive
+    _ensureOwnPostsLoaded();
 
     return Scaffold(
       body: NestedScrollView(
@@ -162,8 +179,8 @@ class _ProfileHeader extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.10),
-                        Colors.black.withOpacity(0.35),
+                        Colors.black.withValues(alpha: 0.10),
+                        Colors.black.withValues(alpha: 0.35),
                       ],
                     ),
                   ),
@@ -178,7 +195,7 @@ class _ProfileHeader extends StatelessWidget {
                         child: Container(
                           padding: EdgeInsets.all(Dimensions.width10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.18),
+                            color: Colors.white.withValues(alpha: 0.18),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -196,7 +213,7 @@ class _ProfileHeader extends StatelessWidget {
                             child: Container(
                               padding: EdgeInsets.all(Dimensions.width10),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.18),
+                                color: Colors.white.withValues(alpha: 0.18),
                                 shape: BoxShape.circle,
                               ),
                               child: Image.asset(
@@ -213,7 +230,7 @@ class _ProfileHeader extends StatelessWidget {
                             child: Container(
                               padding: EdgeInsets.all(Dimensions.width10),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.18),
+                                color: Colors.white.withValues(alpha: 0.18),
                                 shape: BoxShape.circle,
                               ),
                               child: Image.asset(
@@ -304,7 +321,7 @@ class _ProfileHeader extends StatelessWidget {
                       vertical: Dimensions.height5,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary5.withOpacity(.08),
+                      color: AppColors.primary5.withValues(alpha: .08),
                       borderRadius: BorderRadius.circular(Dimensions.radius20),
                     ),
                     child: Text(
@@ -329,7 +346,7 @@ class _ProfileHeader extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontSize: Dimensions.font14,
                     fontWeight: FontWeight.w300,
-                    color: AppColors.black1.withOpacity(0.75),
+                    color: AppColors.black1.withValues(alpha: 0.75),
                     height: 1.5,
                   ),
                 ),
@@ -398,18 +415,16 @@ class FormulasTab extends StatelessWidget {
     final PostController controller = Get.find<PostController>();
 
     return Obx(() {
-      if (controller.isFeedLoading.value) {
+      if (controller.isOwnPostsLoading.value) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.primary5),
         );
       }
 
-      // Filter: Only show posts that have formula data
-      // Note: Adjust logic if your backend identifies formulas differently (e.g. post.type == 'formula')
       final formulaPosts =
-          controller.postsList
+          controller.ownPostsList
               .where(
-                (p) => p.base != null || p.lights != null || p.toner != null,
+                (p) => p.hasFormula || p.base != null || p.lights != null || p.toner != null,
               )
               .toList();
 
@@ -425,13 +440,17 @@ class FormulasTab extends StatelessWidget {
         );
       }
 
-      return ListView.builder(
-        physics: const ClampingScrollPhysics(),
-        padding: EdgeInsets.zero,
-        itemCount: formulaPosts.length,
-        itemBuilder: (context, index) {
-          return FormulasCard(post: formulaPosts[index]);
-        },
+      return RefreshIndicator(
+        color: AppColors.primary5,
+        onRefresh: () => controller.fetchOwnPosts(authorType: 'company'),
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: formulaPosts.length,
+          itemBuilder: (context, index) {
+            return FormulasCard(post: formulaPosts[index]);
+          },
+        ),
       );
     });
   }
@@ -445,29 +464,41 @@ class FeedTab extends StatelessWidget {
     final PostController controller = Get.find<PostController>();
 
     return Obx(() {
-      if (controller.isFeedLoading.value) {
+      if (controller.isOwnPostsLoading.value) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.primary5),
         );
       }
 
-      if (controller.postsList.isEmpty) {
-        return Center(
-          child: Text(
-            "No posts found",
-            style: TextStyle(color: AppColors.grey4),
-          ),
-        );
-      }
-
       return Stack(
         children: [
-          ListView.builder(
-            padding: EdgeInsets.only(bottom: Dimensions.height70),
-            itemCount: controller.postsList.length,
-            itemBuilder: (context, index) {
-              return PostCard(post: controller.postsList[index]);
-            },
+          RefreshIndicator(
+            color: AppColors.primary5,
+            onRefresh: () => controller.fetchOwnPosts(authorType: 'company'),
+            child: controller.ownPostsList.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width20,
+                      vertical: Dimensions.height40,
+                    ),
+                    children: [
+                      Center(
+                        child: Text(
+                          "No posts found",
+                          style: TextStyle(color: AppColors.grey4),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(bottom: Dimensions.height70),
+                    itemCount: controller.ownPostsList.length,
+                    itemBuilder: (context, index) {
+                      return PostCard(post: controller.ownPostsList[index]);
+                    },
+                  ),
           ),
 
         ],
@@ -518,24 +549,69 @@ class MediaTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: EdgeInsets.all(Dimensions.width20),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: Dimensions.width20,
-        mainAxisSpacing: Dimensions.height20,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: 4, // Dummy count
-      itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.grey2,
-            borderRadius: BorderRadius.circular(Dimensions.radius15),
-          ),
+    final controller = Get.find<PostController>();
+
+    return Obx(() {
+      final media = controller.ownPostsList
+          .expand((post) => post.media)
+          .where((item) => item.url.trim().isNotEmpty)
+          .toList();
+
+      if (controller.isOwnPostsLoading.value) {
+        return const Center(
+          child: CircularProgressIndicator(color: AppColors.primary5),
         );
-      },
-    );
+      }
+
+      return RefreshIndicator(
+        color: AppColors.primary5,
+        onRefresh: () => controller.fetchOwnPosts(authorType: 'company'),
+        child: media.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimensions.width20,
+                  vertical: Dimensions.height40,
+                ),
+                children: [
+                  Center(
+                    child: Text(
+                      'No media found',
+                      style: TextStyle(color: AppColors.grey4),
+                    ),
+                  ),
+                ],
+              )
+            : GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(Dimensions.width20),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: Dimensions.width20,
+                  mainAxisSpacing: Dimensions.height20,
+                  childAspectRatio: 0.8,
+                ),
+                itemCount: media.length,
+                itemBuilder: (context, index) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
+                    child: Image.network(
+                      media[index].url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: AppColors.grey2,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.broken_image,
+                          color: AppColors.grey4,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+      );
+    });
   }
 }
 
@@ -785,22 +861,47 @@ class EventsTab extends StatelessWidget {
       itemCount: _dummyEvents.length,
       itemBuilder: (context, index) {
         final event = _dummyEvents[index];
-        // return ReminderCard(
-        //   hostName: event.creator?.name ?? 'Unknown Host',
-        //   hostRole: event.creator?.role ?? 'Host',
-        //   sessionType: 'A U D I O',
-        //   title: event.title ?? 'Untitled Event',
-        //   dateTime: controller.formatEventDate(event.scheduledStartAt),
-        //   isReminderSet: event.viewer?.isSubscribed ?? false,
-        //   description: event.description ?? '',
-        //   onTap: () async {
-        //     await controller.fetchSingleEvent(event.id ?? '');
-        //     Get.toNamed(AppRoutes.shareSpaceScreen);
-        //   },
-        //   onReminderTap: () async {
-        //     await controller.toggleSubscription(event);
-        //   },
-        // );
+        return Container(
+          margin: EdgeInsets.only(bottom: Dimensions.height15),
+          padding: EdgeInsets.all(Dimensions.width15),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(Dimensions.radius15),
+            border: Border.all(color: AppColors.grey2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                event['title']?.toString() ?? 'Event',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: Dimensions.font16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: Dimensions.height5),
+              Text(
+                event['description']?.toString() ?? '',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: Dimensions.font13,
+                  color: AppColors.grey4,
+                  height: 1.5,
+                ),
+              ),
+              SizedBox(height: Dimensions.height10),
+              Text(
+                '${event['type']} • ${event['date']}',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: Dimensions.font12,
+                  color: AppColors.primary5,
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }

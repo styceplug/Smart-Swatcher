@@ -10,6 +10,9 @@ import 'package:smart_swatcher/screens/auth/stylist/pro_registration_screen.dart
 import 'package:smart_swatcher/screens/auth/stylist/stylist_login_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/update_password_screen.dart';
 import 'package:smart_swatcher/screens/company/home/home_page.dart';
+import 'package:smart_swatcher/screens/conversations/conversation_detail_screen.dart';
+import 'package:smart_swatcher/screens/conversations/conversations_screen.dart';
+import 'package:smart_swatcher/screens/conversations/new_conversation_screen.dart';
 import 'package:smart_swatcher/screens/company/in_app/analytics/downloads_screen.dart';
 import 'package:smart_swatcher/screens/company/in_app/analytics/engagement_screen.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/add_description.dart';
@@ -148,6 +151,9 @@ class AppRoutes {
   static const String recommendedAccountScreen = '/recommended-account-screen';
   static const String myEventsScreen = '/my-events-screen';
   static const String audioSessionScreen = '/audio-session-screen';
+  static const String conversationsScreen = '/conversations-screen';
+  static const String conversationDetailScreen = '/conversation-detail-screen';
+  static const String newConversationScreen = '/new-conversation-screen';
 
 
 
@@ -293,6 +299,27 @@ class AppRoutes {
       name: audioSessionScreen,
       page: () {
         return const AudioSessionScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: conversationsScreen,
+      page: () {
+        return const ConversationsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: conversationDetailScreen,
+      page: () {
+        return const ConversationDetailScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: newConversationScreen,
+      page: () {
+        return const NewConversationScreen();
       },
       transition: Transition.fadeIn,
     ),
