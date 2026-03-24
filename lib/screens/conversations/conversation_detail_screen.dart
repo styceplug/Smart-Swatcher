@@ -8,6 +8,8 @@ import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/snackbars.dart';
 
+import '../../routes/routes.dart';
+
 class ConversationDetailScreen extends StatefulWidget {
   const ConversationDetailScreen({super.key});
 
