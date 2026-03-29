@@ -10,6 +10,7 @@ import '../../routes/routes.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/colors.dart';
 import '../../utils/dimensions.dart';
+import '../../widgets/app_cached_network_image.dart';
 import '../../widgets/post_card.dart';
 import '../../widgets/reminder_card.dart';
 import '../../widgets/snackbars.dart';
@@ -98,9 +99,7 @@ class _OtherProfileScreenState extends State<OtherProfileScreen>
                 ),
               ];
             },
-            body: TabBarView(
-              children: tabs.map((tab) => tab.child).toList(),
-            ),
+            body: TabBarView(children: tabs.map((tab) => tab.child).toList()),
           ),
         ),
       );
@@ -127,10 +126,7 @@ class _OtherProfileScreenState extends State<OtherProfileScreen>
 }
 
 class _ProfileTabItem {
-  const _ProfileTabItem({
-    required this.label,
-    required this.child,
-  });
+  const _ProfileTabItem({required this.label, required this.child});
 
   final String label;
   final Widget child;
@@ -159,12 +155,13 @@ class _OtherProfileHeader extends StatelessWidget {
               height: Dimensions.height100 * 1.6,
               decoration: BoxDecoration(
                 color: AppColors.primary1,
-                image: coverUrl.isNotEmpty
-                    ? DecorationImage(
-                        image: NetworkImage(coverUrl),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
+                image:
+                    coverUrl.isNotEmpty
+                        ? DecorationImage(
+                          image: appCachedImageProvider(coverUrl)!,
+                          fit: BoxFit.cover,
+                        )
+                        : null,
               ),
             ),
             Positioned(
@@ -194,16 +191,18 @@ class _OtherProfileHeader extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: AppColors.white,
                   border: Border.all(color: AppColors.white, width: 3),
-                  image: profileUrl.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(profileUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+                  image:
+                      profileUrl.isNotEmpty
+                          ? DecorationImage(
+                            image: appCachedImageProvider(profileUrl)!,
+                            fit: BoxFit.cover,
+                          )
+                          : null,
                 ),
-                child: profileUrl.isEmpty
-                    ? Icon(Icons.person, size: 38, color: AppColors.grey4)
-                    : null,
+                child:
+                    profileUrl.isEmpty
+                        ? Icon(Icons.person, size: 38, color: AppColors.grey4)
+                        : null,
               ),
             ),
           ],
@@ -306,23 +305,26 @@ class _ProfileActionArea extends StatelessWidget {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: isBusy
-                    ? null
-                    : () async {
-                        final connectionId = viewer.connectionId;
-                        if (connectionId == null || connectionId.trim().isEmpty) {
-                          CustomSnackBar.failure(
-                            message: 'Connection request information is missing.',
-                          );
-                          return;
-                        }
+                onPressed:
+                    isBusy
+                        ? null
+                        : () async {
+                          final connectionId = viewer.connectionId;
+                          if (connectionId == null ||
+                              connectionId.trim().isEmpty) {
+                            CustomSnackBar.failure(
+                              message:
+                                  'Connection request information is missing.',
+                            );
+                            return;
+                          }
 
-                        await userController.acceptConnection(
-                          connectionId,
-                          targetId: targetId,
-                          refreshProfile: true,
-                        );
-                      },
+                          await userController.acceptConnection(
+                            connectionId,
+                            targetId: targetId,
+                            refreshProfile: true,
+                          );
+                        },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary5,
                   padding: EdgeInsets.symmetric(vertical: Dimensions.height15),
@@ -339,20 +341,22 @@ class _ProfileActionArea extends StatelessWidget {
             SizedBox(width: Dimensions.width10),
             Expanded(
               child: OutlinedButton(
-                onPressed: isBusy
-                    ? null
-                    : () async {
-                        final connectionId = viewer.connectionId;
-                        if (connectionId == null || connectionId.trim().isEmpty) {
-                          return;
-                        }
+                onPressed:
+                    isBusy
+                        ? null
+                        : () async {
+                          final connectionId = viewer.connectionId;
+                          if (connectionId == null ||
+                              connectionId.trim().isEmpty) {
+                            return;
+                          }
 
-                        await userController.declineConnection(
-                          connectionId,
-                          targetId: targetId,
-                          refreshProfile: true,
-                        );
-                      },
+                          await userController.declineConnection(
+                            connectionId,
+                            targetId: targetId,
+                            refreshProfile: true,
+                          );
+                        },
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: AppColors.grey3),
                   padding: EdgeInsets.symmetric(vertical: Dimensions.height15),
@@ -376,44 +380,48 @@ class _ProfileActionArea extends StatelessWidget {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: isEnabled
-              ? () async {
-                  switch (action) {
-                    case ProfilePrimaryAction.connect:
-                      await userController.requestConnection(
-                        targetId,
-                        refreshProfile: true,
-                      );
-                      break;
-                    case ProfilePrimaryAction.accept:
-                      final connectionId = viewer.connectionId;
-                      if (connectionId == null || connectionId.trim().isEmpty) {
-                        CustomSnackBar.failure(
-                          message: 'Connection request information is missing.',
+          onPressed:
+              isEnabled
+                  ? () async {
+                    switch (action) {
+                      case ProfilePrimaryAction.connect:
+                        await userController.requestConnection(
+                          targetId,
+                          refreshProfile: true,
                         );
-                        return;
-                      }
-                      await userController.acceptConnection(
-                        connectionId,
-                        targetId: targetId,
-                        refreshProfile: true,
-                      );
-                      break;
-                    case ProfilePrimaryAction.message:
-                      await conversationController.startPrivateConversation(
-                        targetId: targetId,
-                      );
-                      break;
-                    case ProfilePrimaryAction.none:
-                    case ProfilePrimaryAction.requested:
-                      break;
+                        break;
+                      case ProfilePrimaryAction.accept:
+                        final connectionId = viewer.connectionId;
+                        if (connectionId == null ||
+                            connectionId.trim().isEmpty) {
+                          CustomSnackBar.failure(
+                            message:
+                                'Connection request information is missing.',
+                          );
+                          return;
+                        }
+                        await userController.acceptConnection(
+                          connectionId,
+                          targetId: targetId,
+                          refreshProfile: true,
+                        );
+                        break;
+                      case ProfilePrimaryAction.message:
+                        await conversationController.startPrivateConversation(
+                          targetId: targetId,
+                        );
+                        break;
+                      case ProfilePrimaryAction.none:
+                      case ProfilePrimaryAction.requested:
+                        break;
+                    }
                   }
-                }
-              : null,
+                  : null,
           style: ElevatedButton.styleFrom(
             elevation: 0,
             backgroundColor: isGhost ? AppColors.grey2 : AppColors.primary5,
-            disabledBackgroundColor: isGhost ? AppColors.grey2 : AppColors.grey4,
+            disabledBackgroundColor:
+                isGhost ? AppColors.grey2 : AppColors.grey4,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(Dimensions.radius10),
             ),
@@ -433,11 +441,7 @@ class _ProfileActionArea extends StatelessWidget {
   }
 }
 
-enum _ProfileMenuAction {
-  withdrawRequest,
-  removeConnection,
-  block,
-}
+enum _ProfileMenuAction { withdrawRequest, removeConnection, block }
 
 class _ProfileMenu extends StatelessWidget {
   const _ProfileMenu({required this.profile});
@@ -446,9 +450,10 @@ class _ProfileMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final menuColor = (profile.backgroundImageUrl ?? '').isNotEmpty
-        ? Colors.white
-        : AppColors.black1;
+    final menuColor =
+        (profile.backgroundImageUrl ?? '').isNotEmpty
+            ? Colors.white
+            : AppColors.black1;
 
     return PopupMenuButton<_ProfileMenuAction>(
       color: Colors.white,
@@ -587,7 +592,8 @@ class _PostsTab extends StatelessWidget {
     final contentController = Get.find<ProfileContentController>();
 
     return Obx(() {
-      if (controller.isFetchingProfilePosts.value && controller.profilePosts.isEmpty) {
+      if (controller.isFetchingProfilePosts.value &&
+          controller.profilePosts.isEmpty) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.primary5),
         );
@@ -599,30 +605,31 @@ class _PostsTab extends StatelessWidget {
           await controller.refreshActiveProfile();
           await contentController.refreshCurrentOwner();
         },
-        child: controller.profilePosts.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width20,
-                  vertical: Dimensions.height40,
-                ),
-                children: [
-                  Center(
-                    child: Text(
-                      'No posts found',
-                      style: TextStyle(color: AppColors.grey4),
-                    ),
+        child:
+            controller.profilePosts.isEmpty
+                ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height40,
                   ),
-                ],
-              )
-            : ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(bottom: Dimensions.height70),
-                itemCount: controller.profilePosts.length,
-                itemBuilder: (_, index) {
-                  return PostCard(post: controller.profilePosts[index]);
-                },
-              ),
+                  children: [
+                    Center(
+                      child: Text(
+                        'No posts found',
+                        style: TextStyle(color: AppColors.grey4),
+                      ),
+                    ),
+                  ],
+                )
+                : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(bottom: Dimensions.height70),
+                  itemCount: controller.profilePosts.length,
+                  itemBuilder: (_, index) {
+                    return PostCard(post: controller.profilePosts[index]);
+                  },
+                ),
       );
     });
   }
@@ -645,62 +652,47 @@ class _DisplayMediaTab extends StatelessWidget {
       return RefreshIndicator(
         color: AppColors.primary5,
         onRefresh: controller.refreshCurrentOwner,
-        child: controller.displayMedia.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width20,
-                  vertical: Dimensions.height40,
-                ),
-                children: [
-                  Center(
-                    child: Text(
-                      'No media found',
-                      style: TextStyle(color: AppColors.grey4),
-                    ),
+        child:
+            controller.displayMedia.isEmpty
+                ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height40,
                   ),
-                ],
-              )
-            : GridView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.all(Dimensions.width20),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: Dimensions.width15,
-                  mainAxisSpacing: Dimensions.height15,
-                  childAspectRatio: 0.8,
-                ),
-                itemCount: controller.displayMedia.length,
-                itemBuilder: (_, index) {
-                  final item = controller.displayMedia[index];
-                  final imageUrl = MediaUrlHelper.resolve(item.url);
+                  children: [
+                    Center(
+                      child: Text(
+                        'No media found',
+                        style: TextStyle(color: AppColors.grey4),
+                      ),
+                    ),
+                  ],
+                )
+                : GridView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.all(Dimensions.width20),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: Dimensions.width15,
+                    mainAxisSpacing: Dimensions.height15,
+                    childAspectRatio: 0.8,
+                  ),
+                  itemCount: controller.displayMedia.length,
+                  itemBuilder: (_, index) {
+                    final item = controller.displayMedia[index];
 
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(Dimensions.radius15),
-                    child: imageUrl == null
-                        ? Container(
-                            color: AppColors.grey2,
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.broken_image,
-                              color: AppColors.grey4,
-                            ),
-                          )
-                        : Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: AppColors.grey2,
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.broken_image,
-                                color: AppColors.grey4,
-                              ),
-                            ),
-                          ),
-                  );
-                },
-              ),
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(Dimensions.radius15),
+                      child: AppCachedNetworkImage(
+                        imageUrl: item.url,
+                        fit: BoxFit.cover,
+                        enableFullscreen: true,
+                        heroTag: 'other_profile_media_${item.id}',
+                      ),
+                    );
+                  },
+                ),
       );
     });
   }
@@ -723,36 +715,37 @@ class _TipsTab extends StatelessWidget {
       return RefreshIndicator(
         color: AppColors.primary5,
         onRefresh: controller.refreshCurrentOwner,
-        child: controller.tips.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width20,
-                  vertical: Dimensions.height40,
-                ),
-                children: [
-                  Center(
-                    child: Text(
-                      'No tips available',
-                      style: TextStyle(color: AppColors.grey4),
-                    ),
+        child:
+            controller.tips.isEmpty
+                ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height40,
                   ),
-                ],
-              )
-            : ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: controller.tips.length,
-                itemBuilder: (_, index) {
-                  final tip = controller.tips[index];
-                  return TipsCard(
-                    title: tip.title,
-                    description: tip.description,
-                    saves: tip.saves,
-                    isSaved: tip.isSaved,
-                    onSave: () => controller.toggleTipSave(tip.id),
-                  );
-                },
-              ),
+                  children: [
+                    Center(
+                      child: Text(
+                        'No tips available',
+                        style: TextStyle(color: AppColors.grey4),
+                      ),
+                    ),
+                  ],
+                )
+                : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: controller.tips.length,
+                  itemBuilder: (_, index) {
+                    final tip = controller.tips[index];
+                    return TipsCard(
+                      title: tip.title,
+                      description: tip.description,
+                      saves: tip.saves,
+                      isSaved: tip.isSaved,
+                      onSave: () => controller.toggleTipSave(tip.id),
+                    );
+                  },
+                ),
       );
     });
   }
@@ -767,11 +760,12 @@ class _AboutTab extends StatelessWidget {
 
     return Obx(() {
       final profile = controller.profile.value;
-      final aboutText = profile?.about?.trim().isNotEmpty == true
-          ? profile!.about!
-          : (profile?.description?.trim().isNotEmpty == true
-              ? profile!.description!
-              : 'No about info');
+      final aboutText =
+          profile?.about?.trim().isNotEmpty == true
+              ? profile!.about!
+              : (profile?.description?.trim().isNotEmpty == true
+                  ? profile!.description!
+                  : 'No about info');
 
       return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -806,113 +800,113 @@ class _ProductsTab extends StatelessWidget {
       return RefreshIndicator(
         color: AppColors.primary5,
         onRefresh: controller.refreshCurrentOwner,
-        child: controller.products.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width20,
-                  vertical: Dimensions.height40,
-                ),
-                children: [
-                  Center(
-                    child: Text(
-                      'No products found',
-                      style: TextStyle(color: AppColors.grey4),
-                    ),
+        child:
+            controller.products.isEmpty
+                ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height40,
                   ),
-                ],
-              )
-            : GridView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.all(Dimensions.width20),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: Dimensions.width15,
-                  mainAxisSpacing: Dimensions.height15,
-                  childAspectRatio: 0.7,
-                ),
-                itemCount: controller.products.length,
-                itemBuilder: (_, index) {
-                  final product = controller.products[index];
-                  final imageUrl = MediaUrlHelper.resolve(product.productImageUrl);
-                  return Container(
-                    padding: EdgeInsets.all(Dimensions.width10),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(Dimensions.radius15),
-                      border: Border.all(color: AppColors.grey2),
+                  children: [
+                    Center(
+                      child: Text(
+                        'No products found',
+                        style: TextStyle(color: AppColors.grey4),
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              Dimensions.radius12,
-                            ),
-                            child: imageUrl == null
-                                ? Container(
-                                    color: AppColors.grey2,
-                                    alignment: Alignment.center,
-                                    child: Icon(
-                                      Icons.inventory_2_outlined,
-                                      color: AppColors.grey4,
-                                    ),
-                                  )
-                                : Image.network(
-                                    imageUrl,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      color: AppColors.grey2,
-                                      alignment: Alignment.center,
-                                      child: Icon(
-                                        Icons.broken_image,
-                                        color: AppColors.grey4,
+                  ],
+                )
+                : GridView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.all(Dimensions.width20),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: Dimensions.width15,
+                    mainAxisSpacing: Dimensions.height15,
+                    childAspectRatio: 0.7,
+                  ),
+                  itemCount: controller.products.length,
+                  itemBuilder: (_, index) {
+                    final product = controller.products[index];
+                    final imageUrl = MediaUrlHelper.resolve(
+                      product.productImageUrl,
+                    );
+                    return Container(
+                      padding: EdgeInsets.all(Dimensions.width10),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(
+                          Dimensions.radius15,
+                        ),
+                        border: Border.all(color: AppColors.grey2),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                Dimensions.radius12,
+                              ),
+                              child:
+                                  imageUrl == null
+                                      ? Container(
+                                        color: AppColors.grey2,
+                                        alignment: Alignment.center,
+                                        child: Icon(
+                                          Icons.inventory_2_outlined,
+                                          color: AppColors.grey4,
+                                        ),
+                                      )
+                                      : AppCachedNetworkImage(
+                                        imageUrl: imageUrl,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        enableFullscreen: true,
+                                        heroTag: 'other_product_${product.id}',
                                       ),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        SizedBox(height: Dimensions.height10),
-                        Text(
-                          product.productName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: Dimensions.font14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: Dimensions.height5),
-                        Text(
-                          product.description?.trim().isNotEmpty == true
-                              ? product.description!
-                              : product.visibility,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.grey4,
-                            fontSize: Dimensions.font12,
-                          ),
-                        ),
-                        if (product.price != null) ...[
-                          SizedBox(height: Dimensions.height8),
-                          Text(
-                            'N${product.price!.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary5,
-                              fontSize: Dimensions.font13,
                             ),
                           ),
+                          SizedBox(height: Dimensions.height10),
+                          Text(
+                            product.productName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: Dimensions.font14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: Dimensions.height5),
+                          Text(
+                            product.description?.trim().isNotEmpty == true
+                                ? product.description!
+                                : product.visibility,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.grey4,
+                              fontSize: Dimensions.font12,
+                            ),
+                          ),
+                          if (product.price != null) ...[
+                            SizedBox(height: Dimensions.height8),
+                            Text(
+                              'N${product.price!.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary5,
+                                fontSize: Dimensions.font13,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  );
-                },
-              ),
+                      ),
+                    );
+                  },
+                ),
       );
     });
   }
@@ -936,54 +930,60 @@ class _EventsTab extends StatelessWidget {
       return RefreshIndicator(
         color: AppColors.primary5,
         onRefresh: controller.refreshCurrentOwner,
-        child: controller.events.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width20,
-                  vertical: Dimensions.height40,
-                ),
-                children: [
-                  Center(
-                    child: Text(
-                      'No events found',
-                      style: TextStyle(color: AppColors.grey4),
-                    ),
+        child:
+            controller.events.isEmpty
+                ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height40,
                   ),
-                ],
-              )
-            : ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width20,
-                  vertical: Dimensions.height20,
-                ),
-                itemCount: controller.events.length,
-                itemBuilder: (_, index) {
-                  final event = controller.events[index];
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: Dimensions.height15),
-                    child: ReminderCard(
-                      hostName: event.creator?.name ?? 'Host',
-                      hostRole: event.creator?.role ?? 'Host',
-                      sessionType: event.audioOnly == true ? 'A U D I O' : 'L I V E',
-                      title: event.title ?? 'Untitled Event',
-                      dateTime: eventController.formatEventDate(
-                        event.scheduledStartAt,
+                  children: [
+                    Center(
+                      child: Text(
+                        'No events found',
+                        style: TextStyle(color: AppColors.grey4),
                       ),
-                      description: event.description ?? '',
-                      isReminderSet: event.viewer?.isSubscribed ?? false,
-                      onTap: () async {
-                        await eventController.fetchSingleEvent(event.id ?? '');
-                        Get.toNamed(AppRoutes.shareSpaceScreen);
-                      },
-                      onReminderTap: () async {
-                        await eventController.toggleSubscription(event);
-                      },
                     ),
-                  );
-                },
-              ),
+                  ],
+                )
+                : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height20,
+                  ),
+                  itemCount: controller.events.length,
+                  itemBuilder: (_, index) {
+                    final event = controller.events[index];
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: Dimensions.height15),
+                      child: ReminderCard(
+                        hostName: event.creator?.name ?? 'Host',
+                        hostRole: event.creator?.role ?? 'Host',
+                        sessionType:
+                            event.sessionMode == 'audio'
+                                ? 'A U D I O'
+                                : 'I N T E R A C T I V E',
+                        title: event.title ?? 'Untitled Event',
+                        dateTime: eventController.formatEventDate(
+                          event.scheduledStartAt,
+                        ),
+                        description: event.description ?? '',
+                        isReminderSet: event.viewer?.isSubscribed ?? false,
+                        onTap: () async {
+                          await eventController.fetchSingleEvent(
+                            event.id ?? '',
+                          );
+                          Get.toNamed(AppRoutes.shareSpaceScreen);
+                        },
+                        onReminderTap: () async {
+                          await eventController.toggleSubscription(event);
+                        },
+                      ),
+                    );
+                  },
+                ),
       );
     });
   }
@@ -1019,10 +1019,7 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _StatItem extends StatelessWidget {
-  const _StatItem({
-    required this.value,
-    required this.label,
-  });
+  const _StatItem({required this.value, required this.label});
 
   final String value;
   final String label;
@@ -1040,10 +1037,7 @@ class _StatItem extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: Dimensions.font14,
-            color: AppColors.grey5,
-          ),
+          style: TextStyle(fontSize: Dimensions.font14, color: AppColors.grey5),
         ),
       ],
     );
@@ -1062,11 +1056,12 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Colors.white,
-      child: tabBar,
-    );
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: Colors.white, child: tabBar);
   }
 
   @override

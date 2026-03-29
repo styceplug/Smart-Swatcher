@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 
 import '../../controllers/event_controller.dart';
 import '../../routes/routes.dart';
@@ -64,7 +63,9 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
               child: ReminderCard(
                 hostName: event.creator?.name ?? 'Unknown Host',
                 hostRole: event.creator?.role ?? 'Host',
-                sessionType: 'A U D I O',
+                sessionType: event.sessionMode == 'audio'
+                    ? 'A U D I O'
+                    : 'I N T E R A C T I V E',
                 title: event.title ?? 'Untitled Event',
                 description: event.description ?? '',
                 dateTime: controller.formatEventDate(event.scheduledStartAt),

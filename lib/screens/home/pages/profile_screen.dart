@@ -12,6 +12,7 @@ import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
+import 'package:smart_swatcher/widgets/app_cached_network_image.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/post_card.dart';
 import 'package:smart_swatcher/widgets/tips_card.dart';
@@ -33,6 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       Get.find<ProfileContentController>();
 
   late TabController _tabController;
+  String? _lastScheduledOwnerKey;
 
   @override
   bool get wantKeepAlive => true;
@@ -76,10 +78,31 @@ class _ProfileScreenState extends State<ProfileScreen>
     ]);
   }
 
+  void _scheduleEnsureOwnContentLoadedIfNeeded() {
+    final profile = authController.stylistProfile.value;
+    final ownerId = profile?.id;
+    if (ownerId == null || ownerId.trim().isEmpty) {
+      return;
+    }
+
+    final ownerKey = 'stylist:$ownerId';
+    if (_lastScheduledOwnerKey == ownerKey &&
+        contentController.currentOwnerId == ownerId &&
+        contentController.currentOwnerType == 'stylist') {
+      return;
+    }
+
+    _lastScheduledOwnerKey = ownerKey;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _ensureOwnContentLoaded();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    _ensureOwnContentLoaded();
+    _scheduleEnsureOwnContentLoadedIfNeeded();
 
     return Scaffold(
       body: NestedScrollView(
@@ -208,20 +231,22 @@ class _ProfileHeader extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.grey2,
-                        image: imageUrl != null && imageUrl.isNotEmpty
-                            ? DecorationImage(
-                                image: NetworkImage(imageUrl),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
+                        image:
+                            imageUrl != null && imageUrl.isNotEmpty
+                                ? DecorationImage(
+                                  image: appCachedImageProvider(imageUrl)!,
+                                  fit: BoxFit.cover,
+                                )
+                                : null,
                       ),
-                      child: imageUrl == null || imageUrl.isEmpty
-                          ? Icon(
-                              Icons.person,
-                              size: 50,
-                              color: AppColors.grey4,
-                            )
-                          : null,
+                      child:
+                          imageUrl == null || imageUrl.isEmpty
+                              ? Icon(
+                                Icons.person,
+                                size: 50,
+                                color: AppColors.grey4,
+                              )
+                              : null,
                     ),
                     SizedBox(width: Dimensions.width20),
                     Expanded(
@@ -245,7 +270,9 @@ class _ProfileHeader extends StatelessWidget {
                               color: AppColors.grey4,
                             ),
                           ),
-                          if ((profile?.saloonName ?? '').trim().isNotEmpty) ...[
+                          if ((profile?.saloonName ?? '')
+                              .trim()
+                              .isNotEmpty) ...[
                             SizedBox(height: Dimensions.height8),
                             _InfoChip(label: profile!.saloonName!),
                           ],
@@ -275,7 +302,8 @@ class _ProfileHeader extends StatelessWidget {
                     ),
                     _Divider(),
                     _StatItem(
-                      value: '${contentController.acceptedConnectionsCount.value}',
+                      value:
+                          '${contentController.acceptedConnectionsCount.value}',
                       label: 'Networks',
                     ),
                     _Divider(),
@@ -312,35 +340,36 @@ class _FormulasTab extends StatelessWidget {
       return RefreshIndicator(
         color: AppColors.primary5,
         onRefresh: controller.fetchAllFormulations,
-        child: controller.allFormulations.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width20,
-                  vertical: Dimensions.height40,
-                ),
-                children: [
-                  Center(
-                    child: Text(
-                      'No formulas yet',
-                      style: TextStyle(color: AppColors.grey4),
-                    ),
+        child:
+            controller.allFormulations.isEmpty
+                ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height40,
                   ),
-                ],
-              )
-            : ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(
-                  top: Dimensions.height15,
-                  bottom: Dimensions.height80,
+                  children: [
+                    Center(
+                      child: Text(
+                        'No formulas yet',
+                        style: TextStyle(color: AppColors.grey4),
+                      ),
+                    ),
+                  ],
+                )
+                : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    top: Dimensions.height15,
+                    bottom: Dimensions.height80,
+                  ),
+                  itemCount: controller.allFormulations.length,
+                  itemBuilder: (_, index) {
+                    return _FormulationCard(
+                      formulation: controller.allFormulations[index],
+                    );
+                  },
                 ),
-                itemCount: controller.allFormulations.length,
-                itemBuilder: (_, index) {
-                  return _FormulationCard(
-                    formulation: controller.allFormulations[index],
-                  );
-                },
-              ),
       );
     });
   }
@@ -354,7 +383,8 @@ class _PostsTab extends StatelessWidget {
     final controller = Get.find<PostController>();
 
     return Obx(() {
-      if (controller.isOwnPostsLoading.value && controller.ownPostsList.isEmpty) {
+      if (controller.isOwnPostsLoading.value &&
+          controller.ownPostsList.isEmpty) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.primary5),
         );
@@ -365,30 +395,31 @@ class _PostsTab extends StatelessWidget {
           RefreshIndicator(
             color: AppColors.primary5,
             onRefresh: () => controller.fetchOwnPosts(authorType: 'stylist'),
-            child: controller.ownPostsList.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Dimensions.width20,
-                      vertical: Dimensions.height40,
-                    ),
-                    children: [
-                      Center(
-                        child: Text(
-                          'No posts found',
-                          style: TextStyle(color: AppColors.grey4),
-                        ),
+            child:
+                controller.ownPostsList.isEmpty
+                    ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Dimensions.width20,
+                        vertical: Dimensions.height40,
                       ),
-                    ],
-                  )
-                : ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.only(bottom: Dimensions.height100),
-                    itemCount: controller.ownPostsList.length,
-                    itemBuilder: (_, index) {
-                      return PostCard(post: controller.ownPostsList[index]);
-                    },
-                  ),
+                      children: [
+                        Center(
+                          child: Text(
+                            'No posts found',
+                            style: TextStyle(color: AppColors.grey4),
+                          ),
+                        ),
+                      ],
+                    )
+                    : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.only(bottom: Dimensions.height100),
+                      itemCount: controller.ownPostsList.length,
+                      itemBuilder: (_, index) {
+                        return PostCard(post: controller.ownPostsList[index]);
+                      },
+                    ),
           ),
           Positioned(
             bottom: Dimensions.height20,
@@ -422,37 +453,38 @@ class _TipsTab extends StatelessWidget {
           RefreshIndicator(
             color: AppColors.primary5,
             onRefresh: controller.refreshCurrentOwner,
-            child: controller.tips.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Dimensions.width20,
-                      vertical: Dimensions.height40,
-                    ),
-                    children: [
-                      Center(
-                        child: Text(
-                          'No tips yet',
-                          style: TextStyle(color: AppColors.grey4),
-                        ),
+            child:
+                controller.tips.isEmpty
+                    ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Dimensions.width20,
+                        vertical: Dimensions.height40,
                       ),
-                    ],
-                  )
-                : ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.only(bottom: Dimensions.height100),
-                    itemCount: controller.tips.length,
-                    itemBuilder: (_, index) {
-                      final tip = controller.tips[index];
-                      return TipsCard(
-                        title: tip.title,
-                        description: tip.description,
-                        saves: tip.saves,
-                        isSaved: tip.isSaved,
-                        onSave: () => controller.toggleTipSave(tip.id),
-                      );
-                    },
-                  ),
+                      children: [
+                        Center(
+                          child: Text(
+                            'No tips yet',
+                            style: TextStyle(color: AppColors.grey4),
+                          ),
+                        ),
+                      ],
+                    )
+                    : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.only(bottom: Dimensions.height100),
+                      itemCount: controller.tips.length,
+                      itemBuilder: (_, index) {
+                        final tip = controller.tips[index];
+                        return TipsCard(
+                          title: tip.title,
+                          description: tip.description,
+                          saves: tip.saves,
+                          isSaved: tip.isSaved,
+                          onSave: () => controller.toggleTipSave(tip.id),
+                        );
+                      },
+                    ),
           ),
           Positioned(
             bottom: Dimensions.height20,
@@ -511,9 +543,7 @@ class _TipsTab extends StatelessWidget {
                   SizedBox(height: Dimensions.height15),
                   TextField(
                     controller: titleController,
-                    decoration: const InputDecoration(
-                      hintText: 'Tip title',
-                    ),
+                    decoration: const InputDecoration(hintText: 'Tip title'),
                   ),
                   SizedBox(height: Dimensions.height10),
                   TextField(
@@ -527,18 +557,19 @@ class _TipsTab extends StatelessWidget {
                   SizedBox(height: Dimensions.height15),
                   Wrap(
                     spacing: Dimensions.width10,
-                    children: ['General', 'Elite'].map((value) {
-                      final selected = visibility == value;
-                      return ChoiceChip(
-                        label: Text(value),
-                        selected: selected,
-                        onSelected: (_) {
-                          setSheetState(() {
-                            visibility = value;
-                          });
-                        },
-                      );
-                    }).toList(),
+                    children:
+                        ['General', 'Elite'].map((value) {
+                          final selected = visibility == value;
+                          return ChoiceChip(
+                            label: Text(value),
+                            selected: selected,
+                            onSelected: (_) {
+                              setSheetState(() {
+                                visibility = value;
+                              });
+                            },
+                          );
+                        }).toList(),
                   ),
                   SizedBox(height: Dimensions.height20),
                   SizedBox(
@@ -584,61 +615,46 @@ class _MediaTab extends StatelessWidget {
       return RefreshIndicator(
         color: AppColors.primary5,
         onRefresh: controller.refreshCurrentOwner,
-        child: controller.displayMedia.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width20,
-                  vertical: Dimensions.height40,
-                ),
-                children: [
-                  Center(
-                    child: Text(
-                      'No media found',
-                      style: TextStyle(color: AppColors.grey4),
-                    ),
+        child:
+            controller.displayMedia.isEmpty
+                ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20,
+                    vertical: Dimensions.height40,
                   ),
-                ],
-              )
-            : GridView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.all(Dimensions.width20),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: Dimensions.width15,
-                  mainAxisSpacing: Dimensions.height15,
-                  childAspectRatio: 0.8,
+                  children: [
+                    Center(
+                      child: Text(
+                        'No media found',
+                        style: TextStyle(color: AppColors.grey4),
+                      ),
+                    ),
+                  ],
+                )
+                : GridView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.all(Dimensions.width20),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: Dimensions.width15,
+                    mainAxisSpacing: Dimensions.height15,
+                    childAspectRatio: 0.8,
+                  ),
+                  itemCount: controller.displayMedia.length,
+                  itemBuilder: (_, index) {
+                    final item = controller.displayMedia[index];
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(Dimensions.radius15),
+                      child: AppCachedNetworkImage(
+                        imageUrl: item.url,
+                        fit: BoxFit.cover,
+                        enableFullscreen: true,
+                        heroTag: 'profile_media_${item.id}',
+                      ),
+                    );
+                  },
                 ),
-                itemCount: controller.displayMedia.length,
-                itemBuilder: (_, index) {
-                  final item = controller.displayMedia[index];
-                  final imageUrl = MediaUrlHelper.resolve(item.url);
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(Dimensions.radius15),
-                    child: imageUrl == null
-                        ? Container(
-                            color: AppColors.grey2,
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.broken_image,
-                              color: AppColors.grey4,
-                            ),
-                          )
-                        : Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: AppColors.grey2,
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.broken_image,
-                                color: AppColors.grey4,
-                              ),
-                            ),
-                          ),
-                  );
-                },
-              ),
       );
     });
   }
@@ -656,6 +672,18 @@ class _FormulationCard extends StatelessWidget {
           ? formulation.predictionImageUrl
           : formulation.imageUrl,
     );
+    final headline =
+        formulation.isCorrection
+            ? 'Correction ${formulation.previousColorLevel ?? '?'} • ${formulation.targetLevel ?? '?'}'
+            : 'NBL ${formulation.naturalBaseLevel} • DL ${formulation.desiredLevel}';
+    final subtitle =
+        formulation.isCorrection
+            ? (formulation.targetTone?.trim().isNotEmpty == true
+                ? formulation.targetTone!
+                : 'Color correction')
+            : (formulation.desiredTone?.trim().isNotEmpty == true
+                ? formulation.desiredTone!
+                : 'Formulation');
 
     return Container(
       margin: EdgeInsets.fromLTRB(
@@ -674,27 +702,23 @@ class _FormulationCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(Dimensions.radius12),
-            child: imageUrl == null
-                ? Container(
-                    width: Dimensions.width100,
-                    height: Dimensions.height100,
-                    color: AppColors.grey2,
-                    alignment: Alignment.center,
-                    child: Icon(Icons.image_outlined, color: AppColors.grey4),
-                  )
-                : Image.network(
-                    imageUrl,
-                    width: Dimensions.width100,
-                    height: Dimensions.height100,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+            child:
+                imageUrl == null
+                    ? Container(
                       width: Dimensions.width100,
                       height: Dimensions.height100,
                       color: AppColors.grey2,
                       alignment: Alignment.center,
-                      child: Icon(Icons.broken_image, color: AppColors.grey4),
+                      child: Icon(Icons.image_outlined, color: AppColors.grey4),
+                    )
+                    : AppCachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: Dimensions.width100,
+                      height: Dimensions.height100,
+                      fit: BoxFit.cover,
+                      enableFullscreen: true,
+                      heroTag: 'profile_formula_${formulation.id}',
                     ),
-                  ),
           ),
           SizedBox(width: Dimensions.width15),
           Expanded(
@@ -702,7 +726,7 @@ class _FormulationCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'NBL ${formulation.naturalBaseLevel} • DL ${formulation.desiredLevel}',
+                  headline,
                   style: TextStyle(
                     fontSize: Dimensions.font15,
                     fontWeight: FontWeight.w600,
@@ -710,9 +734,7 @@ class _FormulationCard extends StatelessWidget {
                 ),
                 SizedBox(height: Dimensions.height8),
                 Text(
-                  formulation.desiredTone?.trim().isNotEmpty == true
-                      ? formulation.desiredTone!
-                      : 'Formulation',
+                  subtitle,
                   style: TextStyle(
                     color: AppColors.grey4,
                     fontSize: Dimensions.font13,
@@ -769,10 +791,7 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _StatItem extends StatelessWidget {
-  const _StatItem({
-    required this.value,
-    required this.label,
-  });
+  const _StatItem({required this.value, required this.label});
 
   final String value;
   final String label;
@@ -790,10 +809,7 @@ class _StatItem extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: Dimensions.font14,
-            color: AppColors.grey5,
-          ),
+          style: TextStyle(fontSize: Dimensions.font14, color: AppColors.grey5),
         ),
       ],
     );
@@ -823,7 +839,11 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(color: Colors.white, child: tabBar);
   }
 

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/models/formulation_model.dart';
 
 import '../../../routes/routes.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/custom_button.dart';
-
+import '../../../widgets/formulation_analysis_card.dart';
 
 class GreyCoverage extends StatefulWidget {
   const GreyCoverage({Key? key}) : super(key: key);
@@ -21,6 +22,7 @@ class _GreyCoverageState extends State<GreyCoverage> {
 
   // 2. State
   int? selectedValue; // Store as int (10, 20...) for API
+  FormulationAnalysisModel? suggestion;
 
   // Data Options (0 to 100)
   final List<int> percents = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
@@ -30,7 +32,10 @@ class _GreyCoverageState extends State<GreyCoverage> {
     super.initState();
     // Retrieve previous data
     if (Get.arguments is Map) {
-      wizardData = Get.arguments;
+      wizardData = Map<String, dynamic>.from(Get.arguments as Map);
+      suggestion = FormulationAnalysisModel.fromJsonLike(
+        wizardData['suggestion'],
+      );
 
       // Auto-fill from AI Suggestion if available
       if (wizardData['suggestion'] != null) {
@@ -41,7 +46,8 @@ class _GreyCoverageState extends State<GreyCoverage> {
         if (estimated != null && percents.contains(estimated)) {
           selectedValue = estimated;
         } else if (estimated != null) {
-          selectedValue = (estimated ~/ 10) * 10;
+          final rounded = ((estimated / 10).round() * 10).clamp(0, 100);
+          selectedValue = rounded;
         }
       }
     }
@@ -79,7 +85,10 @@ class _GreyCoverageState extends State<GreyCoverage> {
 
             Text(
               'Grey Coverage %',
-              style: TextStyle(fontSize: Dimensions.font20, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: Dimensions.font20,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             SizedBox(height: Dimensions.height5),
             Text(
@@ -92,6 +101,11 @@ class _GreyCoverageState extends State<GreyCoverage> {
               ),
             ),
             SizedBox(height: Dimensions.height20),
+            FormulationAnalysisCard(
+              analysis: suggestion,
+              title: 'AI Upload Reading',
+            ),
+            if (suggestion != null) SizedBox(height: Dimensions.height20),
 
             // --- DROPDOWN FIELD ---
             InkWell(
@@ -110,9 +124,14 @@ class _GreyCoverageState extends State<GreyCoverage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      selectedValue != null ? '$selectedValue%' : 'Select Percentage',
+                      selectedValue != null
+                          ? '$selectedValue%'
+                          : 'Select Percentage',
                       style: TextStyle(
-                        color: selectedValue != null ? Colors.black : AppColors.grey3,
+                        color:
+                            selectedValue != null
+                                ? Colors.black
+                                : AppColors.grey3,
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w500,
                       ),
@@ -164,7 +183,9 @@ class _GreyCoverageState extends State<GreyCoverage> {
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(Dimensions.radius15)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(Dimensions.radius15),
+        ),
       ),
       builder: (context) {
         return Container(
@@ -209,7 +230,9 @@ class _GreyCoverageState extends State<GreyCoverage> {
                         Get.back();
                       },
                       child: Container(
-                        padding: EdgeInsets.symmetric(vertical: Dimensions.height15),
+                        padding: EdgeInsets.symmetric(
+                          vertical: Dimensions.height15,
+                        ),
                         decoration: BoxDecoration(
                           border: Border(
                             bottom: BorderSide(
@@ -220,8 +243,13 @@ class _GreyCoverageState extends State<GreyCoverage> {
                         child: Row(
                           children: [
                             Icon(
-                              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                              color: isSelected ? AppColors.primary4 : AppColors.grey4,
+                              isSelected
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_off,
+                              color:
+                                  isSelected
+                                      ? AppColors.primary4
+                                      : AppColors.grey4,
                               size: 20,
                             ),
                             SizedBox(width: Dimensions.width15),
@@ -230,8 +258,14 @@ class _GreyCoverageState extends State<GreyCoverage> {
                               style: TextStyle(
                                 fontSize: Dimensions.font15,
                                 fontFamily: 'Poppins',
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                color: isSelected ? AppColors.black1 : AppColors.grey5,
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                color:
+                                    isSelected
+                                        ? AppColors.black1
+                                        : AppColors.grey5,
                               ),
                             ),
                           ],

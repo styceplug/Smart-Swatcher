@@ -59,9 +59,11 @@ class ChatSocketService extends GetxService {
   WebSocket? _socket;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _reconnectTimer;
+  Timer? _heartbeatTimer;
   bool _manualDisconnect = false;
   int _reconnectAttempts = 0;
   DateTime? _realtimeDisabledUntil;
+  DateTime? _connectedAt;
 
   Stream<ChatSocketEvent> get events => _eventController.stream;
 
@@ -99,9 +101,10 @@ class ChatSocketService extends GetxService {
     }
 
     final wasConnectedBefore = _reconnectAttempts > 0;
-    connectionState.value = wasConnectedBefore
-        ? ChatSocketConnectionState.reconnecting
-        : ChatSocketConnectionState.connecting;
+    connectionState.value =
+        wasConnectedBefore
+            ? ChatSocketConnectionState.reconnecting
+            : ChatSocketConnectionState.connecting;
 
     final socketUris = _buildSocketUris(token);
     Object? lastConnectError;
@@ -109,19 +112,17 @@ class ChatSocketService extends GetxService {
     String? handshakeFailureCode;
 
     for (final uri in socketUris) {
-      _log(
-        'connect.start',
-        {'url': '${uri.scheme}://${uri.host}${uri.path}'},
-      );
+      _log('connect.start', {'url': '${uri.scheme}://${uri.host}${uri.path}'});
 
       try {
         final socket = await WebSocket.connect(
           uri.toString(),
           headers: <String, dynamic>{'Authorization': 'Bearer $token'},
+          compression: CompressionOptions.compressionOff,
         );
 
-        socket.pingInterval = const Duration(seconds: 20);
         _socket = socket;
+        _connectedAt = DateTime.now();
         _socketSubscription = socket.listen(
           _handleIncomingMessage,
           onError: _handleSocketError,
@@ -132,7 +133,10 @@ class ChatSocketService extends GetxService {
         _reconnectAttempts = 0;
         connectionState.value = ChatSocketConnectionState.connected;
         lastError.value = null;
-        _log('connect.success', {'url': '${uri.scheme}://${uri.host}${uri.path}'});
+        _startHeartbeat();
+        _log('connect.success', {
+          'url': '${uri.scheme}://${uri.host}${uri.path}',
+        });
         return;
       } catch (error, stackTrace) {
         lastConnectError = error;
@@ -170,7 +174,9 @@ class ChatSocketService extends GetxService {
       Error.throwWithStackTrace(lastConnectError, lastConnectStackTrace);
     }
 
-    throw const ChatSocketException('Unable to establish chat websocket connection');
+    throw const ChatSocketException(
+      'Unable to establish chat websocket connection',
+    );
   }
 
   Future<dynamic> sendRequest(
@@ -197,10 +203,11 @@ class ChatSocketService extends GetxService {
       'data': data ?? <String, dynamic>{},
     };
 
-    _log(
-      'request',
-      {'action': action, 'requestId': requestId, 'data': data ?? {}},
-    );
+    _log('request', {
+      'action': action,
+      'requestId': requestId,
+      'data': data ?? {},
+    });
 
     try {
       socket.add(jsonEncode(payload));
@@ -216,6 +223,7 @@ class ChatSocketService extends GetxService {
   Future<void> disconnect() async {
     _manualDisconnect = true;
     _reconnectTimer?.cancel();
+    _heartbeatTimer?.cancel();
     connectionState.value = ChatSocketConnectionState.disconnected;
     await _disposeSocket();
   }
@@ -224,6 +232,7 @@ class ChatSocketService extends GetxService {
   void onClose() {
     _eventController.close();
     _reconnectTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _disposeSocket();
     super.onClose();
   }
@@ -231,7 +240,7 @@ class ChatSocketService extends GetxService {
   List<Uri> _buildSocketUris(String token) {
     final baseUri = Uri.parse(AppConstants.BASE_URL);
     final scheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
-    final socketPaths = <String>['/api/ws/chat', '/ws/chat'];
+    final socketPaths = <String>['/ws/chat'];
 
     return socketPaths.map((path) {
       if (baseUri.hasPort && baseUri.port > 0) {
@@ -305,6 +314,7 @@ class ChatSocketService extends GetxService {
   }
 
   void _handleSocketError(Object error) {
+    _heartbeatTimer?.cancel();
     lastError.value = error.toString();
     connectionState.value = ChatSocketConnectionState.disconnected;
     _failPendingRequests(error);
@@ -313,20 +323,51 @@ class ChatSocketService extends GetxService {
   }
 
   void _handleSocketDone() {
+    final connectedForMs =
+        _connectedAt == null
+            ? null
+            : DateTime.now().difference(_connectedAt!).inMilliseconds;
+    final closeCode = _socket?.closeCode;
+    _heartbeatTimer?.cancel();
     connectionState.value = ChatSocketConnectionState.disconnected;
     _failPendingRequests(
       const ChatSocketException('Chat websocket connection closed'),
     );
-    _log(
-      'socket.done',
-      {
-        'closeCode': _socket?.closeCode,
-        'closeReason': _socket?.closeReason,
-      },
-    );
+    _log('socket.done', {
+      'closeCode': closeCode,
+      'closeReason': _socket?.closeReason,
+      'connectedForMs': connectedForMs,
+    });
+    if (closeCode == 1002) {
+      lastError.value =
+          'Chat websocket closed with protocol error (1002). This usually points to proxy/control-frame handling on the server path.';
+    }
     if (!_manualDisconnect) {
       _scheduleReconnect();
     }
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+      final socket = _socket;
+      if (socket == null || !isConnected) {
+        return;
+      }
+
+      try {
+        socket.add(
+          jsonEncode(<String, dynamic>{
+            'action': 'ping',
+            'data': <String, dynamic>{
+              'sentAt': DateTime.now().toIso8601String(),
+            },
+          }),
+        );
+      } catch (error) {
+        _log('heartbeat.failure', {'error': error.toString()});
+      }
+    });
   }
 
   void _scheduleReconnect() {
@@ -341,9 +382,10 @@ class ChatSocketService extends GetxService {
     _reconnectTimer?.cancel();
     _reconnectAttempts += 1;
 
-    final delaySeconds = _reconnectAttempts < 2
-        ? 2
-        : _reconnectAttempts < 4
+    final delaySeconds =
+        _reconnectAttempts < 2
+            ? 2
+            : _reconnectAttempts < 4
             ? 5
             : 10;
 
@@ -359,9 +401,10 @@ class ChatSocketService extends GetxService {
   }
 
   void _failPendingRequests(Object error) {
-    final failure = error is ChatSocketException
-        ? error
-        : ChatSocketException(error.toString());
+    final failure =
+        error is ChatSocketException
+            ? error
+            : ChatSocketException(error.toString());
 
     for (final entry in _pendingRequests.entries) {
       if (!entry.value.isCompleted) {
@@ -374,6 +417,9 @@ class ChatSocketService extends GetxService {
   Future<void> _disposeSocket() async {
     await _socketSubscription?.cancel();
     _socketSubscription = null;
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    _connectedAt = null;
 
     final socket = _socket;
     _socket = null;
@@ -383,6 +429,8 @@ class ChatSocketService extends GetxService {
   }
 
   void _log(String event, [Map<String, dynamic>? payload]) {
-    debugPrint('[CHAT_WS] $event ${payload == null ? '' : jsonEncode(payload)}');
+    debugPrint(
+      '[CHAT_WS] $event ${payload == null ? '' : jsonEncode(payload)}',
+    );
   }
 }

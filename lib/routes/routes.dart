@@ -17,6 +17,7 @@ import 'package:smart_swatcher/screens/company/in_app/analytics/downloads_screen
 import 'package:smart_swatcher/screens/company/in_app/analytics/engagement_screen.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/add_description.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/choose_cdl.dart';
+import 'package:smart_swatcher/screens/formulator/formulation/correction_details.dart';
 import 'package:smart_swatcher/screens/formulator/formulation/grey_exceeds.dart';
 import 'package:smart_swatcher/screens/formulator/formulation_or_correction.dart';
 import 'package:smart_swatcher/screens/home/home_screen.dart';
@@ -73,12 +74,13 @@ class AppRoutes {
   static const String updateAppScreen = '/update-app-screen';
   static const String noInternetScreen = '/no-internet-screen';
   static const String notificationScreen = '/notification-screen';
-  static const String notificationSettingsScreen = '/notification-settings-screen';
+  static const String notificationSettingsScreen =
+      '/notification-settings-screen';
   static const String commentsScreen = '/comments-screen';
 
-
   //auth
-  static const String createStylistAccountScreen = '/create-stylist-account-screen';
+  static const String createStylistAccountScreen =
+      '/create-stylist-account-screen';
   static const String setStylistUsernameScreen = '/set-stylist-username-screen';
   static const String companyUsernameScreen = '/company-username-screen';
   static const String experienceScreen = '/experience-screen';
@@ -88,8 +90,6 @@ class AppRoutes {
   static const String forgotPasswordScreen = '/forgot-password-screen';
   static const String stylistLoginScreen = '/stylist-login-screen';
   static const String editProfileScreen = '/edit-profile-screen';
-
-
 
   //stylist
   static const String homeScreen = '/home-screen';
@@ -103,13 +103,12 @@ class AppRoutes {
   static const String createPost = '/create-post';
   static const String postDraftsScreen = '/post-draft-screen';
   static const String subscriptionPlansScreen = '/subscription-plans-screen';
-  static const String subscriptionPlanOverviewScreen = '/subscription-plan-overview-screen';
+  static const String subscriptionPlanOverviewScreen =
+      '/subscription-plan-overview-screen';
   static const String referenceHubScreen = '/reference-hub-screen';
   static const String hairFormulatorGuide = '/hair-formulator-guide';
   static const String mixingRatioGuide = '/mixing-ratio-guide';
   static const String troubleShootingGuide = '/trouble-shooting-guide';
-
-
 
   static const String blockedAccountScreen = '/blocked-accounts-screen';
   static const String changePasswordScreen = '/change-password-screen';
@@ -118,23 +117,19 @@ class AppRoutes {
   static const String termsConditionScreen = '/terms-condition-screen';
   static const String bookmarkedScreen = '/bookmarked-screen';
 
-
-
-
   static const String createFolder = '/create-folder';
   static const String folderScreen = '/folder-screen';
   static const String formulationOrCorrection = '/formulation-or-correction';
   static const String addDescription = '/add-description';
   static const String chooseNbl = '/choose-nbl';
   static const String chooseCdl = '/choose-cdl';
+  static const String correctionDetails = '/correction-details';
   static const String clientDetails = '/client-details';
   static const String formulationPreview = '/formulation-preview';
   static const String greyCoverage = '/grey-coverage';
   static const String greyExceeds = '/grey-exceeds';
   static const String selectDesireLevel = '/select-desire-level';
   static const String uploadHair = '/upload-hair';
-
-
 
   static const String companyProfileInfo = '/company-profile-info';
   static const String companyRoleScreen = '/company-role-screen';
@@ -146,8 +141,6 @@ class AppRoutes {
   static const String viewsScreen = '/views-screen';
   static const String otherProfileScreen = '/other-profile-screen';
 
-
-
   static const String recommendedAccountScreen = '/recommended-account-screen';
   static const String myEventsScreen = '/my-events-screen';
   static const String audioSessionScreen = '/audio-session-screen';
@@ -155,31 +148,13 @@ class AppRoutes {
   static const String conversationDetailScreen = '/conversation-detail-screen';
   static const String newConversationScreen = '/new-conversation-screen';
 
-
-
-
-
-
-
-
-
-
-
-
   //company
   static const String onboardCompany = '/onboard-company';
   static const String companyHomePage = '/company-home-page';
   static const String createCompanyAccount = '/create-company-account';
   static const String companyLoginScreen = '/company-login-screen';
 
-
-
-
-
-
-
   static final routes = [
-
     //company
     GetPage(
       name: companyLoginScreen,
@@ -280,7 +255,6 @@ class AppRoutes {
       transition: Transition.fadeIn,
     ),
 
-
     GetPage(
       name: recommendedAccountScreen,
       page: () {
@@ -324,13 +298,6 @@ class AppRoutes {
       transition: Transition.fadeIn,
     ),
 
-
-
-
-
-
-
-
     GetPage(
       name: getStarted,
       page: () {
@@ -345,8 +312,6 @@ class AppRoutes {
       },
       transition: Transition.fadeIn,
     ),
-
-
 
     GetPage(
       name: createStylistAccountScreen,
@@ -567,7 +532,6 @@ class AppRoutes {
       transition: Transition.fadeIn,
     ),
 
-
     GetPage(
       name: createFolder,
       page: () {
@@ -646,11 +610,12 @@ class AppRoutes {
       },
       transition: Transition.fadeIn,
     ),
-
-
-
-
-
-
+    GetPage(
+      name: correctionDetails,
+      page: () {
+        return const CorrectionDetailsScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
   ];
 }

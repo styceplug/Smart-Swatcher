@@ -10,6 +10,7 @@ import 'package:smart_swatcher/widgets/custom_appbar.dart';
 
 import '../../../routes/routes.dart';
 import '../../../widgets/advert_card.dart';
+import '../../../widgets/app_cached_network_image.dart';
 import '../../../widgets/reference_card.dart';
 
 class StudioScreen extends StatefulWidget {
@@ -63,8 +64,6 @@ class _StudioScreenState extends State<StudioScreen>
   // AuthController authController = Get.find<AuthController>();
   // late final profile = authController.stylistProfile;
 
-
-
   @override
   void initState() {
     super.initState();
@@ -96,8 +95,8 @@ class _StudioScreenState extends State<StudioScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Obx((){
-      return  SingleChildScrollView(
+    return Obx(() {
+      return SingleChildScrollView(
         child: Container(
           width: Dimensions.screenWidth,
           padding: EdgeInsets.fromLTRB(
@@ -240,8 +239,8 @@ class _StudioScreenState extends State<StudioScreen>
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: folderController.recentFormulations.length,
-                          separatorBuilder: (_, __) =>
-                              SizedBox(width: Dimensions.width15),
+                          separatorBuilder:
+                              (_, __) => SizedBox(width: Dimensions.width15),
                           itemBuilder: (context, index) {
                             final formulation =
                                 folderController.recentFormulations[index];
@@ -250,6 +249,24 @@ class _StudioScreenState extends State<StudioScreen>
                                   ? formulation.predictionImageUrl
                                   : formulation.imageUrl,
                             );
+                            final headline =
+                                formulation.isCorrection
+                                    ? 'Correction ${formulation.previousColorLevel ?? '?'} to ${formulation.targetLevel ?? '?'}'
+                                    : 'Lvl ${formulation.naturalBaseLevel} to ${formulation.desiredLevel}';
+                            final subtitle =
+                                formulation.isCorrection
+                                    ? (formulation.targetTone
+                                                ?.trim()
+                                                .isNotEmpty ==
+                                            true
+                                        ? formulation.targetTone!
+                                        : 'Color correction')
+                                    : (formulation.desiredTone
+                                                ?.trim()
+                                                .isNotEmpty ==
+                                            true
+                                        ? formulation.desiredTone!
+                                        : 'Formulation');
 
                             return GestureDetector(
                               onTap: _openFormulatorTab,
@@ -263,7 +280,9 @@ class _StudioScreenState extends State<StudioScreen>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.05),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.05,
+                                      ),
                                       blurRadius: 10,
                                       offset: const Offset(0, 3),
                                     ),
@@ -277,34 +296,29 @@ class _StudioScreenState extends State<StudioScreen>
                                         borderRadius: BorderRadius.circular(
                                           Dimensions.radius10,
                                         ),
-                                        child: imageUrl.isEmpty
-                                            ? Container(
-                                                color: AppColors.grey2,
-                                                alignment: Alignment.center,
-                                                child: Icon(
-                                                  Icons.image_outlined,
-                                                  color: AppColors.grey4,
-                                                ),
-                                              )
-                                            : Image.network(
-                                                imageUrl,
-                                                width: double.infinity,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) =>
-                                                    Container(
+                                        child:
+                                            imageUrl.isEmpty
+                                                ? Container(
                                                   color: AppColors.grey2,
                                                   alignment: Alignment.center,
                                                   child: Icon(
-                                                    Icons.broken_image,
+                                                    Icons.image_outlined,
                                                     color: AppColors.grey4,
                                                   ),
+                                                )
+                                                : AppCachedNetworkImage(
+                                                  imageUrl: imageUrl,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
+                                                  enableFullscreen: true,
+                                                  heroTag:
+                                                      'studio_formula_${formulation.id}',
                                                 ),
-                                              ),
                                       ),
                                     ),
                                     SizedBox(height: Dimensions.height10),
                                     Text(
-                                      'Lvl ${formulation.naturalBaseLevel} to ${formulation.desiredLevel}',
+                                      headline,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -315,10 +329,7 @@ class _StudioScreenState extends State<StudioScreen>
                                     ),
                                     SizedBox(height: Dimensions.height5),
                                     Text(
-                                      formulation.desiredTone?.trim().isNotEmpty ==
-                                              true
-                                          ? formulation.desiredTone!
-                                          : 'Formulation',
+                                      subtitle,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -332,14 +343,16 @@ class _StudioScreenState extends State<StudioScreen>
                                       formulation.isPredictionActive
                                           ? 'Generating preview...'
                                           : formulation.predictionImageStatus ==
-                                                  'failed'
-                                              ? 'Preview failed'
-                                              : 'Ready',
+                                              'failed'
+                                          ? 'Preview failed'
+                                          : 'Ready',
                                       style: TextStyle(
                                         fontSize: Dimensions.font12,
-                                        color: formulation.isPredictionActive
-                                            ? AppColors.primary5
-                                            : formulation.predictionImageStatus ==
+                                        color:
+                                            formulation.isPredictionActive
+                                                ? AppColors.primary5
+                                                : formulation
+                                                        .predictionImageStatus ==
                                                     'failed'
                                                 ? Colors.red
                                                 : AppColors.grey4,
@@ -370,12 +383,13 @@ class _StudioScreenState extends State<StudioScreen>
                     SizedBox(height: Dimensions.height20),
                     //reference card
                     Column(
-                      children: references.map((item) {
-                        return ReferenceCard(
-                          timeAgo: item["time"]!,
-                          title: item["title"]!,
-                        );
-                      }).toList(),
+                      children:
+                          references.map((item) {
+                            return ReferenceCard(
+                              timeAgo: item["time"]!,
+                              title: item["title"]!,
+                            );
+                          }).toList(),
                     ),
                   ],
                 ),

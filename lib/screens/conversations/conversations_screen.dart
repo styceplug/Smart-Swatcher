@@ -7,6 +7,7 @@ import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
+import 'package:smart_swatcher/widgets/app_cached_network_image.dart';
 
 class ConversationsScreen extends StatefulWidget {
   const ConversationsScreen({super.key});
@@ -43,33 +44,34 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         elevation: 0,
         foregroundColor: AppColors.black1,
         titleSpacing: Dimensions.width10,
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                onChanged: controller.setSearchQuery,
-                decoration: InputDecoration(
-                  hintText: 'Search',
-                  hintStyle: TextStyle(
-                    color: AppColors.grey4,
-                    fontSize: Dimensions.font14,
+        title:
+            _isSearching
+                ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  onChanged: controller.setSearchQuery,
+                  decoration: InputDecoration(
+                    hintText: 'Search',
+                    hintStyle: TextStyle(
+                      color: AppColors.grey4,
+                      fontSize: Dimensions.font14,
+                    ),
+                    border: InputBorder.none,
                   ),
-                  border: InputBorder.none,
+                  style: TextStyle(
+                    color: AppColors.black1,
+                    fontSize: Dimensions.font15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                )
+                : Text(
+                  'Chat',
+                  style: TextStyle(
+                    fontSize: Dimensions.font20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.black1,
+                  ),
                 ),
-                style: TextStyle(
-                  color: AppColors.black1,
-                  fontSize: Dimensions.font15,
-                  fontWeight: FontWeight.w500,
-                ),
-              )
-            : Text(
-                'Chat',
-                style: TextStyle(
-                  fontSize: Dimensions.font20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.black1,
-                ),
-              ),
         actions: [
           IconButton(
             onPressed: _toggleSearch,
@@ -131,72 +133,79 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           return _UnsupportedThreadsState(query: controller.searchQuery.value);
         }
 
-        final items = controller.selectedTab.value == 'groups'
-            ? controller.groupConversations
-            : controller.personalConversations;
+        final items =
+            controller.selectedTab.value == 'groups'
+                ? controller.groupConversations
+                : controller.personalConversations;
 
         return RefreshIndicator(
           color: AppColors.primary5,
-          onRefresh: () =>
-              controller.loadConversations(forceApi: !controller.isSocketConnected),
-          child: items.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width20,
-                    vertical: Dimensions.height40,
-                  ),
-                  children: [
-                    _EmptyConversationState(
-                      title: controller.searchQuery.value.trim().isEmpty
-                          ? 'No conversations yet'
-                          : 'No results found',
-                      message: controller.searchQuery.value.trim().isEmpty
-                          ? 'Your chats will show up here once you connect and start messaging.'
-                          : 'Try a different name, username, or message keyword.',
+          onRefresh:
+              () => controller.loadConversations(
+                forceApi: !controller.isSocketConnected,
+              ),
+          child:
+              items.isEmpty
+                  ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width20,
+                      vertical: Dimensions.height40,
                     ),
-                  ],
-                )
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width20,
-                    vertical: Dimensions.height10,
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = items[index];
+                    children: [
+                      _EmptyConversationState(
+                        title:
+                            controller.searchQuery.value.trim().isEmpty
+                                ? 'No conversations yet'
+                                : 'No results found',
+                        message:
+                            controller.searchQuery.value.trim().isEmpty
+                                ? 'Your chats will show up here once you connect and start messaging.'
+                                : 'Try a different name, username, or message keyword.',
+                      ),
+                    ],
+                  )
+                  : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width20,
+                      vertical: Dimensions.height10,
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
 
-                    return Dismissible(
-                      key: ValueKey(item.id),
-                      direction: DismissDirection.endToStart,
-                      confirmDismiss: (_) => _confirmDelete(item),
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimensions.width20,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD93A2F),
-                          borderRadius: BorderRadius.circular(
-                            Dimensions.radius20,
+                      return Dismissible(
+                        key: ValueKey(item.id),
+                        direction: DismissDirection.endToStart,
+                        confirmDismiss: (_) => _confirmDelete(item),
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Dimensions.width20,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD93A2F),
+                            borderRadius: BorderRadius.circular(
+                              Dimensions.radius20,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.white,
                           ),
                         ),
-                        child: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.white,
+                        child: _ConversationListItem(
+                          conversation: item,
+                          currentActorId: controller.currentActorId,
+                          onTap:
+                              () => controller.navigateToConversation(item.id),
                         ),
-                      ),
-                      child: _ConversationListItem(
-                        conversation: item,
-                        currentActorId: controller.currentActorId,
-                        onTap: () => controller.navigateToConversation(item.id),
-                      ),
-                    );
-                  },
-                  separatorBuilder: (_, __) =>
-                      SizedBox(height: Dimensions.height10),
-                  itemCount: items.length,
-                ),
+                      );
+                    },
+                    separatorBuilder:
+                        (_, __) => SizedBox(height: Dimensions.height10),
+                    itemCount: items.length,
+                  ),
         );
       }),
     );
@@ -235,7 +244,6 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       }
     });
   }
-
 }
 
 class _ConversationTabButton extends StatelessWidget {
@@ -292,11 +300,15 @@ class _ConversationListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatarUrl = conversation.isGroup
-        ? null
-        : MediaUrlHelper.resolve(
-            conversation.otherParticipant(currentActorId)?.profile.profileImageUrl,
-          );
+    final avatarUrl =
+        conversation.isGroup
+            ? null
+            : MediaUrlHelper.resolve(
+              conversation
+                  .otherParticipant(currentActorId)
+                  ?.profile
+                  .profileImageUrl,
+            );
 
     final timestamp =
         conversation.lastMessage?.createdAt ?? conversation.updatedAt;
@@ -387,10 +399,7 @@ class _ConversationListItem extends StatelessWidget {
 }
 
 class _ConversationAvatar extends StatelessWidget {
-  const _ConversationAvatar({
-    required this.imageUrl,
-    required this.isGroup,
-  });
+  const _ConversationAvatar({required this.imageUrl, required this.isGroup});
 
   final String? imageUrl;
   final bool isGroup;
@@ -403,28 +412,27 @@ class _ConversationAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.primary1,
         shape: BoxShape.circle,
-        image: imageUrl != null
-            ? DecorationImage(
-                image: NetworkImage(imageUrl!),
-                fit: BoxFit.cover,
-              )
-            : null,
+        image:
+            imageUrl != null
+                ? DecorationImage(
+                  image: appCachedImageProvider(imageUrl)!,
+                  fit: BoxFit.cover,
+                )
+                : null,
       ),
-      child: imageUrl == null
-          ? Icon(
-              isGroup ? Icons.group_outlined : Icons.person_outline,
-              color: AppColors.primary5,
-            )
-          : null,
+      child:
+          imageUrl == null
+              ? Icon(
+                isGroup ? Icons.group_outlined : Icons.person_outline,
+                color: AppColors.primary5,
+              )
+              : null,
     );
   }
 }
 
 class _EmptyConversationState extends StatelessWidget {
-  const _EmptyConversationState({
-    required this.title,
-    required this.message,
-  });
+  const _EmptyConversationState({required this.title, required this.message});
 
   final String title;
   final String message;
@@ -487,10 +495,14 @@ class _UnsupportedThreadsState extends StatelessWidget {
       ),
       children: [
         _EmptyConversationState(
-          title: query.trim().isEmpty ? 'Threads not available yet' : 'No threads found',
-          message: query.trim().isEmpty
-              ? 'The current backend only supports personal and group conversations.'
-              : 'Threads are not supported by the current API.',
+          title:
+              query.trim().isEmpty
+                  ? 'Threads not available yet'
+                  : 'No threads found',
+          message:
+              query.trim().isEmpty
+                  ? 'The current backend only supports personal and group conversations.'
+                  : 'Threads are not supported by the current API.',
         ),
       ],
     );

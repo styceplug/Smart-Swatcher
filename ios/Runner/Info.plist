@@ -6,6 +6,9 @@
     <key>NSPhotoLibraryUsageDescription</key>
     <string>We need access to your library to let you upload photos for your posts.</string>
 
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>We need access to save generated and shared images to your photo library.</string>
+
     <key>NSCameraUsageDescription</key>
     <string>We need access to your camera to let you take photos for your posts.</string>
 

@@ -39,6 +39,14 @@ class UserRepo {
     return await apiClient.getData(uri);
   }
 
+  Future<Response> getConnections({String? status}) async {
+    String uri = AppConstants.GET_CONNECTIONS;
+    if (status != null && status.trim().isNotEmpty) {
+      uri += '?status=${Uri.encodeQueryComponent(status.trim())}';
+    }
+    return await apiClient.getData(uri);
+  }
+
   Future<Response> requestConnection(String targetId) async {
     return await apiClient.postData(AppConstants.REQUEST_CONNECTION, {
       "targetId": targetId,

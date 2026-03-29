@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:smart_swatcher/utils/colors.dart';
-import 'package:smart_swatcher/utils/dimensions.dart';
-import 'package:smart_swatcher/widgets/custom_appbar.dart';
-import 'package:smart_swatcher/widgets/custom_textfield.dart';
-
-import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:smart_swatcher/controllers/auth_controller.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
+import 'package:smart_swatcher/widgets/app_cached_network_image.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
+import 'package:smart_swatcher/widgets/custom_textfield.dart';
 
 class EditProfileScreen extends StatelessWidget {
   const EditProfileScreen({super.key});
@@ -45,9 +40,7 @@ class EditProfileScreen extends StatelessWidget {
         final type = controller.currentAccountType.value;
 
         return SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: Dimensions.height40,
-          ),
+          padding: EdgeInsets.only(bottom: Dimensions.height40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -88,10 +81,7 @@ class EditProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCompanyHeader(
-      BuildContext context,
-      AuthController controller,
-      ) {
+  Widget _buildCompanyHeader(BuildContext context, AuthController controller) {
     final baseUrl = controller.authRepo.apiClient.baseUrl;
 
     return Obx(() {
@@ -101,51 +91,53 @@ class EditProfileScreen extends StatelessWidget {
       if (controller.selectedBackgroundImage.value != null) {
         coverImage = FileImage(controller.selectedBackgroundImage.value!);
       } else {
-        final url =
-        controller.companyProfile.value?.getBackgroundImage(baseUrl!);
+        final url = controller.companyProfile.value?.getBackgroundImage(
+          baseUrl!,
+        );
         if (url != null && url.isNotEmpty) {
-          coverImage = NetworkImage(url);
+          coverImage = appCachedImageProvider(url);
         }
       }
 
       if (controller.selectedImage.value != null) {
         profileImage = FileImage(controller.selectedImage.value!);
       } else {
-        final url =
-        controller.companyProfile.value?.getProfileImage(baseUrl!);
+        final url = controller.companyProfile.value?.getProfileImage(baseUrl!);
         if (url != null && url.isNotEmpty) {
-          profileImage = NetworkImage(url);
+          profileImage = appCachedImageProvider(url);
         }
       }
 
       return SizedBox(
-        height: Dimensions.height10*18,
+        height: Dimensions.height10 * 18,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             InkWell(
               onTap: () => _showBackgroundImagePickerModal(context, controller),
               child: Container(
-                height: Dimensions.height10*13,
+                height: Dimensions.height10 * 13,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: AppColors.grey2,
-                  image: coverImage != null
-                      ? DecorationImage(
-                    image: coverImage,
-                    fit: BoxFit.cover,
-                  )
-                      : null,
+                  image:
+                      coverImage != null
+                          ? DecorationImage(
+                            image: coverImage,
+                            fit: BoxFit.cover,
+                          )
+                          : null,
                 ),
-                child: coverImage == null
-                    ? Center(
-                  child: Icon(
-                    Icons.image_outlined,
-                    size: Dimensions.iconSize30,
-                    color: AppColors.grey4,
-                  ),
-                )
-                    : null,
+                child:
+                    coverImage == null
+                        ? Center(
+                          child: Icon(
+                            Icons.image_outlined,
+                            size: Dimensions.iconSize30,
+                            color: AppColors.grey4,
+                          ),
+                        )
+                        : null,
               ),
             ),
 
@@ -154,7 +146,8 @@ class EditProfileScreen extends StatelessWidget {
               top: Dimensions.height15,
               child: _miniEditChip(
                 text: 'Edit cover',
-                onTap: () => _showBackgroundImagePickerModal(context, controller),
+                onTap:
+                    () => _showBackgroundImagePickerModal(context, controller),
               ),
             ),
 
@@ -167,29 +160,28 @@ class EditProfileScreen extends StatelessWidget {
                   InkWell(
                     onTap: () => _showImagePickerModal(context, controller),
                     child: Container(
-                      height: Dimensions.height10*9.5,
-                      width: Dimensions.width10*9.5,
+                      height: Dimensions.height10 * 9.5,
+                      width: Dimensions.width10 * 9.5,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.white,
-                        border: Border.all(
-                          color: AppColors.white,
-                          width: 4,
-                        ),
-                        image: profileImage != null
-                            ? DecorationImage(
-                          image: profileImage,
-                          fit: BoxFit.cover,
-                        )
-                            : null,
+                        border: Border.all(color: AppColors.white, width: 4),
+                        image:
+                            profileImage != null
+                                ? DecorationImage(
+                                  image: profileImage,
+                                  fit: BoxFit.cover,
+                                )
+                                : null,
                       ),
-                      child: profileImage == null
-                          ? Icon(
-                        Icons.person,
-                        size: 42,
-                        color: AppColors.grey4,
-                      )
-                          : null,
+                      child:
+                          profileImage == null
+                              ? Icon(
+                                Icons.person,
+                                size: 42,
+                                color: AppColors.grey4,
+                              )
+                              : null,
                     ),
                   ),
                   SizedBox(width: Dimensions.width15),
@@ -209,10 +201,7 @@ class EditProfileScreen extends StatelessWidget {
     });
   }
 
-  Widget _buildStylistHeader(
-      BuildContext context,
-      AuthController controller,
-      ) {
+  Widget _buildStylistHeader(BuildContext context, AuthController controller) {
     final baseUrl = controller.authRepo.apiClient.baseUrl;
 
     return Padding(
@@ -226,10 +215,11 @@ class EditProfileScreen extends StatelessWidget {
         if (controller.selectedImage.value != null) {
           profileImage = FileImage(controller.selectedImage.value!);
         } else {
-          final url =
-          controller.stylistProfile.value?.getProfileImage(baseUrl!);
+          final url = controller.stylistProfile.value?.getProfileImage(
+            baseUrl!,
+          );
           if (url != null && url.isNotEmpty) {
-            profileImage = NetworkImage(url);
+            profileImage = appCachedImageProvider(url);
           }
         }
 
@@ -244,20 +234,18 @@ class EditProfileScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.grey2,
-                    image: profileImage != null
-                        ? DecorationImage(
-                      image: profileImage,
-                      fit: BoxFit.cover,
-                    )
-                        : null,
+                    image:
+                        profileImage != null
+                            ? DecorationImage(
+                              image: profileImage,
+                              fit: BoxFit.cover,
+                            )
+                            : null,
                   ),
-                  child: profileImage == null
-                      ? Icon(
-                    Icons.person,
-                    size: 48,
-                    color: AppColors.grey4,
-                  )
-                      : null,
+                  child:
+                      profileImage == null
+                          ? Icon(Icons.person, size: 48, color: AppColors.grey4)
+                          : null,
                 ),
               ),
               SizedBox(height: Dimensions.height10),
@@ -342,17 +330,9 @@ class EditProfileScreen extends StatelessWidget {
     return [
       // _field(controller.roleController, 'Role'),
       // _gap(),
-      _field(
-        controller.missionController,
-        'Mission Statement',
-        maxLines: 4,
-      ),
+      _field(controller.missionController, 'Mission Statement', maxLines: 4),
       _gap(),
-      _field(
-        controller.aboutController,
-        'About',
-        maxLines: 4,
-      ),
+      _field(controller.aboutController, 'About', maxLines: 4),
       _gap(),
       _field(controller.salonController, 'Salon Name'),
       _gap(),
@@ -371,12 +351,12 @@ class EditProfileScreen extends StatelessWidget {
   }
 
   Widget _field(
-      TextEditingController controller,
-      String label, {
-        bool readOnly = false,
-        int maxLines = 1,
-        TextInputType? keyboardType,
-      }) {
+    TextEditingController controller,
+    String label, {
+    bool readOnly = false,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+  }) {
     return CustomTextField(
       controller: controller,
       labelText: label,
@@ -398,12 +378,9 @@ class EditProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _miniEditChip({
-    required String text,
-    required VoidCallback onTap,
-  }) {
+  Widget _miniEditChip({required String text, required VoidCallback onTap}) {
     return Material(
-      color: Colors.black.withOpacity(.55),
+      color: Colors.black.withValues(alpha: 0.55),
       borderRadius: BorderRadius.circular(Dimensions.radius20),
       child: InkWell(
         borderRadius: BorderRadius.circular(Dimensions.radius20),
@@ -463,9 +440,9 @@ class EditProfileScreen extends StatelessWidget {
   }
 
   void _showBackgroundImagePickerModal(
-      BuildContext context,
-      AuthController controller,
-      ) {
+    BuildContext context,
+    AuthController controller,
+  ) {
     FocusScope.of(context).unfocus();
     showModalBottomSheet(
       context: context,

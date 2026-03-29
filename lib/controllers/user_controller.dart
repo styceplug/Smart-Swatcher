@@ -7,6 +7,7 @@ import 'package:smart_swatcher/models/user_model.dart';
 import '../data/repo/user_repo.dart';
 import '../helpers/global_loader_controller.dart';
 import '../widgets/snackbars.dart';
+import 'auth_controller.dart';
 
 class UserController extends GetxController {
   final UserRepo userRepo;
@@ -16,14 +17,18 @@ class UserController extends GetxController {
 
   final RxList<RecommendedAccountModel> suggestedAccounts =
       <RecommendedAccountModel>[].obs;
+  final RxList<ConnectionPeerModel> acceptedConnections =
+      <ConnectionPeerModel>[].obs;
   final RxString selectedTypeFilter = ''.obs;
   final RxBool isFetchingSuggestions = false.obs;
+  final RxBool isFetchingAcceptedConnections = false.obs;
   var profile = Rxn<OtherProfileModel>();
   final RxList<PostModel> profilePosts = <PostModel>[].obs;
   final RxBool isFetchingProfilePosts = false.obs;
   final RxSet<String> requestingConnectionIds = <String>{}.obs;
   final RxMap<String, String> connectionStatuses = <String, String>{}.obs;
   final GlobalLoaderController loader = Get.find<GlobalLoaderController>();
+  final AuthController authController = Get.find<AuthController>();
 
   @override
   void onInit() {
@@ -154,6 +159,50 @@ class UserController extends GetxController {
           ? null
           : selectedTypeFilter.value,
     );
+  }
+
+  Future<void> fetchAcceptedConnections() async {
+    if (isFetchingAcceptedConnections.value) return;
+
+    final selfId =
+        authController.companyProfile.value?.id ??
+        authController.stylistProfile.value?.id;
+    final selfType = authController.companyProfile.value != null
+        ? 'company'
+        : authController.stylistProfile.value != null
+            ? 'stylist'
+            : null;
+
+    if (selfId == null || selfType == null) {
+      acceptedConnections.clear();
+      return;
+    }
+
+    isFetchingAcceptedConnections.value = true;
+
+    try {
+      final response = await userRepo.getConnections(status: 'accepted');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.body['connections'] ?? <dynamic>[];
+        acceptedConnections.assignAll(
+          data
+              .whereType<Map>()
+              .map(
+                (item) => ConnectionPeerModel.fromConnectionJson(
+                  Map<String, dynamic>.from(item),
+                  selfId: selfId,
+                  selfType: selfType,
+                ),
+              )
+              .where((peer) => peer.id.trim().isNotEmpty)
+              .toList(),
+        );
+      }
+    } catch (e) {
+      debugPrint('fetchAcceptedConnections error: $e');
+    } finally {
+      isFetchingAcceptedConnections.value = false;
+    }
   }
 
   void setFilter(String value) {

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:iconsax/iconsax.dart';
+import 'package:smart_swatcher/models/formulation_model.dart';
 
 import '../../../routes/routes.dart';
-import '../../../utils/app_constants.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/custom_button.dart';
+import '../../../widgets/formulation_analysis_card.dart';
 
 class GreyExceeds extends StatefulWidget {
   const GreyExceeds({super.key});
@@ -22,12 +22,25 @@ class _GreyExceedsState extends State<GreyExceeds> {
   String? selectedShadeType;
   String? selectedDesiredTone;
   String? selectedMixingRatio;
+  FormulationAnalysisModel? suggestion;
 
   @override
   void initState() {
     super.initState();
     if (Get.arguments is Map) {
-      wizardData = Get.arguments;
+      wizardData = Map<String, dynamic>.from(Get.arguments as Map);
+      suggestion = FormulationAnalysisModel.fromJsonLike(
+        wizardData['suggestion'],
+      );
+      selectedShadeType = suggestion?.recommendedShadeType;
+
+      final suggestedTone =
+          suggestion?.recommendedToneOrFirstFamily?.toLowerCase();
+      if (suggestedTone == 'natural') {
+        selectedDesiredTone = 'Natural';
+      } else if (suggestedTone == 'gold') {
+        selectedDesiredTone = 'Gold';
+      }
     }
   }
 
@@ -56,7 +69,10 @@ class _GreyExceedsState extends State<GreyExceeds> {
 
             Text(
               'Grey Hair Coverage Exceeds 10%',
-              style: TextStyle(fontSize: Dimensions.font20, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: Dimensions.font20,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             SizedBox(height: Dimensions.height5),
             Text(
@@ -70,6 +86,11 @@ class _GreyExceedsState extends State<GreyExceeds> {
             ),
 
             SizedBox(height: Dimensions.height20),
+            FormulationAnalysisCard(
+              analysis: suggestion,
+              title: 'AI Upload Reading',
+            ),
+            if (suggestion != null) SizedBox(height: Dimensions.height20),
 
             // --- SHADE TYPE SELECTION ---
             Text(
@@ -131,7 +152,11 @@ class _GreyExceedsState extends State<GreyExceeds> {
             IntrinsicWidth(
               child: CustomButton(
                 text: selectedMixingRatio ?? 'Mixing Ratios',
-                icon: Icon(Icons.calculate_outlined, size: Dimensions.iconSize20, color: AppColors.primary5),
+                icon: Icon(
+                  Icons.calculate_outlined,
+                  size: Dimensions.iconSize20,
+                  color: AppColors.primary5,
+                ),
                 backgroundColor: Colors.white,
                 borderColor: AppColors.primary5,
                 onPressed: _showRatioModal,
@@ -140,26 +165,28 @@ class _GreyExceedsState extends State<GreyExceeds> {
 
             const Spacer(),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: CustomButton(
-                  text: 'Prev',
-                  onPressed: () => Get.back(),
-                  backgroundColor: AppColors.primary1,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: CustomButton(
+                    text: 'Prev',
+                    onPressed: () => Get.back(),
+                    backgroundColor: AppColors.primary1,
+                  ),
                 ),
-              ),
-              SizedBox(width: Dimensions.width20),
-              Expanded(
-                child: CustomButton(
-                  text: 'Next',
-                  isDisabled: selectedShadeType == null || selectedDesiredTone == null,
-                  onPressed: _onNext,
+                SizedBox(width: Dimensions.width20),
+                Expanded(
+                  child: CustomButton(
+                    text: 'Next',
+                    isDisabled:
+                        selectedShadeType == null ||
+                        selectedDesiredTone == null,
+                    onPressed: _onNext,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
             SizedBox(height: Dimensions.height30),
           ],
         ),
@@ -202,7 +229,9 @@ class _GreyExceedsState extends State<GreyExceeds> {
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(Dimensions.radius15)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(Dimensions.radius15),
+        ),
       ),
       builder: (context) {
         final List<String> percents = ['Up to 25%', '25% - 50%', '50% - 100%'];
@@ -217,8 +246,20 @@ class _GreyExceedsState extends State<GreyExceeds> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('% Grey', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
-                  Text('Mixing ratio (DL:N/G)', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                  Text(
+                    '% Grey',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Mixing ratio (DL:N/G)',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
               Divider(),
@@ -229,17 +270,29 @@ class _GreyExceedsState extends State<GreyExceeds> {
                     return InkWell(
                       onTap: () {
                         setState(() {
-                          selectedMixingRatio = "${percents[index]} (${ratios[index]})";
+                          selectedMixingRatio =
+                              "${percents[index]} (${ratios[index]})";
                         });
                         Get.back();
                       },
                       child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: Dimensions.height15),
+                        padding: EdgeInsets.symmetric(
+                          vertical: Dimensions.height15,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(percents[index], style: TextStyle(fontFamily: 'Poppins')),
-                            Text(ratios[index], style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+                            Text(
+                              percents[index],
+                              style: TextStyle(fontFamily: 'Poppins'),
+                            ),
+                            Text(
+                              ratios[index],
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ),

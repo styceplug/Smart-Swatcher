@@ -12,6 +12,7 @@ import '../models/post_model.dart';
 import '../utils/app_constants.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
+import 'app_cached_network_image.dart';
 import 'snackbars.dart';
 
 class PostCard extends StatefulWidget {
@@ -93,7 +94,9 @@ class _PostCardState extends State<PostCard> {
       0,
       mediaQuery.padding.top,
       mediaQuery.size.width,
-      mediaQuery.size.height - mediaQuery.padding.top - mediaQuery.padding.bottom,
+      mediaQuery.size.height -
+          mediaQuery.padding.top -
+          mediaQuery.padding.bottom,
     );
     final visibleRect = rect.intersect(viewport);
     if (visibleRect.isEmpty || rect.width <= 0 || rect.height <= 0) {
@@ -136,15 +139,13 @@ class _PostCardState extends State<PostCard> {
             title: widget.post.author?.name ?? '',
             subtitle: widget.post.userRole,
             timeAgo: widget.post.timeAgo,
-            onProfileTap: () => _openPostAuthorProfile(
-              widget.post.author?.id,
-              postController,
-            ),
-            onMoreTap: () => _showPostOptions(
-              context,
-              widget.post,
-              postController,
-            ),
+            onProfileTap:
+                () => _openPostAuthorProfile(
+                  widget.post.author?.id,
+                  postController,
+                ),
+            onMoreTap:
+                () => _showPostOptions(context, widget.post, postController),
           ),
           SizedBox(height: Dimensions.height10),
           if (widget.post.caption.isNotEmpty)
@@ -159,16 +160,15 @@ class _PostCardState extends State<PostCard> {
               ),
             ),
           if (widget.post.displayImageUrl != null)
-            Container(
-              height: Dimensions.height40 * 5,
-              width: Dimensions.screenWidth,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Dimensions.radius15),
-                color: AppColors.grey3,
-                image: DecorationImage(
-                  image: NetworkImage(widget.post.displayImageUrl!),
-                  fit: BoxFit.cover,
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Dimensions.radius15),
+              child: AppCachedNetworkImage(
+                imageUrl: widget.post.displayImageUrl,
+                height: Dimensions.height40 * 5,
+                width: Dimensions.screenWidth,
+                fit: BoxFit.cover,
+                enableFullscreen: true,
+                heroTag: 'post_media_${widget.post.id}',
               ),
             ),
           SizedBox(height: Dimensions.height10),
@@ -201,9 +201,7 @@ class _PostCardState extends State<PostCard> {
                         ? Icons.bookmark
                         : Icons.bookmark_border,
                     widget.post.saveCount.toString(),
-                    widget.post.isSaved
-                        ? AppColors.black1
-                        : AppColors.grey4,
+                    widget.post.isSaved ? AppColors.black1 : AppColors.grey4,
                     () => postController.toggleSave(widget.post.id),
                   ),
                 ],
@@ -238,7 +236,9 @@ class FormulasCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profileImageUrl = MediaUrlHelper.resolve(post.author?.profileImageUrl);
+    final profileImageUrl = MediaUrlHelper.resolve(
+      post.author?.profileImageUrl,
+    );
     final postController = Get.find<PostController>();
     final formula = post.formula;
     final formulaRows = <MapEntry<String, String>>[
@@ -275,7 +275,8 @@ class FormulasCard extends StatelessWidget {
             title: post.username,
             subtitle: post.userRole,
             timeAgo: post.timeAgo,
-            onProfileTap: () => _openPostAuthorProfile(post.author?.id, postController),
+            onProfileTap:
+                () => _openPostAuthorProfile(post.author?.id, postController),
             onMoreTap: () => _showPostOptions(context, post, postController),
           ),
           SizedBox(height: Dimensions.height10),
@@ -287,7 +288,10 @@ class FormulasCard extends StatelessWidget {
             ),
           ),
           SizedBox(height: Dimensions.height10),
-          if (formula != null || post.base != null || post.lights != null || post.toner != null)
+          if (formula != null ||
+              post.base != null ||
+              post.lights != null ||
+              post.toner != null)
             Container(
               width: Dimensions.screenWidth,
               padding: EdgeInsets.all(Dimensions.width20),
@@ -318,8 +322,10 @@ class FormulasCard extends StatelessWidget {
                       ),
                   ] else ...[
                     if (post.base != null) _buildFormulaRow("Base", post.base!),
-                    if (post.lights != null) _buildFormulaRow("Lights", post.lights!),
-                    if (post.toner != null) _buildFormulaRow("Toner", post.toner!),
+                    if (post.lights != null)
+                      _buildFormulaRow("Lights", post.lights!),
+                    if (post.toner != null)
+                      _buildFormulaRow("Toner", post.toner!),
                   ],
                 ],
               ),
@@ -341,10 +347,8 @@ class FormulasCard extends StatelessWidget {
                     Iconsax.message,
                     post.commentCount.toString(),
                     AppColors.grey4,
-                    () => Get.toNamed(
-                      AppRoutes.commentsScreen,
-                      arguments: post,
-                    ),
+                    () =>
+                        Get.toNamed(AppRoutes.commentsScreen, arguments: post),
                   ),
                   SizedBox(width: Dimensions.width20),
                   _actionButton(
@@ -492,16 +496,18 @@ class _PostHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.grey3,
-                    image: profileImageUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(profileImageUrl!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
+                    image:
+                        profileImageUrl != null
+                            ? DecorationImage(
+                              image: appCachedImageProvider(profileImageUrl!)!,
+                              fit: BoxFit.cover,
+                            )
+                            : null,
                   ),
-                  child: profileImageUrl == null
-                      ? Icon(Icons.person, color: AppColors.grey4)
-                      : null,
+                  child:
+                      profileImageUrl == null
+                          ? Icon(Icons.person, color: AppColors.grey4)
+                          : null,
                 ),
                 SizedBox(width: Dimensions.width10),
                 Expanded(

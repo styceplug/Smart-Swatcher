@@ -17,6 +17,15 @@ class FormulationOrCorrectionScreen extends StatefulWidget {
 class _FormulationOrCorrectionScreenState
     extends State<FormulationOrCorrectionScreen> {
   String selectedOption = '';
+  Map<String, dynamic> routeArgs = {};
+
+  @override
+  void initState() {
+    super.initState();
+    if (Get.arguments is Map) {
+      routeArgs = Map<String, dynamic>.from(Get.arguments as Map);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +61,7 @@ class _FormulationOrCorrectionScreenState
                     color:
                         selectedOption == 'formulation'
                             ? AppColors.primary3
-                            : AppColors.primary3.withOpacity(0.2),
+                            : AppColors.primary3.withValues(alpha: 0.2),
                   ),
                   borderRadius: BorderRadius.circular(Dimensions.radius20),
                 ),
@@ -112,7 +121,7 @@ class _FormulationOrCorrectionScreenState
                     color:
                         selectedOption == 'correction'
                             ? AppColors.primary3
-                            : AppColors.primary3.withOpacity(0.2),
+                            : AppColors.primary3.withValues(alpha: 0.2),
                   ),
                   borderRadius: BorderRadius.circular(Dimensions.radius20),
                 ),
@@ -159,12 +168,19 @@ class _FormulationOrCorrectionScreenState
             CustomButton(
               text: 'Continue',
               onPressed: () {
-                if (selectedOption == 'formulation') {
-                  Get.toNamed(AppRoutes.uploadHair);
-                } else {
-                  //fix this
-                }
+                if (selectedOption.isEmpty) return;
+
+                final arguments = {
+                  ...routeArgs,
+                  'formulationType':
+                      selectedOption == 'correction'
+                          ? 'color_correction'
+                          : 'color_formulation',
+                };
+
+                Get.toNamed(AppRoutes.uploadHair, arguments: arguments);
               },
+              isDisabled: selectedOption.isEmpty,
             ),
             SizedBox(height: Dimensions.height20),
           ],

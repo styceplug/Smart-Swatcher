@@ -1,11 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../../routes/routes.dart';
 
 class ApiChecker {
-  static void checkApi(Response response) {
-    if (response.statusCode == 401) {
+  static void checkApi(
+    Response response, {
+    bool redirectOnUnauthorized = true,
+  }) {
+    if (response.statusCode == 401 && redirectOnUnauthorized) {
       Get.offAllNamed(AppRoutes.onboardingScreen);
     } else if (response.statusCode == 403) {
       // Forbidden

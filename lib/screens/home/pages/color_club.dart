@@ -12,6 +12,7 @@ import '../../../controllers/event_controller.dart';
 import '../../../controllers/post_controller.dart';
 import '../../../controllers/profile_content_controller.dart';
 import '../../../utils/dimensions.dart';
+import '../../../widgets/app_cached_network_image.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/post_card.dart';
 import '../../../widgets/reminder_card.dart';
@@ -43,9 +44,10 @@ class _ColorClubState extends State<ColorClub>
 
   Future<void> _loadOwnMedia() async {
     final ownerId = postController.currentActorId;
-    final ownerType = authController.currentAccountType.value == AccountType.company
-        ? 'company'
-        : 'stylist';
+    final ownerType =
+        authController.currentAccountType.value == AccountType.company
+            ? 'company'
+            : 'stylist';
 
     if (ownerId == null || ownerId.trim().isEmpty) {
       return;
@@ -88,7 +90,7 @@ class _ColorClubState extends State<ColorClub>
                       ),
                       SizedBox(width: Dimensions.width15),
                       InkWell(
-                        onTap: (){
+                        onTap: () {
                           Get.toNamed(AppRoutes.notificationScreen);
                         },
                         child: Image.asset(
@@ -136,11 +138,7 @@ class _ColorClubState extends State<ColorClub>
             ),
             Expanded(
               child: TabBarView(
-                children: [
-                  FeedTab(),
-                  liveRoom(),
-                  const _ColorClubMediaTab(),
-                ],
+                children: [FeedTab(), liveRoom(), const _ColorClubMediaTab()],
               ),
             ),
           ],
@@ -160,7 +158,8 @@ class _ColorClubMediaTab extends StatelessWidget {
     return Stack(
       children: [
         Obx(() {
-          if (controller.isLoadingMedia.value && controller.displayMedia.isEmpty) {
+          if (controller.isLoadingMedia.value &&
+              controller.displayMedia.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.primary5),
             );
@@ -169,99 +168,84 @@ class _ColorClubMediaTab extends StatelessWidget {
           return RefreshIndicator(
             color: AppColors.primary5,
             onRefresh: controller.refreshCurrentOwner,
-            child: controller.displayMedia.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Dimensions.width20,
-                      vertical: Dimensions.height40,
-                    ),
-                    children: [
-                      Center(
-                        child: Text(
-                          'No display media yet',
-                          style: TextStyle(color: AppColors.grey4),
-                        ),
+            child:
+                controller.displayMedia.isEmpty
+                    ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Dimensions.width20,
+                        vertical: Dimensions.height40,
                       ),
-                    ],
-                  )
-                : GridView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(
-                      Dimensions.width20,
-                      Dimensions.height20,
-                      Dimensions.width20,
-                      Dimensions.height100,
-                    ),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: Dimensions.width15,
-                      mainAxisSpacing: Dimensions.height15,
-                      childAspectRatio: 0.8,
-                    ),
-                    itemCount: controller.displayMedia.length,
-                    itemBuilder: (_, index) {
-                      final item = controller.displayMedia[index];
-                      final imageUrl = MediaUrlHelper.resolve(item.url);
+                      children: [
+                        Center(
+                          child: Text(
+                            'No display media yet',
+                            style: TextStyle(color: AppColors.grey4),
+                          ),
+                        ),
+                      ],
+                    )
+                    : GridView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        Dimensions.width20,
+                        Dimensions.height20,
+                        Dimensions.width20,
+                        Dimensions.height100,
+                      ),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: Dimensions.width15,
+                        mainAxisSpacing: Dimensions.height15,
+                        childAspectRatio: 0.8,
+                      ),
+                      itemCount: controller.displayMedia.length,
+                      itemBuilder: (_, index) {
+                        final item = controller.displayMedia[index];
 
-                      return Stack(
-                        children: [
-                          Positioned.fill(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                Dimensions.radius15,
-                              ),
-                              child: imageUrl == null
-                                  ? Container(
-                                      color: AppColors.grey2,
-                                      alignment: Alignment.center,
-                                      child: Icon(
-                                        Icons.broken_image,
-                                        color: AppColors.grey4,
-                                      ),
-                                    )
-                                  : Image.network(
-                                      imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        color: AppColors.grey2,
-                                        alignment: Alignment.center,
-                                        child: Icon(
-                                          Icons.broken_image,
-                                          color: AppColors.grey4,
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          Positioned(
-                            top: Dimensions.height10,
-                            right: Dimensions.width10,
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: Dimensions.width8,
-                                vertical: Dimensions.height5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.55),
+                        return Stack(
+                          children: [
+                            Positioned.fill(
+                              child: ClipRRect(
                                 borderRadius: BorderRadius.circular(
-                                  Dimensions.radius20,
+                                  Dimensions.radius15,
                                 ),
-                              ),
-                              child: Text(
-                                item.visibility,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: Dimensions.font10,
-                                  fontWeight: FontWeight.w600,
+                                child: AppCachedNetworkImage(
+                                  imageUrl: item.url,
+                                  fit: BoxFit.cover,
+                                  enableFullscreen: true,
+                                  heroTag: 'color_club_media_${item.id}',
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                            Positioned(
+                              top: Dimensions.height10,
+                              right: Dimensions.width10,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: Dimensions.width8,
+                                  vertical: Dimensions.height5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  borderRadius: BorderRadius.circular(
+                                    Dimensions.radius20,
+                                  ),
+                                ),
+                                child: Text(
+                                  item.visibility,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: Dimensions.font10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
           );
         }),
         Positioned(
@@ -320,19 +304,22 @@ class _ColorClubMediaTab extends StatelessWidget {
                   SizedBox(height: Dimensions.height20),
                   Wrap(
                     spacing: Dimensions.width10,
-                    children: ['General', 'Elite'].map((value) {
-                      final selected = visibility == value;
-                      return ChoiceChip(
-                        label: Text(value),
-                        selected: selected,
-                        onSelected: (_) {
-                          setSheetState(() {
-                            visibility = value;
-                          });
-                        },
-                        selectedColor: AppColors.primary5.withValues(alpha: 0.14),
-                      );
-                    }).toList(),
+                    children:
+                        ['General', 'Elite'].map((value) {
+                          final selected = visibility == value;
+                          return ChoiceChip(
+                            label: Text(value),
+                            selected: selected,
+                            onSelected: (_) {
+                              setSheetState(() {
+                                visibility = value;
+                              });
+                            },
+                            selectedColor: AppColors.primary5.withValues(
+                              alpha: 0.14,
+                            ),
+                          );
+                        }).toList(),
                   ),
                   SizedBox(height: Dimensions.height25),
                   Row(
@@ -343,9 +330,9 @@ class _ColorClubMediaTab extends StatelessWidget {
                             Navigator.of(sheetContext).pop();
                             await Get.find<ProfileContentController>()
                                 .pickAndUploadDisplayMedia(
-                              visibility: visibility,
-                              source: ImageSource.gallery,
-                            );
+                                  visibility: visibility,
+                                  source: ImageSource.gallery,
+                                );
                           },
                           child: const Text('Gallery'),
                         ),
@@ -357,9 +344,9 @@ class _ColorClubMediaTab extends StatelessWidget {
                             Navigator.of(sheetContext).pop();
                             await Get.find<ProfileContentController>()
                                 .pickAndUploadDisplayMedia(
-                              visibility: visibility,
-                              source: ImageSource.camera,
-                            );
+                                  visibility: visibility,
+                                  source: ImageSource.camera,
+                                );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary5,
@@ -430,16 +417,18 @@ class FeedTab extends StatelessWidget {
 
           // Layer 2: The Floating Button (Always Visible)
           Positioned(
-            bottom: Dimensions.height100, // Adjusted to be visible within TabBarView
+            bottom:
+                Dimensions
+                    .height100, // Adjusted to be visible within TabBarView
             right: Dimensions.width20,
             child: FloatingActionButton(
               heroTag: "feed_fab",
               backgroundColor: AppColors.primary5,
               onPressed: () => Get.toNamed(AppRoutes.createPost),
               child: Icon(
-                  CupertinoIcons.plus,
-                  color: AppColors.white,
-                  size: Dimensions.iconSize20
+                CupertinoIcons.plus,
+                color: AppColors.white,
+                size: Dimensions.iconSize20,
               ),
             ),
           ),
@@ -482,9 +471,7 @@ Widget liveRoom() {
               child: Obx(() {
                 if (controller.isGettingRecommendedEvents.value) {
                   return const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.primary5,
-                    ),
+                    child: CircularProgressIndicator(color: AppColors.primary5),
                   );
                 }
 
@@ -511,9 +498,14 @@ Widget liveRoom() {
                       child: ReminderCard(
                         hostName: event.creator?.name ?? 'Unknown Host',
                         hostRole: event.creator?.role ?? 'Host',
-                        sessionType: 'A U D I O',
+                        sessionType:
+                            event.sessionMode == 'audio'
+                                ? 'A U D I O'
+                                : 'I N T E R A C T I V E',
                         title: event.title ?? 'Untitled Event',
-                        dateTime: controller.formatEventDate(event.scheduledStartAt),
+                        dateTime: controller.formatEventDate(
+                          event.scheduledStartAt,
+                        ),
                         isReminderSet: event.viewer?.isSubscribed ?? false,
                         description: event.description ?? '',
                         onTap: () async {
