@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
@@ -37,7 +39,6 @@ class PostModel {
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
-
     var viewer = json['viewer'] ?? {};
 
     return PostModel(
@@ -46,29 +47,37 @@ class PostModel {
       targetAudience: json['targetAudience'] ?? "General",
       createdAt: json['createdAt'] ?? "",
       author: json['author'] != null ? Author.fromJson(json['author']) : null,
-      media: json['media'] != null
-          ? (json['media'] as List).map((e) => MediaItem.fromJson(e)).toList()
-          : [],
-      formula: json['formula'] is Map<String, dynamic>
-          ? PostFormula.fromJson(json['formula'] as Map<String, dynamic>)
-          : null,
-      tags: json['tags'] != null
-          ? (json['tags'] as List)
-              .map((tag) {
-                if (tag is String) {
-                  return tag;
-                }
-                if (tag is Map && tag['name'] != null) {
-                  return tag['name'].toString();
-                }
-                return '';
-              })
-              .where((tag) => tag.trim().isNotEmpty)
-              .toList()
-          : [],
+      media:
+          json['media'] != null
+              ? (json['media'] as List)
+                  .map((e) => MediaItem.fromJson(e))
+                  .toList()
+              : [],
+      formula:
+          json['formula'] is Map<String, dynamic>
+              ? PostFormula.fromJson(json['formula'] as Map<String, dynamic>)
+              : null,
+      tags:
+          json['tags'] != null
+              ? (json['tags'] as List)
+                  .map((tag) {
+                    if (tag is String) {
+                      return tag;
+                    }
+                    if (tag is Map && tag['name'] != null) {
+                      return tag['name'].toString();
+                    }
+                    return '';
+                  })
+                  .where((tag) => tag.trim().isNotEmpty)
+                  .toList()
+              : [],
       isLiked: viewer['liked'] ?? false,
       isSaved: viewer['saved'] ?? false,
-      metrics: json['metrics'] != null ? PostMetrics.fromJson(json['metrics']) : null,
+      metrics:
+          json['metrics'] != null
+              ? PostMetrics.fromJson(json['metrics'])
+              : null,
       base: null,
       lights: null,
       toner: null,
@@ -80,7 +89,9 @@ class PostModel {
   int get saveCount => metrics?.saves ?? 0;
 
   String get username => author?.username ?? "Unknown";
-  String get userRole => (author?.type ?? "stylist").capitalizeFirst ?? "Stylist"; // e.g., "Stylist"
+  String get userRole =>
+      (author?.type ?? "stylist").capitalizeFirst ??
+      "Stylist"; // e.g., "Stylist"
   String get userProfileImage => author?.profileImageUrl ?? "";
 
   String? get displayImageUrl {
@@ -96,7 +107,6 @@ class PostModel {
 
   int get likeCount => metrics?.likes ?? 0;
   int get commentCount => metrics?.comments ?? 0;
-
 
   String get timeAgo {
     if (createdAt.isEmpty) return "";
@@ -172,26 +182,27 @@ class PostFormula {
       desiredTone: json['desiredTone']?.toString(),
       mixingRatio: json['mixingRatio']?.toString(),
       noteToStylist: json['noteToStylist']?.toString(),
-      resultData: json['resultData'] is Map<String, dynamic>
-          ? json['resultData'] as Map<String, dynamic>
-          : null,
-      steps: json['steps'] is List
-          ? (json['steps'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map(PostFormulaStep.fromJson)
-              .toList()
-          : const [],
-      media: json['media'] is List
-          ? (json['media'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map(MediaItem.fromJson)
-              .toList()
-          : const [],
+      resultData: _mapFromJsonLike(json['resultData']),
+      steps:
+          json['steps'] is List
+              ? (json['steps'] as List)
+                  .whereType<Map<String, dynamic>>()
+                  .map(PostFormulaStep.fromJson)
+                  .toList()
+              : const [],
+      media:
+          json['media'] is List
+              ? (json['media'] as List)
+                  .whereType<Map<String, dynamic>>()
+                  .map(MediaItem.fromJson)
+                  .toList()
+              : const [],
     );
   }
 
   bool get isGenerating =>
-      predictionImageStatus == 'queued' || predictionImageStatus == 'in_progress';
+      predictionImageStatus == 'queued' ||
+      predictionImageStatus == 'in_progress';
 
   String? get displayImageUrl {
     final preferred = predictionImageUrl;
@@ -215,6 +226,26 @@ class PostFormula {
     if (value == null) return null;
     if (value is int) return value;
     return int.tryParse(value.toString());
+  }
+
+  static Map<String, dynamic>? _mapFromJsonLike(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map((key, item) => MapEntry(key.toString(), item));
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) {
+          return decoded.map((key, item) => MapEntry(key.toString(), item));
+        }
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 }
 
@@ -279,28 +310,26 @@ class Author {
     }
     return rawUrl;
   }
-
 }
-
-
-
 
 class MediaItem {
   String url;
   String mediaType;
   int position;
 
-  MediaItem({required this.url, required this.mediaType, required this.position});
+  MediaItem({
+    required this.url,
+    required this.mediaType,
+    required this.position,
+  });
 
   factory MediaItem.fromJson(Map<String, dynamic> json) {
-
     String rawUrl = json['url'] ?? "";
 
     // FIX: Automatically prepend Base URL if relative
     if (rawUrl.startsWith('/')) {
       rawUrl = '${AppConstants.BASE_URL}$rawUrl';
     }
-
 
     return MediaItem(
       url: rawUrl,
@@ -365,8 +394,6 @@ class CommentModel {
     if (diff.inHours >= 1) return '${diff.inHours}h';
     return '${diff.inMinutes}m';
   }
-
-
 }
 
 class PostDraft {

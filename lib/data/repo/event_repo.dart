@@ -32,6 +32,65 @@ class EventRepo {
     return await apiClient.postData(AppConstants.END_EVENT(eventId), {});
   }
 
+  Future<Response> assignCohost(
+    String eventId, {
+    required String targetId,
+    required String targetType,
+  }) async {
+    return await apiClient.postData(AppConstants.ASSIGN_COHOST(eventId), {
+      'targetId': targetId,
+      'targetType': targetType,
+    });
+  }
+
+  Future<Response> revokeCohost(
+    String eventId, {
+    required String targetId,
+    required String targetType,
+  }) async {
+    return await apiClient.deleteData(
+      AppConstants.REVOKE_COHOST(eventId, targetType, targetId),
+    );
+  }
+
+  Future<Response> raiseHand(String eventId) async {
+    return await apiClient.postData(AppConstants.RAISE_EVENT_HAND(eventId), {});
+  }
+
+  Future<Response> lowerHand(String eventId) async {
+    return await apiClient.deleteData(AppConstants.LOWER_EVENT_HAND(eventId));
+  }
+
+  Future<Response> grantSpeaker(
+    String eventId, {
+    required String targetId,
+    required String targetType,
+  }) async {
+    return await apiClient.postData(AppConstants.GRANT_EVENT_SPEAKER(eventId), {
+      'targetId': targetId,
+      'targetType': targetType,
+    });
+  }
+
+  Future<Response> revokeSpeaker(
+    String eventId, {
+    required String targetId,
+    required String targetType,
+  }) async {
+    return await apiClient.deleteData(
+      AppConstants.REVOKE_EVENT_SPEAKER(eventId, targetType, targetId),
+    );
+  }
+
+  Future<Response> sendReaction(
+    String eventId, {
+    required String reaction,
+  }) async {
+    return await apiClient.postData(AppConstants.SEND_EVENT_REACTION(eventId), {
+      'reaction': reaction,
+    });
+  }
+
   Future<Response> createEvent(Map<String, dynamic> body) async {
     return await apiClient.postData(AppConstants.CREATE_EVENT, body);
   }

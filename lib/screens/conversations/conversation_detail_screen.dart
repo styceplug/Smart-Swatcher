@@ -6,6 +6,7 @@ import 'package:smart_swatcher/models/conversation_model.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
+import 'package:smart_swatcher/widgets/app_cached_network_image.dart';
 import 'package:smart_swatcher/widgets/snackbars.dart';
 
 import '../../routes/routes.dart';
@@ -14,7 +15,8 @@ class ConversationDetailScreen extends StatefulWidget {
   const ConversationDetailScreen({super.key});
 
   @override
-  State<ConversationDetailScreen> createState() => _ConversationDetailScreenState();
+  State<ConversationDetailScreen> createState() =>
+      _ConversationDetailScreenState();
 }
 
 class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
@@ -55,26 +57,37 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
         );
       }
 
-      final title = conversation?.displayTitle(controller.currentActorId) ?? 'Chat';
-      final subtitle = conversation == null
-          ? ''
-          : conversation.isGroup
+      final title =
+          conversation?.displayTitle(controller.currentActorId) ?? 'Chat';
+      final subtitle =
+          conversation == null
+              ? ''
+              : conversation.isGroup
               ? '${conversation.participants.length} members'
-              : conversation.otherParticipant(controller.currentActorId)?.profile.username !=
-                      null
-                  ? '@${conversation.otherParticipant(controller.currentActorId)!.profile.username}'
-                  : 'Private chat';
+              : conversation
+                      .otherParticipant(controller.currentActorId)
+                      ?.profile
+                      .username !=
+                  null
+              ? '@${conversation.otherParticipant(controller.currentActorId)!.profile.username}'
+              : 'Private chat';
 
-      final avatarUrl = conversation?.isGroup == true
-          ? null
-          : MediaUrlHelper.resolve(
-              conversation?.otherParticipant(controller.currentActorId)
+      final avatarUrl =
+          conversation?.isGroup == true
+              ? null
+              : MediaUrlHelper.resolve(
+                conversation
+                    ?.otherParticipant(controller.currentActorId)
+                    ?.profile
+                    .profileImageUrl,
+              );
+      final otherProfileId =
+          conversation?.isGroup == true
+              ? null
+              : conversation
+                  ?.otherParticipant(controller.currentActorId)
                   ?.profile
-                  .profileImageUrl,
-            );
-      final otherProfileId = conversation?.isGroup == true
-          ? null
-          : conversation?.otherParticipant(controller.currentActorId)?.profile.id;
+                  .id;
 
       if (controller.activeMessages.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -88,9 +101,10 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
           foregroundColor: AppColors.black1,
           titleSpacing: 0,
           title: InkWell(
-            onTap: otherProfileId == null
-                ? null
-                : () => Get.toNamed(
+            onTap:
+                otherProfileId == null
+                    ? null
+                    : () => Get.toNamed(
                       AppRoutes.otherProfileScreen,
                       arguments: otherProfileId,
                     ),
@@ -102,21 +116,23 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.primary1,
                     shape: BoxShape.circle,
-                    image: avatarUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(avatarUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
+                    image:
+                        avatarUrl != null
+                            ? DecorationImage(
+                              image: appCachedImageProvider(avatarUrl)!,
+                              fit: BoxFit.cover,
+                            )
+                            : null,
                   ),
-                  child: avatarUrl == null
-                      ? Icon(
-                          conversation?.isGroup == true
-                              ? Icons.group_outlined
-                              : Icons.person_outline,
-                          color: AppColors.primary5,
-                        )
-                      : null,
+                  child:
+                      avatarUrl == null
+                          ? Icon(
+                            conversation?.isGroup == true
+                                ? Icons.group_outlined
+                                : Icons.person_outline,
+                            color: AppColors.primary5,
+                          )
+                          : null,
                 ),
                 SizedBox(width: Dimensions.width10),
                 Expanded(
@@ -164,75 +180,78 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
         body: Column(
           children: [
             Expanded(
-              child: controller.isLoadingMessages.value &&
-                      controller.activeMessages.isEmpty
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary5,
-                      ),
-                    )
-                  : controller.activeMessages.isEmpty
+              child:
+                  controller.isLoadingMessages.value &&
+                          controller.activeMessages.isEmpty
+                      ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary5,
+                        ),
+                      )
+                      : controller.activeMessages.isEmpty
                       ? _EmptyChatState(title: title)
                       : ListView.builder(
-                          controller: _scrollController,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: Dimensions.width15,
-                            vertical: Dimensions.height20,
-                          ),
-                          itemCount: controller.activeMessages.length,
-                          itemBuilder: (context, index) {
-                            final message = controller.activeMessages[index];
-                            final previous = index > 0
-                                ? controller.activeMessages[index - 1]
-                                : null;
+                        controller: _scrollController,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Dimensions.width15,
+                          vertical: Dimensions.height20,
+                        ),
+                        itemCount: controller.activeMessages.length,
+                        itemBuilder: (context, index) {
+                          final message = controller.activeMessages[index];
+                          final previous =
+                              index > 0
+                                  ? controller.activeMessages[index - 1]
+                                  : null;
 
-                            final widgets = <Widget>[];
-                            if (_shouldShowDateHeader(previous, message)) {
-                              widgets.add(
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: Dimensions.height12,
-                                  ),
-                                  child: Center(
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: Dimensions.width13,
-                                        vertical: Dimensions.height5,
+                          final widgets = <Widget>[];
+                          if (_shouldShowDateHeader(previous, message)) {
+                            widgets.add(
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: Dimensions.height12,
+                                ),
+                                child: Center(
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: Dimensions.width13,
+                                      vertical: Dimensions.height5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(
+                                        Dimensions.radius20,
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(
-                                          Dimensions.radius20,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        _formatDateHeader(message.createdAt),
-                                        style: TextStyle(
-                                          fontSize: Dimensions.font10,
-                                          color: AppColors.grey5,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                    ),
+                                    child: Text(
+                                      _formatDateHeader(message.createdAt),
+                                      style: TextStyle(
+                                        fontSize: Dimensions.font10,
+                                        color: AppColors.grey5,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
                                 ),
-                              );
-                            }
-
-                            widgets.add(
-                              _MessageBubble(
-                                message: message,
-                                isMine: message.sender.id ==
-                                    controller.currentActorId,
                               ),
                             );
+                          }
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: widgets,
-                            );
-                          },
-                        ),
+                          widgets.add(
+                            _MessageBubble(
+                              message: message,
+                              isMine:
+                                  message.sender.id ==
+                                  controller.currentActorId,
+                            ),
+                          );
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: widgets,
+                          );
+                        },
+                      ),
             ),
             Container(
               padding: EdgeInsets.fromLTRB(
@@ -293,22 +312,22 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                     icon: const Icon(Icons.mic_none_outlined),
                   ),
                   IconButton(
-                    onPressed: controller.isSendingMessage.value
-                        ? null
-                        : _handleSend,
-                    icon: controller.isSendingMessage.value
-                        ? SizedBox(
-                            width: Dimensions.iconSize16,
-                            height: Dimensions.iconSize16,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
+                    onPressed:
+                        controller.isSendingMessage.value ? null : _handleSend,
+                    icon:
+                        controller.isSendingMessage.value
+                            ? SizedBox(
+                              width: Dimensions.iconSize16,
+                              height: Dimensions.iconSize16,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary5,
+                              ),
+                            )
+                            : const Icon(
+                              Icons.send_rounded,
                               color: AppColors.primary5,
                             ),
-                          )
-                        : const Icon(
-                            Icons.send_rounded,
-                            color: AppColors.primary5,
-                          ),
                   ),
                 ],
               ),
@@ -378,10 +397,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({
-    required this.message,
-    required this.isMine,
-  });
+  const _MessageBubble({required this.message, required this.isMine});
 
   final ConversationMessageModel message;
   final bool isMine;
@@ -431,17 +447,14 @@ class _MessageBubble extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (media.isNotEmpty) ...[
-                      ...media.map((item) => Padding(
-                            padding: EdgeInsets.only(
-                              bottom: message.hasText
-                                  ? Dimensions.height10
-                                  : 0,
-                            ),
-                            child: _MessageMediaView(
-                              media: item,
-                              isMine: isMine,
-                            ),
-                          )),
+                      ...media.map(
+                        (item) => Padding(
+                          padding: EdgeInsets.only(
+                            bottom: message.hasText ? Dimensions.height10 : 0,
+                          ),
+                          child: _MessageMediaView(media: item, isMine: isMine),
+                        ),
+                      ),
                     ],
                     if (message.hasText)
                       Text(
@@ -486,10 +499,7 @@ class _MessageBubble extends StatelessWidget {
 }
 
 class _MessageMediaView extends StatelessWidget {
-  const _MessageMediaView({
-    required this.media,
-    required this.isMine,
-  });
+  const _MessageMediaView({required this.media, required this.isMine});
 
   final ConversationMediaModel media;
   final bool isMine;
@@ -499,12 +509,14 @@ class _MessageMediaView extends StatelessWidget {
     final resolvedUrl = MediaUrlHelper.resolve(media.url);
 
     if (media.mediaType == MessageMediaType.image && resolvedUrl != null) {
-      return ClipRRect(
+      return AppCachedNetworkImage(
+        imageUrl: resolvedUrl,
+        width: Dimensions.width240,
+        height: Dimensions.height171,
+        fit: BoxFit.cover,
         borderRadius: BorderRadius.circular(Dimensions.radius15),
-        child: Image.network(
-          resolvedUrl,
-          fit: BoxFit.cover,
-        ),
+        enableFullscreen: true,
+        heroTag: 'chat_media_${media.url}_${media.fileName}',
       );
     }
 

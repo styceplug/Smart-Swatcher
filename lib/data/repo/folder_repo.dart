@@ -20,6 +20,14 @@ class FolderRepo {
     return await apiClient.postData('/api/formulations/preview', body);
   }
 
+  Future<Response> previewCorrection(Map<String, dynamic> body) async {
+    return await apiClient.postData('/api/corrections/preview', body);
+  }
+
+  Future<Response> saveCorrection(Map<String, dynamic> body) async {
+    return await apiClient.postData('/api/corrections/save', body);
+  }
+
   Future<Response> uploadClientImage(File file) async {
     final uri = Uri.parse('${AppConstants.BASE_URL}/api/formulations/upload');
     var request = http.MultipartRequest('POST', uri);
@@ -28,8 +36,10 @@ class FolderRepo {
     var multipartFile = await http.MultipartFile.fromPath('file', file.path);
     request.files.add(multipartFile);
 
-
-    return await apiClient.postMultipartData('/api/formulations/upload', request);
+    return await apiClient.postMultipartData(
+      '/api/formulations/upload',
+      request,
+    );
   }
 
   Future<Response> createFolder(ClientFolderModel folder) async {
@@ -48,12 +58,14 @@ class FolderRepo {
     String formulationId, {
     bool refreshPrediction = false,
   }) async {
-    final uri = Uri(
-      path: '/api/formulations/$formulationId',
-      queryParameters: refreshPrediction
-          ? <String, String>{'refreshPrediction': 'true'}
-          : null,
-    ).toString();
+    final uri =
+        Uri(
+          path: '/api/formulations/$formulationId',
+          queryParameters:
+              refreshPrediction
+                  ? <String, String>{'refreshPrediction': 'true'}
+                  : null,
+        ).toString();
 
     return await apiClient.getData(uri);
   }
@@ -63,5 +75,9 @@ class FolderRepo {
       '/api/formulations/$formulationId/prediction-image/retry',
       {},
     );
+  }
+
+  Future<Response> deleteFormulation(String formulationId) async {
+    return await apiClient.deleteData('/api/formulations/$formulationId');
   }
 }

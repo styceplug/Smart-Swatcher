@@ -16,17 +16,13 @@ class AuthRepo extends GetxService {
 
   AuthRepo({required this.apiClient, required this.sharedPreferences});
 
-
-
   Future<Response> uploadMedia(File file) async {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('${apiClient.baseUrl}/api/media/upload'),
     );
 
-    request.files.add(
-      await http.MultipartFile.fromPath('file', file.path),
-    );
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
 
     return await apiClient.postMultipartData('/api/media/upload', request);
   }
@@ -60,7 +56,7 @@ class AuthRepo extends GetxService {
     request.fields['email'] = email;
     request.fields['password'] = password;
     request.fields['phoneNumber'] = phoneNumber; // swagger style
-    request.fields['phone'] = phoneNumber;       // common backend style
+    request.fields['phone'] = phoneNumber; // common backend style
 
     // ---- Add rest of fields (strings) ----
     void addField(String key, dynamic value) {
@@ -89,7 +85,10 @@ class AuthRepo extends GetxService {
     }
 
     // Send with your existing helper
-    final res = await apiClient.postMultipartData('/api/companies/signup', request);
+    final res = await apiClient.postMultipartData(
+      '/api/companies/signup',
+      request,
+    );
 
     // If your helper returns body as string, decode it
     if (res.body is String) {
@@ -105,7 +104,9 @@ class AuthRepo extends GetxService {
     return res;
   }
 
-  Future<Response> registerCompany(Map<String, dynamic> body) async { return await apiClient.postData('/api/companies/signup', body); }
+  Future<Response> registerCompany(Map<String, dynamic> body) async {
+    return await apiClient.postData('/api/companies/signup', body);
+  }
 
   Future<void> clearSharedData() async {
     await sharedPreferences.remove(AppConstants.authToken);
@@ -119,7 +120,10 @@ class AuthRepo extends GetxService {
     var multipartFile = await http.MultipartFile.fromPath('file', file.path);
     request.files.add(multipartFile);
 
-    return await apiClient.postMultipartData('/api/media/profile-picture', request);
+    return await apiClient.postMultipartData(
+      '/api/media/profile-picture',
+      request,
+    );
   }
 
   Future<void> saveStylistProfile(StylistModel stylistProfile) async {
@@ -175,11 +179,19 @@ class AuthRepo extends GetxService {
   }
 
   Future<Response> loginStylist(Map<String, dynamic> body) async {
-    return await apiClient.postData(AppConstants.LOGIN_STYLIST, body);
+    return await apiClient.postData(
+      AppConstants.LOGIN_STYLIST,
+      body,
+      redirectOnUnauthorized: false,
+    );
   }
 
   Future<Response> loginCompany(Map<String, dynamic> body) async {
-    return await apiClient.postData(AppConstants.LOGIN_COMPANY, body);
+    return await apiClient.postData(
+      AppConstants.LOGIN_COMPANY,
+      body,
+      redirectOnUnauthorized: false,
+    );
   }
 
   Future<bool> saveUserToken(String token) async {

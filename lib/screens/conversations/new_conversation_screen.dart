@@ -6,6 +6,7 @@ import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/snackbars.dart';
+import 'package:smart_swatcher/widgets/app_cached_network_image.dart';
 
 class NewConversationScreen extends StatefulWidget {
   const NewConversationScreen({super.key});
@@ -121,7 +122,9 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
               if (filteredConnections.isEmpty) {
                 return Center(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: Dimensions.width30),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width30,
+                    ),
                     child: Text(
                       _searchController.text.trim().isEmpty
                           ? 'Your accepted connections will appear here.'
@@ -145,12 +148,16 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
                   Dimensions.height20,
                 ),
                 itemCount: filteredConnections.length,
-                separatorBuilder: (_, __) =>
-                    SizedBox(height: Dimensions.height10),
+                separatorBuilder:
+                    (_, __) => SizedBox(height: Dimensions.height10),
                 itemBuilder: (context, index) {
                   final connection = filteredConnections[index];
-                  final profile = connection.otherParty(controller.currentActorId ?? '');
-                  final imageUrl = MediaUrlHelper.resolve(profile.profileImageUrl);
+                  final profile = connection.otherParty(
+                    controller.currentActorId ?? '',
+                  );
+                  final imageUrl = MediaUrlHelper.resolve(
+                    profile.profileImageUrl,
+                  );
                   final isSelected = _selectedIds.contains(profile.id);
 
                   return Material(
@@ -169,19 +176,22 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
                               decoration: BoxDecoration(
                                 color: AppColors.primary1,
                                 shape: BoxShape.circle,
-                                image: imageUrl != null
-                                    ? DecorationImage(
-                                        image: NetworkImage(imageUrl),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : null,
+                                image:
+                                    imageUrl != null
+                                        ? DecorationImage(
+                                          image:
+                                              appCachedImageProvider(imageUrl)!,
+                                          fit: BoxFit.cover,
+                                        )
+                                        : null,
                               ),
-                              child: imageUrl == null
-                                  ? const Icon(
-                                      Icons.person_outline,
-                                      color: AppColors.primary5,
-                                    )
-                                  : null,
+                              child:
+                                  imageUrl == null
+                                      ? const Icon(
+                                        Icons.person_outline,
+                                        color: AppColors.primary5,
+                                      )
+                                      : null,
                             ),
                             SizedBox(width: Dimensions.width13),
                             Expanded(
@@ -217,21 +227,24 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: isSelected
-                                      ? AppColors.primary5
-                                      : AppColors.grey3,
+                                  color:
+                                      isSelected
+                                          ? AppColors.primary5
+                                          : AppColors.grey3,
                                 ),
-                                color: isSelected
-                                    ? AppColors.primary5
-                                    : Colors.transparent,
+                                color:
+                                    isSelected
+                                        ? AppColors.primary5
+                                        : Colors.transparent,
                               ),
-                              child: isSelected
-                                  ? const Icon(
-                                      Icons.check,
-                                      size: 16,
-                                      color: Colors.white,
-                                    )
-                                  : null,
+                              child:
+                                  isSelected
+                                      ? const Icon(
+                                        Icons.check,
+                                        size: 16,
+                                        color: Colors.white,
+                                      )
+                                      : null,
                             ),
                           ],
                         ),
@@ -257,11 +270,12 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
 
     return items.where((connection) {
       final profile = connection.otherParty(controller.currentActorId ?? '');
-      final haystack = <String>[
-        profile.displayName,
-        profile.username ?? '',
-        profile.type ?? '',
-      ].join(' ').toLowerCase();
+      final haystack =
+          <String>[
+            profile.displayName,
+            profile.username ?? '',
+            profile.type ?? '',
+          ].join(' ').toLowerCase();
       return haystack.contains(query);
     }).toList();
   }

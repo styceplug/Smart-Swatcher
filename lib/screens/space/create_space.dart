@@ -1,10 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:smart_swatcher/routes/routes.dart';
-import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
@@ -12,7 +9,6 @@ import 'package:smart_swatcher/widgets/custom_button.dart';
 import 'package:smart_swatcher/widgets/snackbars.dart';
 
 import '../../controllers/event_controller.dart';
-import '../../widgets/custom_textfield.dart';
 
 class CreateSpaceScreen extends StatelessWidget {
   const CreateSpaceScreen({super.key});
@@ -99,15 +95,17 @@ class CreateSpaceScreen extends StatelessWidget {
                       ),
                     ),
 
-                    OptionTile(
-                      icon: CupertinoIcons.mic,
-                      title: 'Event Type',
-                      value: 'Audio',
-                      onTap: () {
-                        CustomSnackBar.processing(
-                          message: 'Only audio events are available for now',
-                        );
-                      },
+                    Obx(
+                      () => OptionTile(
+                        icon: CupertinoIcons.mic,
+                        title: 'Event Type',
+                        value: controller.selectedSessionMode.value == 'audio'
+                            ? 'Audio only'
+                            : 'Interactive live',
+                        onTap: () {
+                          _showSessionModeSheet(context, controller);
+                        },
+                      ),
                     ),
 
                     Obx(
@@ -157,6 +155,78 @@ class CreateSpaceScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showSessionModeSheet(
+    BuildContext context,
+    EventController controller,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Obx(
+          () => Container(
+            padding: EdgeInsets.fromLTRB(
+              Dimensions.width20,
+              Dimensions.height20,
+              Dimensions.width20,
+              Dimensions.height40,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Event Type',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => Get.back(),
+                      child: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                SizedBox(height: Dimensions.height20),
+                Container(
+                  height: 1,
+                  width: Dimensions.screenWidth,
+                  color: AppColors.grey2,
+                ),
+                SizedBox(height: Dimensions.height20),
+                _SessionTypeOption(
+                  title: 'Interactive live',
+                  subtitle: 'Host and cohosts can use video, everyone else joins with audio.',
+                  selected: controller.selectedSessionMode.value == 'interactive',
+                  onTap: () {
+                    controller.setSessionMode('interactive');
+                    Get.back();
+                  },
+                ),
+                SizedBox(height: Dimensions.height15),
+                _SessionTypeOption(
+                  title: 'Audio only',
+                  subtitle: 'Everyone joins with audio and stage controls only.',
+                  selected: controller.selectedSessionMode.value == 'audio',
+                  onTap: () {
+                    controller.setSessionMode('audio');
+                    Get.back();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -258,6 +328,70 @@ class CreateSpaceScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _SessionTypeOption extends StatelessWidget {
+  const _SessionTypeOption({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(Dimensions.width15),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(Dimensions.radius12),
+          border: Border.all(
+            color: selected ? AppColors.primary5 : AppColors.grey2,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: Dimensions.font15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: Dimensions.height5),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: Dimensions.font12,
+                      color: AppColors.grey4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: Dimensions.width13),
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: selected ? AppColors.primary5 : AppColors.grey4,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

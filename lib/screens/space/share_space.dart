@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
+import 'package:smart_swatcher/utils/app_constants.dart';
+import 'package:smart_swatcher/widgets/app_cached_network_image.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/share_event_card.dart';
 
 import '../../controllers/event_controller.dart';
+import '../../controllers/user_controller.dart';
+import '../../models/user_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/snackbars.dart';
-
 
 class ShareSpaceScreen extends StatelessWidget {
   const ShareSpaceScreen({super.key});
@@ -16,6 +19,7 @@ class ShareSpaceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final EventController controller = Get.find<EventController>();
+    final UserController userController = Get.find<UserController>();
 
     return Scaffold(
       appBar: CustomAppbar(
@@ -75,7 +79,8 @@ class ShareSpaceScreen extends StatelessWidget {
               ShareEventCard(
                 hostName: event.creator?.name ?? 'Unknown Host',
                 hostRole: event.creator?.role ?? 'Host',
-                sessionType: 'AUDIO',
+                sessionType:
+                    event.sessionMode == 'audio' ? 'AUDIO' : 'INTERACTIVE',
                 title: event.title ?? 'Untitled Event',
                 dateTime: controller.formatEventDate(event.scheduledStartAt),
                 description: event.description ?? 'No description available',
@@ -91,13 +96,36 @@ class ShareSpaceScreen extends StatelessWidget {
               CustomButton(
                 text: 'Share Event',
                 onPressed: () {
-                  CustomSnackBar.processing(
-                    message: 'Share flow coming next',
-                  );
+                  CustomSnackBar.processing(message: 'Share flow coming next');
                 },
               ),
 
               SizedBox(height: Dimensions.height15),
+
+              if (isCreator)
+                CustomButton(
+                  text: 'Invite Co-host',
+                  backgroundColor: Colors.white,
+                  borderColor: AppColors.primary5,
+                  textStyle: TextStyle(
+                    color: AppColors.primary5,
+                    fontSize: Dimensions.font16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Poppins',
+                  ),
+                  onPressed: () async {
+                    await userController.fetchAcceptedConnections();
+                    if (!context.mounted) return;
+                    _showCohostPicker(
+                      context,
+                      controller,
+                      userController.acceptedConnections,
+                      event.id ?? '',
+                    );
+                  },
+                ),
+
+              if (isCreator) SizedBox(height: Dimensions.height15),
 
               if (isLive && (canJoin || isCreator))
                 CustomButton(
@@ -119,6 +147,114 @@ class ShareSpaceScreen extends StatelessWidget {
           );
         }),
       ),
+    );
+  }
+
+  void _showCohostPicker(
+    BuildContext context,
+    EventController controller,
+    List<ConnectionPeerModel> peers,
+    String eventId,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        if (peers.isEmpty) {
+          return Padding(
+            padding: EdgeInsets.all(Dimensions.width20),
+            child: Text(
+              'No accepted connections yet. Connect with someone first before assigning them as a co-host.',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: Dimensions.font14,
+              ),
+            ),
+          );
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(Dimensions.width20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Invite Co-host',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: Dimensions.font17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: Dimensions.height15),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: peers.length,
+                    separatorBuilder:
+                        (_, __) => SizedBox(height: Dimensions.height10),
+                    itemBuilder: (context, index) {
+                      final peer = peers[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.grey2,
+                          backgroundImage:
+                              MediaUrlHelper.resolve(peer.profileImageUrl) !=
+                                      null
+                                  ? appCachedImageProvider(
+                                    MediaUrlHelper.resolve(
+                                      peer.profileImageUrl,
+                                    ),
+                                  )
+                                  : null,
+                          child:
+                              peer.profileImageUrl == null
+                                  ? Text(
+                                    peer.name.isNotEmpty
+                                        ? peer.name[0].toUpperCase()
+                                        : '?',
+                                  )
+                                  : null,
+                        ),
+                        title: Text(
+                          peer.name,
+                          style: const TextStyle(fontFamily: 'Poppins'),
+                        ),
+                        subtitle: Text(
+                          peer.role?.trim().isNotEmpty == true
+                              ? peer.role!
+                              : peer.type,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: Dimensions.font12,
+                            color: AppColors.grey4,
+                          ),
+                        ),
+                        trailing: TextButton(
+                          onPressed: () async {
+                            Get.back();
+                            await controller.assignCohost(
+                              eventId: eventId,
+                              targetId: peer.id,
+                              targetType: peer.type,
+                            );
+                          },
+                          child: const Text('Invite'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

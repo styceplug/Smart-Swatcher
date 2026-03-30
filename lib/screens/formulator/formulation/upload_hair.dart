@@ -16,37 +16,41 @@ class UploadHair extends StatefulWidget {
   State<UploadHair> createState() => _UploadHairState();
 }
 
-
 class _UploadHairState extends State<UploadHair> {
   final ClientFolderController controller = Get.find<ClientFolderController>();
+
+  bool get isCorrectionFlow =>
+      (Get.arguments is Map &&
+          (Get.arguments as Map)['formulationType'] == 'color_correction');
 
   void _showPickerOptions() {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(20),
-        height: Dimensions.height10 * 17,
-        child: Column(
-          children: [
-            ListTile(
-              leading: Icon(Icons.camera_alt),
-              title: Text('Camera'),
-              onTap: () {
-                Get.back();
-                controller.pickImage(ImageSource.camera);
-              },
+      builder:
+          (context) => Container(
+            padding: EdgeInsets.all(20),
+            height: Dimensions.height10 * 17,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: Icon(Icons.camera_alt),
+                  title: Text('Camera'),
+                  onTap: () {
+                    Get.back();
+                    controller.pickImage(ImageSource.camera);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.photo),
+                  title: Text('Gallery'),
+                  onTap: () {
+                    Get.back();
+                    controller.pickImage(ImageSource.gallery);
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              leading: Icon(Icons.photo),
-              title: Text('Gallery'),
-              onTap: () {
-                Get.back();
-                controller.pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -78,7 +82,9 @@ class _UploadHairState extends State<UploadHair> {
             ),
             SizedBox(height: Dimensions.height5),
             Text(
-              'Choose a clear photo of client’s hair to preview and try new colors.',
+              isCorrectionFlow
+                  ? 'Choose a clear photo of the client’s hair so AI can assess the current state before planning the correction.'
+                  : 'Choose a clear photo of client’s hair to preview and try new colors.',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w400,
@@ -103,20 +109,24 @@ class _UploadHairState extends State<UploadHair> {
                           color: AppColors.grey2.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppColors.grey4),
-                          image: hasImage
-                              ? DecorationImage(
-                            image: FileImage(controller.clientImage.value!),
-                            fit: BoxFit.cover,
-                          )
-                              : null,
+                          image:
+                              hasImage
+                                  ? DecorationImage(
+                                    image: FileImage(
+                                      controller.clientImage.value!,
+                                    ),
+                                    fit: BoxFit.cover,
+                                  )
+                                  : null,
                         ),
                         // Show placeholder ONLY if no image
-                        child: !hasImage
-                            ? Image.asset(
-                          AppConstants.getPngAsset('no-formulation'),
-                          fit: BoxFit.contain,
-                        )
-                            : null,
+                        child:
+                            !hasImage
+                                ? Image.asset(
+                                  AppConstants.getPngAsset('no-formulation'),
+                                  fit: BoxFit.contain,
+                                )
+                                : null,
                       ),
 
                       SizedBox(height: Dimensions.height20),
@@ -125,6 +135,8 @@ class _UploadHairState extends State<UploadHair> {
                       Text(
                         hasImage
                             ? 'Tap to change photo'
+                            : isCorrectionFlow
+                            ? 'Select a photo to assess the current color and plan a correction.'
                             : 'Select a photo to try various tones on.',
                         style: TextStyle(
                           fontFamily: 'Poppins',
@@ -149,7 +161,7 @@ class _UploadHairState extends State<UploadHair> {
                             Icon(Icons.camera_alt, color: AppColors.primary5),
                           ],
                         ),
-                      ]
+                      ],
                     ],
                   ),
                 );
@@ -157,17 +169,18 @@ class _UploadHairState extends State<UploadHair> {
             ),
 
             Spacer(), // This works because Column height is unconstrained by default in a Container
-
             // --- NEXT BUTTON ---
-            Obx(() => CustomButton(
-              text: controller.isLoading.value ? 'Uploading...' : 'Next',
-              isDisabled: controller.clientImage.value == null,
-              onPressed: () {
-                if (!controller.isLoading.value) {
-                  controller.uploadAndNext();
-                }
-              },
-            )),
+            Obx(
+              () => CustomButton(
+                text: controller.isLoading.value ? 'Uploading...' : 'Next',
+                isDisabled: controller.clientImage.value == null,
+                onPressed: () {
+                  if (!controller.isLoading.value) {
+                    controller.uploadAndNext();
+                  }
+                },
+              ),
+            ),
             SizedBox(height: Dimensions.height50),
           ],
         ),

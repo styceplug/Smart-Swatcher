@@ -25,6 +25,7 @@ class ClientFolderController extends GetxController {
   var allFormulations = <FormulationModel>[].obs;
   var isFetchingRecentFormulations = false.obs;
   var isFetchingAllFormulations = false.obs;
+  var isFetchingFolderFormulations = false.obs;
   final RxSet<String> refreshingPredictionIds = <String>{}.obs;
   var clientImage = Rxn<File>();
   Map<String, dynamic>? suggestedMetrics;
@@ -51,6 +52,29 @@ class ClientFolderController extends GetxController {
   void _upsertFormulation(FormulationModel formulation) {
     _replaceInList(formulationsList, formulation);
     _replaceInList(recentFormulations, formulation);
+    _replaceInList(allFormulations, formulation);
+  }
+
+  String _responseMessage(Response response, String fallback) {
+    if (response.body is Map) {
+      return response.body['message']?.toString() ??
+          response.body['error']?.toString() ??
+          response.statusText ??
+          fallback;
+    }
+
+    return response.statusText ?? fallback;
+  }
+
+  Map<String, dynamic> _buildPreviewBundle(
+    Map<String, dynamic> requestData,
+    Response response, {
+    required String formulationType,
+  }) {
+    return {
+      'inputs': {...requestData, 'formulationType': formulationType},
+      'outputs': response.body['preview'] ?? response.body,
+    };
   }
 
   Future<FormulationModel?> _fetchFormulationById(
@@ -86,6 +110,16 @@ class ClientFolderController extends GetxController {
     return formulation;
   }
 
+  Future<FormulationModel?> fetchFormulationById(
+    String formulationId, {
+    bool refreshPrediction = false,
+  }) async {
+    return _fetchFormulationById(
+      formulationId,
+      refreshPrediction: refreshPrediction,
+    );
+  }
+
   Future<void> trackPredictionJob(
     String formulationId, {
     bool notifyOnFailure = false,
@@ -112,9 +146,7 @@ class ClientFolderController extends GetxController {
           if (notifyOnFailure &&
               formulation.predictionImageStatus == 'failed' &&
               (formulation.predictionImageError?.trim().isNotEmpty ?? false)) {
-            CustomSnackBar.failure(
-              message: formulation.predictionImageError!,
-            );
+            CustomSnackBar.failure(message: formulation.predictionImageError!);
           }
           break;
         }
@@ -136,16 +168,19 @@ class ClientFolderController extends GetxController {
       Response response = await repo.previewFormulation(requestData);
 
       if (response.statusCode == 200) {
-        var bundle = {
-          'inputs': requestData,
-          'outputs': response.body['preview'] ?? response.body,
-          // Handle nesting
-        };
-
-        Get.toNamed(AppRoutes.formulationPreview, arguments: bundle);
+        Get.toNamed(
+          AppRoutes.formulationPreview,
+          arguments: _buildPreviewBundle(
+            requestData,
+            response,
+            formulationType:
+                requestData['formulationType']?.toString() ??
+                'color_formulation',
+          ),
+        );
       } else {
         CustomSnackBar.failure(
-          message: response.body['message'] ?? "Preview failed",
+          message: _responseMessage(response, 'Preview failed'),
         );
       }
     } catch (e) {
@@ -157,12 +192,46 @@ class ClientFolderController extends GetxController {
     }
   }
 
-  Future<void> saveFormulation(Map<String, dynamic> requestBody) async {
+  Future<void> getCorrectionPreview(Map<String, dynamic> requestData) async {
+    isLoading.value = true;
+    update();
+
+    try {
+      Response response = await repo.previewCorrection(requestData);
+
+      if (response.statusCode == 200) {
+        Get.toNamed(
+          AppRoutes.formulationPreview,
+          arguments: _buildPreviewBundle(
+            requestData,
+            response,
+            formulationType: 'color_correction',
+          ),
+        );
+      } else {
+        CustomSnackBar.failure(
+          message: _responseMessage(response, 'Preview failed'),
+        );
+      }
+    } catch (e) {
+      print("Correction Preview Error: $e");
+      CustomSnackBar.failure(message: "An error occurred");
+    } finally {
+      isLoading.value = false;
+      update();
+    }
+  }
+
+  Future<void> _saveWizardResult({
+    required Map<String, dynamic> requestBody,
+    required Future<Response> Function(Map<String, dynamic> body) saver,
+    required String successMessage,
+  }) async {
     loader.showLoader();
     update();
 
     try {
-      Response response = await repo.saveFormulation(requestBody);
+      Response response = await saver(requestBody);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         if (response.body is Map && response.body['debug'] != null) {
@@ -179,7 +248,7 @@ class ClientFolderController extends GetxController {
           _upsertFormulation(savedFormulation);
         }
 
-        CustomSnackBar.success(message: "Formulation saved successfully!");
+        CustomSnackBar.success(message: successMessage);
 
         Get.until((route) => Get.currentRoute == AppRoutes.folderScreen);
 
@@ -200,7 +269,8 @@ class ClientFolderController extends GetxController {
               savedFormulation.id,
             );
 
-            if (retryResponse.body is Map && retryResponse.body['debug'] != null) {
+            if (retryResponse.body is Map &&
+                retryResponse.body['debug'] != null) {
               print(
                 '[FORMULATION_CTRL] retry.debug '
                 '${retryResponse.body['debug']}',
@@ -220,10 +290,7 @@ class ClientFolderController extends GetxController {
 
           if (savedFormulation.isPredictionActive) {
             unawaited(
-              trackPredictionJob(
-                savedFormulation.id,
-                notifyOnFailure: true,
-              ),
+              trackPredictionJob(savedFormulation.id, notifyOnFailure: true),
             );
           } else if (savedFormulation.predictionImageStatus == 'failed' &&
               (savedFormulation.predictionImageError?.trim().isNotEmpty ??
@@ -235,9 +302,11 @@ class ClientFolderController extends GetxController {
         }
       } else {
         CustomSnackBar.failure(
-          message: response.body['message'] ?? "Failed to save formulation",
+          message: _responseMessage(response, 'Failed to save item'),
         );
-        print("Failed to save formulation: ${response.statusCode}, ${response.body}");
+        print(
+          "Failed to save formulation: ${response.statusCode}, ${response.body}",
+        );
       }
     } catch (e) {
       print("Save Error: $e");
@@ -246,6 +315,22 @@ class ClientFolderController extends GetxController {
       loader.hideLoader();
       update();
     }
+  }
+
+  Future<void> saveFormulation(Map<String, dynamic> requestBody) async {
+    await _saveWizardResult(
+      requestBody: requestBody,
+      saver: repo.saveFormulation,
+      successMessage: 'Formulation saved successfully!',
+    );
+  }
+
+  Future<void> saveCorrection(Map<String, dynamic> requestBody) async {
+    await _saveWizardResult(
+      requestBody: requestBody,
+      saver: repo.saveCorrection,
+      successMessage: 'Correction saved successfully!',
+    );
   }
 
   Future<void> pickImage(ImageSource source) async {
@@ -278,25 +363,32 @@ class ClientFolderController extends GetxController {
 
         // 1. Retrieve the folderId passed from the previous screen
         // (We check Get.arguments safety)
-        String? passedFolderId;
-        if (Get.arguments != null && Get.arguments is Map) {
-          passedFolderId = Get.arguments['folderId'];
-        }
+        final routeArguments =
+            Get.arguments is Map
+                ? Map<String, dynamic>.from(Get.arguments as Map)
+                : <String, dynamic>{};
+
+        String? passedFolderId = routeArguments['folderId']?.toString();
 
         // 2. Merge it into the next arguments
         Map<String, dynamic> nextArgs = {
+          ...routeArguments,
           ...results, // The API results
-          'folderId': passedFolderId // Pass the baton!
+          'folderId': passedFolderId, // Pass the baton!
+          'formulationType':
+              routeArguments['formulationType'] ?? 'color_formulation',
         };
 
         // 3. Send the merged arguments
         Get.toNamed(AppRoutes.chooseNbl, arguments: nextArgs);
 
         // --- THE FIX ENDS HERE ---
-
       } else {
-        var errorBody = response.body is String ? jsonDecode(response.body) : response.body;
-        CustomSnackBar.failure(message: errorBody['message'] ?? "Upload failed");
+        var errorBody =
+            response.body is String ? jsonDecode(response.body) : response.body;
+        CustomSnackBar.failure(
+          message: errorBody['message'] ?? "Upload failed",
+        );
       }
     } catch (e) {
       print("Upload Error: $e");
@@ -313,7 +405,7 @@ class ClientFolderController extends GetxController {
       return;
     }
 
-    loader.showLoader();
+    isFetchingFolderFormulations.value = true;
     try {
       Response response = await repo.getFormulations(folderId);
       if (response.statusCode == 200) {
@@ -328,7 +420,7 @@ class ClientFolderController extends GetxController {
     } catch (e) {
       print("Error fetching formulations: $e");
     } finally {
-      loader.hideLoader();
+      isFetchingFolderFormulations.value = false;
     }
   }
 
@@ -357,7 +449,9 @@ class ClientFolderController extends GetxController {
 
       final responses = await Future.wait(
         foldersList
-            .where((folder) => folder.id != null && folder.id!.trim().isNotEmpty)
+            .where(
+              (folder) => folder.id != null && folder.id!.trim().isNotEmpty,
+            )
             .map((folder) => repo.getFormulations(folder.id!)),
       );
 
@@ -377,9 +471,11 @@ class ClientFolderController extends GetxController {
       }
 
       aggregated.sort((a, b) {
-        final aDate = DateTime.tryParse(a.createdAt ?? '') ??
+        final aDate =
+            DateTime.tryParse(a.createdAt ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = DateTime.tryParse(b.createdAt ?? '') ??
+        final bDate =
+            DateTime.tryParse(b.createdAt ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
         return bDate.compareTo(aDate);
       });
@@ -408,7 +504,9 @@ class ClientFolderController extends GetxController {
 
       final responses = await Future.wait(
         foldersList
-            .where((folder) => folder.id != null && folder.id!.trim().isNotEmpty)
+            .where(
+              (folder) => folder.id != null && folder.id!.trim().isNotEmpty,
+            )
             .map((folder) => repo.getFormulations(folder.id!)),
       );
 
@@ -428,9 +526,11 @@ class ClientFolderController extends GetxController {
       }
 
       aggregated.sort((a, b) {
-        final aDate = DateTime.tryParse(a.createdAt ?? '') ??
+        final aDate =
+            DateTime.tryParse(a.createdAt ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = DateTime.tryParse(b.createdAt ?? '') ??
+        final bDate =
+            DateTime.tryParse(b.createdAt ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
         return bDate.compareTo(aDate);
       });
@@ -466,7 +566,6 @@ class ClientFolderController extends GetxController {
       isFetching.value = false;
     }
   }
-
 
   Future<bool> createClientFolder({
     required String name,
@@ -511,6 +610,82 @@ class ClientFolderController extends GetxController {
     } finally {
       isLoading.value = false;
       update();
+    }
+  }
+
+  Future<bool> deleteFormulation(String formulationId) async {
+    if (formulationId.trim().isEmpty) {
+      return false;
+    }
+
+    try {
+      final response = await repo.deleteFormulation(formulationId);
+      final deleted =
+          response.statusCode == 200 &&
+          response.body is Map &&
+          response.body['deleted'] == true;
+      if (deleted || response.statusCode == 204) {
+        formulationsList.removeWhere((item) => item.id == formulationId);
+        recentFormulations.removeWhere((item) => item.id == formulationId);
+        allFormulations.removeWhere((item) => item.id == formulationId);
+        formulationsList.refresh();
+        recentFormulations.refresh();
+        allFormulations.refresh();
+        CustomSnackBar.success(message: 'Formulation deleted');
+        return true;
+      }
+
+      final message =
+          response.body is Map
+              ? response.body['message']?.toString()
+              : response.statusText;
+      CustomSnackBar.failure(message: message ?? 'Formulation not found');
+      return false;
+    } catch (error) {
+      CustomSnackBar.failure(
+        message: error.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  Future<FormulationModel?> retryPredictionImage(
+    String formulationId, {
+    bool notifyOnFailure = true,
+  }) async {
+    if (formulationId.trim().isEmpty) {
+      return null;
+    }
+
+    try {
+      final response = await repo.retryPredictionImage(formulationId);
+      if ((response.statusCode == 200 || response.statusCode == 202) &&
+          response.body is Map &&
+          response.body['formulation'] is Map<String, dynamic>) {
+        final formulation = FormulationModel.fromJson(
+          response.body['formulation'] as Map<String, dynamic>,
+        );
+        _upsertFormulation(formulation);
+        if (formulation.isPredictionActive) {
+          unawaited(
+            trackPredictionJob(
+              formulation.id,
+              notifyOnFailure: notifyOnFailure,
+            ),
+          );
+        }
+        return formulation;
+      }
+
+      CustomSnackBar.failure(
+        message: _responseMessage(response, 'Unable to retry preview image'),
+      );
+      return null;
+    } catch (error) {
+      CustomSnackBar.failure(
+        message: error.toString().replaceFirst('Exception: ', ''),
+      );
+      return null;
     }
   }
 }

@@ -123,6 +123,62 @@ class RecommendedAccountModel {
   }
 }
 
+class ConnectionPeerModel {
+  final String connectionId;
+  final String status;
+  final String id;
+  final String type;
+  final String name;
+  final String? username;
+  final String? profileImageUrl;
+  final String? role;
+  final bool isVerified;
+  final bool isElite;
+
+  const ConnectionPeerModel({
+    required this.connectionId,
+    required this.status,
+    required this.id,
+    required this.type,
+    required this.name,
+    this.username,
+    this.profileImageUrl,
+    this.role,
+    this.isVerified = false,
+    this.isElite = false,
+  });
+
+  factory ConnectionPeerModel.fromConnectionJson(
+    Map<String, dynamic> json, {
+    required String selfId,
+    required String selfType,
+  }) {
+    final requester = Map<String, dynamic>.from(
+      json['requester'] as Map? ?? const <String, dynamic>{},
+    );
+    final addressee = Map<String, dynamic>.from(
+      json['addressee'] as Map? ?? const <String, dynamic>{},
+    );
+    final isRequesterSelf =
+        requester['id']?.toString() == selfId &&
+        requester['type']?.toString() == selfType;
+    final peer = isRequesterSelf ? addressee : requester;
+
+    return ConnectionPeerModel(
+      connectionId: json['id']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'pending',
+      id: peer['id']?.toString() ?? '',
+      type: peer['type']?.toString() ?? '',
+      name: peer['name']?.toString() ?? '',
+      username: peer['username']?.toString(),
+      profileImageUrl: peer['profileImageUrl']?.toString(),
+      role: peer['role']?.toString(),
+      isVerified: peer['isVerified'] == true,
+      isElite: peer['isElite'] == true,
+    );
+  }
+}
+
 class OtherProfileModel {
   final String? id;
   final String? type;

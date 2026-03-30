@@ -6,11 +6,13 @@ import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
+import 'package:smart_swatcher/widgets/app_cached_network_image.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
 
 import '../../controllers/folder_controller.dart';
 import '../../models/folder_model.dart';
+import '../../models/formulation_model.dart';
 
 class FolderScreen extends StatefulWidget {
   const FolderScreen({Key? key}) : super(key: key);
@@ -28,7 +30,9 @@ class _FolderScreenState extends State<FolderScreen> {
     super.initState();
     if (Get.arguments is ClientFolderModel) {
       folder = Get.arguments as ClientFolderModel;
-      getFormulations();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        getFormulations();
+      });
     } else {
       folder = ClientFolderModel(
         clientName: "",
@@ -202,9 +206,43 @@ class _FolderScreenState extends State<FolderScreen> {
       return '${AppConstants.BASE_URL}/$path';
     }
 
+    String headlineFor(FormulationModel form) {
+      if (form.isCorrection) {
+        final previousLevel = form.previousColorLevel?.toString() ?? '?';
+        final targetLevel = form.targetLevel?.toString() ?? '?';
+        return 'Correction $previousLevel → $targetLevel';
+      }
+      return 'Lvl ${form.naturalBaseLevel} > Lvl ${form.desiredLevel}';
+    }
+
+    String subtitleFor(FormulationModel form) {
+      if (form.isCorrection) {
+        final previousTone = form.previousColorTone?.trim();
+        final targetTone = form.targetTone?.trim();
+        if ((previousTone?.isNotEmpty ?? false) &&
+            (targetTone?.isNotEmpty ?? false)) {
+          return '${previousTone!} → ${targetTone!}';
+        }
+        if (targetTone?.isNotEmpty ?? false) {
+          return targetTone!;
+        }
+        return 'Color correction';
+      }
+
+      final desiredTone = form.desiredTone?.trim();
+      return desiredTone?.isNotEmpty == true ? desiredTone! : 'Formulation';
+    }
+
     return Stack(
       children: [
         Obx(() {
+          if (controller.isFetchingFolderFormulations.value &&
+              controller.formulationsList.isEmpty) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary5),
+            );
+          }
+
           if (controller.formulationsList.isEmpty) {
             return Container(
               width: Dimensions.screenWidth,
@@ -271,16 +309,57 @@ class _FolderScreenState extends State<FolderScreen> {
                   var bundle = {
                     'inputs': {
                       ...?form.inputData,
+                      'formulationId': form.id,
+                      'folderId': form.folderId,
+                      'formulationType': form.formulationType,
                       'imageUrl': form.imageUrl ?? form.inputData?['imageUrl'],
+                      'naturalBaseLevel':
+                          form.inputData?['naturalBaseLevel'] ??
+                          form.naturalBaseLevel,
+                      'greyPercentage':
+                          form.inputData?['greyPercentage'] ??
+                          form.greyPercentage,
+                      'shadeType':
+                          form.inputData?['shadeType'] ?? form.shadeType,
+                      'desiredLevel':
+                          form.inputData?['desiredLevel'] ?? form.desiredLevel,
+                      'desiredTone':
+                          form.inputData?['desiredTone'] ?? form.desiredTone,
+                      'previousColorLevel':
+                          form.inputData?['previousColorLevel'] ??
+                          form.previousColorLevel,
+                      'previousColorTone':
+                          form.inputData?['previousColorTone'] ??
+                          form.previousColorTone,
+                      'targetLevel':
+                          form.inputData?['targetLevel'] ?? form.targetLevel,
+                      'targetTone':
+                          form.inputData?['targetTone'] ?? form.targetTone,
+                      'longDescription':
+                          form.longDescription ??
+                          form.inputData?['longDescription'],
                     },
                     'outputs': {
                       ...?form.resultData,
+                      'steps': form.resultData?['steps'] ?? form.steps,
+                      'media': form.resultData?['media'] ?? form.media,
+                      'analysis': form.resultData?['analysis'],
                       'predictionImageUrl':
                           form.predictionImageUrl ??
                           form.resultData?['predictionImageUrl'],
                       'predictionImageStatus': form.predictionImageStatus,
                       'predictionImageError': form.predictionImageError,
+                      'developerVolume':
+                          form.resultData?['developerVolume'] ??
+                          form.developerVolume,
+                      'mixingRatio':
+                          form.resultData?['mixingRatio'] ?? form.mixingRatio,
+                      'noteToStylist':
+                          form.resultData?['noteToStylist'] ??
+                          form.noteToStylist,
                     },
+                    'formulationId': form.id,
+                    'formulationType': form.formulationType,
                   };
                   Get.toNamed(AppRoutes.formulationPreview, arguments: bundle);
                 },
@@ -323,18 +402,12 @@ class _FolderScreenState extends State<FolderScreen> {
                             Expanded(
                               child:
                                   originalImg.isNotEmpty
-                                      ? Image.network(
-                                        originalImg,
+                                      ? AppCachedNetworkImage(
+                                        imageUrl: originalImg,
                                         fit: BoxFit.cover,
                                         height: double.infinity,
-                                        errorBuilder:
-                                            (c, o, s) => Container(
-                                              color: Colors.grey[300],
-                                              child: Icon(
-                                                Icons.broken_image,
-                                                size: 15,
-                                              ),
-                                            ),
+                                        enableFullscreen: true,
+                                        heroTag: 'folder_original_${form.id}',
                                       )
                                       : Container(color: Colors.grey[300]),
                             ),
@@ -342,15 +415,12 @@ class _FolderScreenState extends State<FolderScreen> {
                             Expanded(
                               child:
                                   predictedImg.isNotEmpty
-                                      ? Image.network(
-                                        predictedImg,
+                                      ? AppCachedNetworkImage(
+                                        imageUrl: predictedImg,
                                         fit: BoxFit.cover,
                                         height: double.infinity,
-                                        errorBuilder:
-                                            (c, o, s) => Container(
-                                              color: AppColors.primary4
-                                                  .withValues(alpha: 0.2),
-                                            ),
+                                        enableFullscreen: true,
+                                        heroTag: 'folder_prediction_${form.id}',
                                       )
                                       : Container(
                                         color: AppColors.primary4.withValues(
@@ -372,7 +442,7 @@ class _FolderScreenState extends State<FolderScreen> {
                           children: [
                             // "Lvl 4 > Lvl 9"
                             Text(
-                              'Lvl ${form.naturalBaseLevel} > Lvl ${form.desiredLevel}',
+                              headlineFor(form),
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: Dimensions.font16,
@@ -392,20 +462,31 @@ class _FolderScreenState extends State<FolderScreen> {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              form.isPredictionActive
-                                  ? 'Generating preview...'
-                                  : form.predictionImageStatus == 'failed'
-                                      ? 'Preview failed'
-                                      : form.hasPredictionImage
-                                          ? 'Preview ready'
-                                          : 'Source image only',
+                              subtitleFor(form),
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: Dimensions.font12,
                                 fontWeight: FontWeight.w500,
-                                color: form.isPredictionActive
-                                    ? AppColors.primary5
-                                    : form.predictionImageStatus == 'failed'
+                                color: AppColors.grey4,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              form.isPredictionActive
+                                  ? 'Generating preview...'
+                                  : form.predictionImageStatus == 'failed'
+                                  ? 'Preview failed'
+                                  : form.hasPredictionImage
+                                  ? 'Preview ready'
+                                  : 'Source image only',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: Dimensions.font12,
+                                fontWeight: FontWeight.w500,
+                                color:
+                                    form.isPredictionActive
+                                        ? AppColors.primary5
+                                        : form.predictionImageStatus == 'failed'
                                         ? Colors.red
                                         : AppColors.grey4,
                               ),
@@ -417,7 +498,7 @@ class _FolderScreenState extends State<FolderScreen> {
                       // --- ACTIONS ---
                       InkWell(
                         onTap: () {
-                          showShareModal();
+                          showShareModal(form);
                         },
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
@@ -453,7 +534,8 @@ class _FolderScreenState extends State<FolderScreen> {
     );
   }
 
-  void showShareModal() {
+  void showShareModal(FormulationModel formulation) {
+    final controller = Get.find<ClientFolderController>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -490,9 +572,35 @@ class _FolderScreenState extends State<FolderScreen> {
                   itemCount: icons.length,
                   itemBuilder: (context, index) {
                     return InkWell(
-                      onTap: () {
-                        setState(() {});
+                      onTap: () async {
                         Get.back();
+
+                        if (value[index] != 'Delete') {
+                          return;
+                        }
+
+                        final shouldDelete = await Get.dialog<bool>(
+                          AlertDialog(
+                            title: const Text('Delete formulation?'),
+                            content: const Text(
+                              'This will remove the formulation and its preview from this folder.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Get.back(result: false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Get.back(result: true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (shouldDelete == true) {
+                          await controller.deleteFormulation(formulation.id);
+                        }
                       },
                       child: Padding(
                         padding: EdgeInsets.symmetric(

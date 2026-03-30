@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../data/repo/event_repo.dart';
 import '../helpers/agora_audio_helper.dart';
+import '../helpers/chat_socket_service.dart';
 import '../helpers/global_loader_controller.dart';
 import '../models/event_model.dart';
 import '../routes/routes.dart';
@@ -15,11 +18,14 @@ class EventController extends GetxController {
   EventController({required this.eventRepo});
 
   final GlobalLoaderController loader = Get.find<GlobalLoaderController>();
+  final AgoraAudioHelper agoraAudioHelper = Get.find<AgoraAudioHelper>();
+  final ChatSocketService chatSocketService = Get.find<ChatSocketService>();
 
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-  final AgoraAudioHelper agoraAudioHelper = Get.find<AgoraAudioHelper>();
   final RxString selectedVisibility = 'General'.obs;
+  final RxString selectedSessionMode = 'interactive'.obs;
+  final RxBool allowHandRaises = true.obs;
   final Rxn<DateTime> selectedDateTime = Rxn<DateTime>();
 
   final RxBool isCreatingEvent = false.obs;
@@ -31,16 +37,25 @@ class EventController extends GetxController {
   final RxBool isJoiningEvent = false.obs;
   final RxBool isLeavingEvent = false.obs;
   final RxBool isEndingEvent = false.obs;
+  final RxBool isAssigningCohost = false.obs;
+  final RxBool isUpdatingSpeaker = false.obs;
+  final RxBool isUpdatingHand = false.obs;
+  final RxBool isSendingReaction = false.obs;
 
   final Rxn<EventRtcModel> currentRtc = Rxn<EventRtcModel>();
+  final RxList<LiveEventReactionModel> liveReactions =
+      <LiveEventReactionModel>[].obs;
 
   final RxList<EventModel> events = <EventModel>[].obs;
   final RxList<EventModel> recommendedEvents = <EventModel>[].obs;
   final Rxn<EventModel> selectedEvent = Rxn<EventModel>();
   final Rxn<EventModel> createdEvent = Rxn<EventModel>();
 
+  StreamSubscription<ChatSocketEvent>? _chatEventSubscription;
+
   @override
   void onClose() {
+    _chatEventSubscription?.cancel();
     titleController.dispose();
     descriptionController.dispose();
     super.onClose();
@@ -49,8 +64,53 @@ class EventController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _bindRealtimeEvents();
     fetchRecommendedEvents();
     fetchEvents();
+  }
+
+  void _bindRealtimeEvents() {
+    _chatEventSubscription?.cancel();
+    _chatEventSubscription = chatSocketService.events.listen(_handleSocketEvent);
+  }
+
+  void _handleSocketEvent(ChatSocketEvent socketEvent) {
+    final rawData = socketEvent.data;
+    if (rawData is! Map) {
+      return;
+    }
+
+    final data = Map<String, dynamic>.from(rawData);
+    final currentEventId = selectedEvent.value?.id ?? createdEvent.value?.id;
+    final eventId = data['eventId']?.toString();
+
+    if (eventId == null || currentEventId == null || eventId != currentEventId) {
+      return;
+    }
+
+    switch (socketEvent.action) {
+      case 'eventUpdated':
+        debugPrint('[EVENT_CTRL] realtime.eventUpdated => $data');
+        unawaited(refreshActiveEvent());
+        break;
+      case 'eventRtcUpdated':
+        if (data['rtc'] is Map<String, dynamic>) {
+          debugPrint('[EVENT_CTRL] realtime.eventRtcUpdated => $data');
+          final rtc = EventRtcModel.fromJson(
+            Map<String, dynamic>.from(data['rtc'] as Map<String, dynamic>),
+          );
+          unawaited(_applyRtcRoleChange(rtc));
+        }
+        break;
+      case 'eventReaction':
+        debugPrint('[EVENT_CTRL] realtime.eventReaction => $data');
+        _addReaction(
+          LiveEventReactionModel.fromJson(
+            <String, dynamic>{...data, 'eventId': eventId},
+          ),
+        );
+        break;
+    }
   }
 
   void _logEventDebug(String label, dynamic payload) {
@@ -58,6 +118,23 @@ class EventController extends GetxController {
     debugPrint('$label DEBUG => $payload');
   }
 
+  Future<void> _ensureLiveRealtimeConnected() async {
+    try {
+      await chatSocketService.connect();
+    } catch (error) {
+      debugPrint('[EVENT_CTRL] realtime.connect.skip => $error');
+    }
+  }
+
+  Future<bool> requestMicPermission() async {
+    final status = await Permission.microphone.request();
+    return status.isGranted;
+  }
+
+  Future<bool> requestCameraPermission() async {
+    final status = await Permission.camera.request();
+    return status.isGranted;
+  }
 
   Future<void> setupAndJoinAgoraFromCurrentRtc() async {
     final rtc = currentRtc.value;
@@ -71,6 +148,8 @@ class EventController extends GetxController {
     debugPrint('tokenLength: ${rtc.token?.length ?? 0}');
     debugPrint('uid: ${rtc.uid}');
     debugPrint('role: ${rtc.clientRole}');
+    debugPrint('participantRole: ${rtc.participantRole}');
+    debugPrint('sessionMode: ${rtc.sessionMode}');
 
     if (rtc.appId == null ||
         rtc.appId!.isEmpty ||
@@ -84,7 +163,10 @@ class EventController extends GetxController {
 
     await agoraAudioHelper.initialize(
       appId: rtc.appId!,
-      audioOnly: rtc.audioOnly,
+      sessionMode: rtc.sessionMode,
+      participantRole: rtc.participantRole,
+      canPublishAudio: rtc.canPublishAudio,
+      canPublishVideo: rtc.canPublishVideo,
       clientRole: rtc.clientRole ?? 'audience',
     );
 
@@ -107,9 +189,30 @@ class EventController extends GetxController {
     }
   }
 
-  Future<bool> requestMicPermission() async {
-    final status = await Permission.microphone.request();
-    return status.isGranted;
+  Future<void> _applyRtcRoleChange(EventRtcModel rtc) async {
+    final previousRtc = currentRtc.value;
+    currentRtc.value = rtc;
+
+    final needsMicPermission =
+        rtc.canPublishAudio && !(previousRtc?.canPublishAudio ?? false);
+    if (needsMicPermission) {
+      final granted = await requestMicPermission();
+      if (!granted) {
+        CustomSnackBar.failure(
+          message: 'Microphone permission is required to speak in this event.',
+        );
+      }
+    }
+
+    await agoraAudioHelper.applyRtcUpdate(
+      sessionMode: rtc.sessionMode,
+      participantRole: rtc.participantRole,
+      canPublishAudio: rtc.canPublishAudio,
+      canPublishVideo: rtc.canPublishVideo,
+      clientRole: rtc.clientRole ?? 'audience',
+      token: rtc.token,
+    );
+    await refreshActiveEvent();
   }
 
   Future<void> startEventSession(String eventId) async {
@@ -139,9 +242,12 @@ class EventController extends GetxController {
         }
 
         if (rtcJson != null) {
-          currentRtc.value = EventRtcModel.fromJson(rtcJson);
+          currentRtc.value = EventRtcModel.fromJson(
+            Map<String, dynamic>.from(rtcJson),
+          );
         }
 
+        await _ensureLiveRealtimeConnected();
         await setupAndJoinAgoraFromCurrentRtc();
         Get.toNamed(AppRoutes.audioSessionScreen);
       } else {
@@ -159,7 +265,6 @@ class EventController extends GetxController {
     }
   }
 
-
   Future<void> joinEventSession(String eventId) async {
     if (isJoiningEvent.value) return;
 
@@ -172,11 +277,11 @@ class EventController extends GetxController {
       if (response.statusCode == 200) {
         _logEventDebug('joinEventSession', response.body?['debug']);
         selectedEvent.value = EventModel.fromJson(response.body['event']);
-        currentRtc.value = EventRtcModel.fromJson(response.body['rtc']);
+        currentRtc.value = EventRtcModel.fromJson(
+          Map<String, dynamic>.from(response.body['rtc']),
+        );
 
-        final role = currentRtc.value?.clientRole?.toLowerCase() ?? 'audience';
-
-        if (role == 'broadcaster') {
+        if (currentRtc.value?.canPublishAudio == true) {
           final hasMic = await requestMicPermission();
           if (!hasMic) {
             CustomSnackBar.failure(
@@ -186,6 +291,7 @@ class EventController extends GetxController {
           }
         }
 
+        await _ensureLiveRealtimeConnected();
         await setupAndJoinAgoraFromCurrentRtc();
         Get.toNamed(AppRoutes.audioSessionScreen);
       } else {
@@ -196,7 +302,7 @@ class EventController extends GetxController {
     } catch (e, st) {
       debugPrint('joinEventSession error: $e');
       debugPrintStack(stackTrace: st);
-      CustomSnackBar.failure(message: 'Unable to join live audio');
+      CustomSnackBar.failure(message: 'Unable to join live event');
     } finally {
       isJoiningEvent.value = false;
       loader.hideLoader();
@@ -212,6 +318,9 @@ class EventController extends GetxController {
       }
     } catch (e) {
       debugPrint('leaveEventSession error: $e');
+    } finally {
+      currentRtc.value = null;
+      liveReactions.clear();
     }
   }
 
@@ -221,8 +330,20 @@ class EventController extends GetxController {
     try {
       await agoraAudioHelper.leaveChannel();
       await eventRepo.endEvent(eventId);
+      liveReactions.clear();
+      currentRtc.value = null;
     } catch (e) {
       debugPrint('endEventSession error: $e');
+    }
+  }
+
+  Future<void> toggleSubscription(EventModel event) async {
+    if (event.id == null) return;
+
+    if (event.viewer?.isSubscribed == true) {
+      await unsubscribeFromEvent(event.id!);
+    } else {
+      await subscribeToEvent(event.id!);
     }
   }
 
@@ -278,16 +399,6 @@ class EventController extends GetxController {
     }
   }
 
-  Future<void> toggleSubscription(EventModel event) async {
-    if (event.id == null) return;
-
-    if (event.viewer?.isSubscribed == true) {
-      await unsubscribeFromEvent(event.id!);
-    } else {
-      await subscribeToEvent(event.id!);
-    }
-  }
-
   Future<void> refreshActiveEvent({bool showErrors = false}) async {
     final eventId = selectedEvent.value?.id ?? createdEvent.value?.id;
     if (eventId == null || eventId.isEmpty) return;
@@ -313,6 +424,214 @@ class EventController extends GetxController {
     }
   }
 
+  Future<void> assignCohost({
+    required String eventId,
+    required String targetId,
+    required String targetType,
+  }) async {
+    if (isAssigningCohost.value) return;
+    isAssigningCohost.value = true;
+    try {
+      final response = await eventRepo.assignCohost(
+        eventId,
+        targetId: targetId,
+        targetType: targetType,
+      );
+      if (response.statusCode == 200) {
+        if (response.body?['event'] != null) {
+          final updatedEvent = EventModel.fromJson(response.body['event']);
+          _replaceEventEverywhere(updatedEvent);
+          selectedEvent.value = updatedEvent;
+        } else {
+          await refreshActiveEvent();
+        }
+        CustomSnackBar.success(message: 'Cohost assigned');
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to assign cohost',
+        );
+      }
+    } catch (e) {
+      debugPrint('assignCohost error: $e');
+      CustomSnackBar.failure(message: 'Failed to assign cohost');
+    } finally {
+      isAssigningCohost.value = false;
+    }
+  }
+
+  Future<void> revokeCohost({
+    required String eventId,
+    required String targetId,
+    required String targetType,
+  }) async {
+    if (isAssigningCohost.value) return;
+    isAssigningCohost.value = true;
+    try {
+      final response = await eventRepo.revokeCohost(
+        eventId,
+        targetId: targetId,
+        targetType: targetType,
+      );
+      if (response.statusCode == 200) {
+        if (response.body?['event'] != null) {
+          final updatedEvent = EventModel.fromJson(response.body['event']);
+          _replaceEventEverywhere(updatedEvent);
+          selectedEvent.value = updatedEvent;
+        } else {
+          await refreshActiveEvent();
+        }
+        CustomSnackBar.success(message: 'Cohost access revoked');
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to revoke cohost',
+        );
+      }
+    } catch (e) {
+      debugPrint('revokeCohost error: $e');
+      CustomSnackBar.failure(message: 'Failed to revoke cohost');
+    } finally {
+      isAssigningCohost.value = false;
+    }
+  }
+
+  Future<void> raiseHand() async {
+    final eventId = selectedEvent.value?.id;
+    if (eventId == null || eventId.isEmpty || isUpdatingHand.value) return;
+    isUpdatingHand.value = true;
+    try {
+      final response = await eventRepo.raiseHand(eventId);
+      if (response.statusCode == 200) {
+        await refreshActiveEvent();
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to raise hand',
+        );
+      }
+    } catch (e) {
+      debugPrint('raiseHand error: $e');
+      CustomSnackBar.failure(message: 'Failed to raise hand');
+    } finally {
+      isUpdatingHand.value = false;
+    }
+  }
+
+  Future<void> lowerHand() async {
+    final eventId = selectedEvent.value?.id;
+    if (eventId == null || eventId.isEmpty || isUpdatingHand.value) return;
+    isUpdatingHand.value = true;
+    try {
+      final response = await eventRepo.lowerHand(eventId);
+      if (response.statusCode == 200) {
+        await refreshActiveEvent();
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to lower hand',
+        );
+      }
+    } catch (e) {
+      debugPrint('lowerHand error: $e');
+      CustomSnackBar.failure(message: 'Failed to lower hand');
+    } finally {
+      isUpdatingHand.value = false;
+    }
+  }
+
+  Future<void> grantSpeaker({
+    required String targetId,
+    required String targetType,
+  }) async {
+    final eventId = selectedEvent.value?.id;
+    if (eventId == null || eventId.isEmpty || isUpdatingSpeaker.value) return;
+    isUpdatingSpeaker.value = true;
+    try {
+      final response = await eventRepo.grantSpeaker(
+        eventId,
+        targetId: targetId,
+        targetType: targetType,
+      );
+      if (response.statusCode == 200) {
+        await refreshActiveEvent();
+        CustomSnackBar.success(message: 'Speaker access granted');
+      } else {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to grant speaker access',
+        );
+      }
+    } catch (e) {
+      debugPrint('grantSpeaker error: $e');
+      CustomSnackBar.failure(message: 'Failed to grant speaker access');
+    } finally {
+      isUpdatingSpeaker.value = false;
+    }
+  }
+
+  Future<void> revokeSpeaker({
+    required String targetId,
+    required String targetType,
+  }) async {
+    final eventId = selectedEvent.value?.id;
+    if (eventId == null || eventId.isEmpty || isUpdatingSpeaker.value) return;
+    isUpdatingSpeaker.value = true;
+    try {
+      final response = await eventRepo.revokeSpeaker(
+        eventId,
+        targetId: targetId,
+        targetType: targetType,
+      );
+      if (response.statusCode == 200) {
+        await refreshActiveEvent();
+        CustomSnackBar.success(message: 'Speaker access revoked');
+      } else {
+        CustomSnackBar.failure(
+          message:
+              response.body?['message'] ?? 'Failed to revoke speaker access',
+        );
+      }
+    } catch (e) {
+      debugPrint('revokeSpeaker error: $e');
+      CustomSnackBar.failure(message: 'Failed to revoke speaker access');
+    } finally {
+      isUpdatingSpeaker.value = false;
+    }
+  }
+
+  Future<void> sendReaction(String reaction) async {
+    final eventId = selectedEvent.value?.id;
+    if (eventId == null || eventId.isEmpty || isSendingReaction.value) return;
+    isSendingReaction.value = true;
+    try {
+      final response = await eventRepo.sendReaction(
+        eventId,
+        reaction: reaction,
+      );
+      if (response.statusCode == 200 && response.body?['reaction'] != null) {
+        _addReaction(
+          LiveEventReactionModel.fromJson(
+            <String, dynamic>{
+              ...Map<String, dynamic>.from(response.body['reaction']),
+              'eventId': eventId,
+            },
+          ),
+        );
+      } else if (response.statusCode != 200) {
+        CustomSnackBar.failure(
+          message: response.body?['message'] ?? 'Failed to send reaction',
+        );
+      }
+    } catch (e) {
+      debugPrint('sendReaction error: $e');
+    } finally {
+      isSendingReaction.value = false;
+    }
+  }
+
+  void _addReaction(LiveEventReactionModel reaction) {
+    liveReactions.add(reaction);
+    Future.delayed(const Duration(seconds: 4), () {
+      liveReactions.remove(reaction);
+    });
+  }
+
   void _replaceEventEverywhere(EventModel updatedEvent) {
     final eventId = updatedEvent.id;
     if (eventId == null) return;
@@ -323,7 +642,8 @@ class EventController extends GetxController {
       events.refresh();
     }
 
-    final recommendedIndex = recommendedEvents.indexWhere((e) => e.id == eventId);
+    final recommendedIndex =
+        recommendedEvents.indexWhere((e) => e.id == eventId);
     if (recommendedIndex != -1) {
       recommendedEvents[recommendedIndex] = updatedEvent;
       recommendedEvents.refresh();
@@ -340,6 +660,10 @@ class EventController extends GetxController {
 
   void setVisibility(String value) {
     selectedVisibility.value = value;
+  }
+
+  void setSessionMode(String value) {
+    selectedSessionMode.value = value;
   }
 
   void setScheduledDateTime(DateTime dateTime) {
@@ -403,10 +727,12 @@ class EventController extends GetxController {
 
     try {
       final body = {
-        "title": title,
-        "description": description,
-        "visibility": selectedVisibility.value,
-        "scheduledStartAt": scheduledAt.toUtc().toIso8601String(),
+        'title': title,
+        'description': description,
+        'visibility': selectedVisibility.value,
+        'sessionMode': selectedSessionMode.value,
+        'allowHandRaises': allowHandRaises.value,
+        'scheduledStartAt': scheduledAt.toUtc().toIso8601String(),
       };
 
       final response = await eventRepo.createEvent(body);
@@ -487,7 +813,7 @@ class EventController extends GetxController {
       } else {
         CustomSnackBar.failure(
           message:
-          response.body?['message'] ?? 'Failed to fetch recommended events',
+              response.body?['message'] ?? 'Failed to fetch recommended events',
         );
       }
     } catch (e) {

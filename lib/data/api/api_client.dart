@@ -38,11 +38,16 @@ class ApiClient extends GetConnect implements GetxService {
     _logLine('[API][AUTH] Header updated with bearer token');
   }
 
-  Future<Response> getData(String uri, {Map<String, String>? headers}) async {
+  Future<Response> getData(
+    String uri, {
+    Map<String, String>? headers,
+    bool redirectOnUnauthorized = true,
+  }) async {
     return _runRequest(
       method: 'GET',
       uri: uri,
       headers: headers ?? _mainHeaders,
+      redirectOnUnauthorized: redirectOnUnauthorized,
       action: () => get(uri, headers: headers ?? _mainHeaders),
     );
   }
@@ -51,12 +56,14 @@ class ApiClient extends GetConnect implements GetxService {
     String uri,
     dynamic body, {
     Map<String, String>? headers,
+    bool redirectOnUnauthorized = true,
   }) async {
     return _runRequest(
       method: 'POST',
       uri: uri,
       headers: headers ?? _mainHeaders,
       body: body,
+      redirectOnUnauthorized: redirectOnUnauthorized,
       action: () => post(uri, body, headers: headers ?? _mainHeaders),
     );
   }
@@ -65,12 +72,14 @@ class ApiClient extends GetConnect implements GetxService {
     String uri,
     dynamic body, {
     Map<String, String>? headers,
+    bool redirectOnUnauthorized = true,
   }) async {
     return _runRequest(
       method: 'PATCH',
       uri: uri,
       headers: headers ?? _mainHeaders,
       body: body,
+      redirectOnUnauthorized: redirectOnUnauthorized,
       action: () => patch(uri, body, headers: headers ?? _mainHeaders),
     );
   }
@@ -79,20 +88,23 @@ class ApiClient extends GetConnect implements GetxService {
     String uri,
     dynamic body, {
     Map<String, String>? headers,
+    bool redirectOnUnauthorized = true,
   }) async {
     return _runRequest(
       method: 'PUT',
       uri: uri,
       headers: headers ?? _mainHeaders,
       body: body,
+      redirectOnUnauthorized: redirectOnUnauthorized,
       action: () => put(uri, body, headers: headers ?? _mainHeaders),
     );
   }
 
   Future<Response> postMultipartData(
     String uri,
-    http.MultipartRequest request,
-  ) async {
+    http.MultipartRequest request, {
+    bool redirectOnUnauthorized = true,
+  }) async {
     final requestId = _nextRequestId();
     final startedAt = DateTime.now();
 
@@ -109,16 +121,17 @@ class ApiClient extends GetConnect implements GetxService {
         headers: request.headers,
         body: {
           'fields': request.fields,
-          'files': request.files
-              .map(
-                (file) => {
-                  'field': file.field,
-                  'filename': file.filename,
-                  'length': file.length,
-                  'contentType': file.contentType.toString(),
-                },
-              )
-              .toList(),
+          'files':
+              request.files
+                  .map(
+                    (file) => {
+                      'field': file.field,
+                      'filename': file.filename,
+                      'length': file.length,
+                      'contentType': file.contentType.toString(),
+                    },
+                  )
+                  .toList(),
         },
       );
 
@@ -143,7 +156,10 @@ class ApiClient extends GetConnect implements GetxService {
         startedAt: startedAt,
         response: payload,
       );
-      ApiChecker.checkApi(payload);
+      ApiChecker.checkApi(
+        payload,
+        redirectOnUnauthorized: redirectOnUnauthorized,
+      );
       return payload;
     } catch (error, stackTrace) {
       _logFailure(
@@ -167,11 +183,13 @@ class ApiClient extends GetConnect implements GetxService {
   Future<Response> deleteData(
     String uri, {
     Map<String, String>? headers,
+    bool redirectOnUnauthorized = true,
   }) async {
     return _runRequest(
       method: 'DELETE',
       uri: uri,
       headers: headers ?? _mainHeaders,
+      redirectOnUnauthorized: redirectOnUnauthorized,
       action: () => delete(uri, headers: headers ?? _mainHeaders),
     );
   }
@@ -180,6 +198,7 @@ class ApiClient extends GetConnect implements GetxService {
     required String method,
     required String uri,
     required Map<String, String> headers,
+    required bool redirectOnUnauthorized,
     Object? body,
     required Future<Response> Function() action,
   }) async {
@@ -204,7 +223,10 @@ class ApiClient extends GetConnect implements GetxService {
         startedAt: startedAt,
         response: response,
       );
-      ApiChecker.checkApi(response);
+      ApiChecker.checkApi(
+        response,
+        redirectOnUnauthorized: redirectOnUnauthorized,
+      );
       return response;
     } catch (error, stackTrace) {
       _logFailure(
@@ -265,7 +287,9 @@ class ApiClient extends GetConnect implements GetxService {
     if (response.statusText != null && response.statusText!.trim().isNotEmpty) {
       _logLine('[API][$label][$method] STATUS_TEXT ${response.statusText}');
     }
-    _logLine('[API][$label][$method] RESPONSE_BODY ${_stringify(response.body)}');
+    _logLine(
+      '[API][$label][$method] RESPONSE_BODY ${_stringify(response.body)}',
+    );
   }
 
   void _logFailure({
@@ -278,7 +302,9 @@ class ApiClient extends GetConnect implements GetxService {
   }) {
     final label = _formatRequestId(requestId);
     final duration = DateTime.now().difference(startedAt).inMilliseconds;
-    _logLine('[API][$label][$method] ERROR ${_resolveUri(uri)} (${duration}ms)');
+    _logLine(
+      '[API][$label][$method] ERROR ${_resolveUri(uri)} (${duration}ms)',
+    );
     _logLine('[API][$label][$method] ERROR_BODY ${error.toString()}');
     _logLine('[API][$label][$method] STACK ${stackTrace.toString()}');
   }
@@ -311,9 +337,10 @@ class ApiClient extends GetConnect implements GetxService {
     }
 
     for (int start = 0; start < message.length; start += chunkSize) {
-      final end = start + chunkSize < message.length
-          ? start + chunkSize
-          : message.length;
+      final end =
+          start + chunkSize < message.length
+              ? start + chunkSize
+              : message.length;
       debugPrintSynchronously(message.substring(start, end));
     }
   }

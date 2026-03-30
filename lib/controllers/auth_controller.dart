@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:smart_swatcher/controllers/post_controller.dart';
 import 'package:smart_swatcher/helpers/global_loader_controller.dart';
 import 'package:smart_swatcher/models/company_model.dart';
 import 'package:smart_swatcher/widgets/snackbars.dart';
@@ -13,15 +12,9 @@ import '../data/repo/auth_repo.dart';
 import '../models/stylist_model.dart';
 import '../routes/routes.dart';
 
-enum AccountType {
-  stylist,
-  company,
-}
-
+enum AccountType { stylist, company }
 
 class AuthController extends GetxController {
-
-
   final AuthRepo authRepo;
   AuthController({required this.authRepo});
 
@@ -61,7 +54,6 @@ class AuthController extends GetxController {
   void onInit() {
     super.onInit();
     _initTextControllers();
-
   }
 
   Future<void> pickBackgroundImage(ImageSource source) async {
@@ -188,7 +180,6 @@ class AuthController extends GetxController {
         final token = response.body['token'] as String;
         await authRepo.saveUserToken(token);
         await getProfile();
-
       } else {
         Get.snackbar('Error', response.statusText ?? 'Registration failed');
       }
@@ -205,9 +196,10 @@ class AuthController extends GetxController {
     _loader.showLoader();
 
     try {
-      final data = Map<String, dynamic>.from(companyRegistrationData)
-        ..['authProvider'] ??= 'local'
-        ..remove('profileImageFile'); // never send the raw File object
+      final data =
+          Map<String, dynamic>.from(companyRegistrationData)
+            ..['authProvider'] ??= 'local'
+            ..remove('profileImageFile'); // never send the raw File object
 
       final response = await authRepo.registerCompany(data);
 
@@ -243,13 +235,13 @@ class AuthController extends GetxController {
 
       if (response.statusCode == 200) {
         await authRepo.saveUserToken(response.body['token'] as String);
-await getCompanyProfile();
+        await getProfile();
         Get.offAllNamed(AppRoutes.homeScreen);
       } else {
-        Get.snackbar('Error', response.statusText ?? 'Login failed');
+        CustomSnackBar.failure(message: _extractErrorMessage(response));
       }
     } catch (e) {
-      Get.snackbar('Error', 'An unexpected error occurred');
+      CustomSnackBar.failure(message: 'An unexpected error occurred');
       debugPrint('loginStylist error: $e');
     } finally {
       _loader.hideLoader();
@@ -273,10 +265,10 @@ await getCompanyProfile();
         await getCompanyProfile();
         Get.offAllNamed(AppRoutes.companyHomePage);
       } else {
-        Get.snackbar('Error', response.statusText ?? 'Login failed');
+        CustomSnackBar.failure(message: _extractErrorMessage(response));
       }
     } catch (e) {
-      Get.snackbar('Error', 'An unexpected error occurred');
+      CustomSnackBar.failure(message: 'An unexpected error occurred');
       debugPrint('loginCompany error: $e');
     } finally {
       _loader.hideLoader();
@@ -363,16 +355,15 @@ await getCompanyProfile();
     }
   }
 
-
-
   Future<void> saveChanges() async {
     _loader.showLoader();
 
     try {
       // 1. Upload new profile picture if one was selected.
       if (selectedImage.value != null) {
-        final imgResponse =
-        await authRepo.updateProfilePicture(selectedImage.value!);
+        final imgResponse = await authRepo.updateProfilePicture(
+          selectedImage.value!,
+        );
 
         if (imgResponse.statusCode != 200 && imgResponse.statusCode != 201) {
           CustomSnackBar.failure(message: 'Failed to upload image');
@@ -405,7 +396,8 @@ await getCompanyProfile();
         CustomSnackBar.success(message: 'Profile updated successfully');
       } else {
         CustomSnackBar.failure(
-            message: response.body['message'] ?? 'Update failed');
+          message: response.body['message'] ?? 'Update failed',
+        );
       }
     } catch (e) {
       debugPrint('saveChanges error: $e');
@@ -415,14 +407,14 @@ await getCompanyProfile();
     }
   }
 
-
   Future<void> saveStylistChanges() async {
     _loader.showLoader();
 
     try {
       if (selectedImage.value != null) {
-        final imgResponse =
-        await authRepo.updateProfilePicture(selectedImage.value!);
+        final imgResponse = await authRepo.updateProfilePicture(
+          selectedImage.value!,
+        );
 
         if (imgResponse.statusCode != 200 && imgResponse.statusCode != 201) {
           CustomSnackBar.failure(message: 'Failed to upload image');
@@ -472,13 +464,16 @@ await getCompanyProfile();
       String? backgroundImageUrl = companyProfile.value?.backgroundImageUrl;
 
       if (selectedImage.value != null) {
-        profileImageUrl = await uploadCompanyLogoAndGetUrl(selectedImage.value!);
+        profileImageUrl = await uploadCompanyLogoAndGetUrl(
+          selectedImage.value!,
+        );
         if (profileImageUrl == null) return;
       }
 
       if (selectedBackgroundImage.value != null) {
-        backgroundImageUrl =
-        await uploadCompanyLogoAndGetUrl(selectedBackgroundImage.value!);
+        backgroundImageUrl = await uploadCompanyLogoAndGetUrl(
+          selectedBackgroundImage.value!,
+        );
         if (backgroundImageUrl == null) return;
       }
 
@@ -531,11 +526,10 @@ await getCompanyProfile();
     }
   }
 
-
   Future<void> patchStylistData(
-      Map<String, dynamic> data, {
-        String? nextRoute,
-      }) async {
+    Map<String, dynamic> data, {
+    String? nextRoute,
+  }) async {
     _loader.showLoader();
     update();
 
@@ -596,7 +590,8 @@ await getCompanyProfile();
 
         if (url == null) {
           CustomSnackBar.failure(
-              message: 'Upload succeeded but no URL returned');
+            message: 'Upload succeeded but no URL returned',
+          );
           return null;
         }
 
@@ -604,9 +599,10 @@ await getCompanyProfile();
       }
 
       CustomSnackBar.failure(
-        message: response.body is Map
-            ? (response.body['message'] ?? 'Upload failed')
-            : 'Upload failed',
+        message:
+            response.body is Map
+                ? (response.body['message'] ?? 'Upload failed')
+                : 'Upload failed',
       );
       return null;
     } catch (e) {
@@ -635,7 +631,7 @@ await getCompanyProfile();
         final isAvailable = response.body['available'] as bool? ?? false;
         usernameCheckStatus.value = isAvailable ? 2 : 3;
         usernameCheckMessage.value =
-        isAvailable ? 'Username is available' : 'Username is already taken';
+            isAvailable ? 'Username is available' : 'Username is already taken';
       } else {
         usernameCheckStatus.value = 3;
         usernameCheckMessage.value = 'Unable to validate username';
@@ -667,12 +663,5 @@ await getCompanyProfile();
           'An unknown error occurred';
     }
     return response.statusText ?? 'An unknown error occurred';
-  }
-
-  /// Ensure a relative URL/path is made absolute using [baseUrl].
-  String _toAbsoluteUrl(String urlOrPath) {
-    if (urlOrPath.startsWith('http')) return urlOrPath;
-    final base = authRepo.apiClient.baseUrl;
-    return urlOrPath.startsWith('/') ? '$base$urlOrPath' : '$base/$urlOrPath';
   }
 }

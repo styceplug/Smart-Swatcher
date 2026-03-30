@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/models/formulation_model.dart';
 import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
+import 'package:smart_swatcher/widgets/formulation_analysis_card.dart';
 
 class ChooseNbl extends StatefulWidget {
   const ChooseNbl({Key? key}) : super(key: key);
@@ -16,31 +18,95 @@ class ChooseNbl extends StatefulWidget {
 
 class _ChooseNblState extends State<ChooseNbl> {
   Map<String, dynamic>? previousData;
+  FormulationAnalysisModel? suggestion;
 
   int selectedLevel = 0;
   String imageUrl = "";
 
   final List<Map<String, dynamic>> nblOptions = [
-    {'level': 1, 'title': '1. Black', 'subtitle': 'Underlying pigment: Black/Blue', 'asset': 'black'},
-    {'level': 2, 'title': '2. Dark Brown', 'subtitle': 'Underlying pigment: Dark Red', 'asset': 'dark-brown'},
-    {'level': 3, 'title': '3. Medium Brown', 'subtitle': 'Underlying pigment: Red', 'asset': 'medium-brown'},
-    {'level': 4, 'title': '4. Light Brown', 'subtitle': 'Underlying pigment: Orange', 'asset': 'light-brown'},
-    {'level': 5, 'title': '5. Dark Blonde', 'subtitle': 'Underlying pigment: Gold', 'asset': 'dark-blonde'},
-    {'level': 6, 'title': '6. Blonde', 'subtitle': 'Underlying pigment: Yellow/Gold', 'asset': 'blonde'},
-    {'level': 7, 'title': '7. Light Blonde', 'subtitle': 'Underlying pigment: Yellow', 'asset': 'light-blonde'},
-    {'level': 8, 'title': '8. Very Light Blonde', 'subtitle': 'Underlying pigment: Pale Yellow', 'asset': 'very-light-blonde'},
-    {'level': 9, 'title': '9. Platinum Blonde', 'subtitle': 'Underlying pigment: Pale Yellow/White', 'asset': 'plat-blonde'},
-    {'level': 10, 'title': '10. Extra Light Blonde', 'subtitle': 'Underlying pigment: White', 'asset': 'extra-light-blonde'},
-    {'level': 11, 'title': '11. Lightest Blonde', 'subtitle': 'Underlying pigment: White', 'asset': 'lightest-blonde'},
-    {'level': 12, 'title': '12. Extremely Light Blonde', 'subtitle': 'Underlying pigment: White', 'asset': 'extrem-light-blonde'},
+    {
+      'level': 1,
+      'title': '1. Black',
+      'subtitle': 'Underlying pigment: Black/Blue',
+      'asset': 'black',
+    },
+    {
+      'level': 2,
+      'title': '2. Dark Brown',
+      'subtitle': 'Underlying pigment: Dark Red',
+      'asset': 'dark-brown',
+    },
+    {
+      'level': 3,
+      'title': '3. Medium Brown',
+      'subtitle': 'Underlying pigment: Red',
+      'asset': 'medium-brown',
+    },
+    {
+      'level': 4,
+      'title': '4. Light Brown',
+      'subtitle': 'Underlying pigment: Orange',
+      'asset': 'light-brown',
+    },
+    {
+      'level': 5,
+      'title': '5. Dark Blonde',
+      'subtitle': 'Underlying pigment: Gold',
+      'asset': 'dark-blonde',
+    },
+    {
+      'level': 6,
+      'title': '6. Blonde',
+      'subtitle': 'Underlying pigment: Yellow/Gold',
+      'asset': 'blonde',
+    },
+    {
+      'level': 7,
+      'title': '7. Light Blonde',
+      'subtitle': 'Underlying pigment: Yellow',
+      'asset': 'light-blonde',
+    },
+    {
+      'level': 8,
+      'title': '8. Very Light Blonde',
+      'subtitle': 'Underlying pigment: Pale Yellow',
+      'asset': 'very-light-blonde',
+    },
+    {
+      'level': 9,
+      'title': '9. Platinum Blonde',
+      'subtitle': 'Underlying pigment: Pale Yellow/White',
+      'asset': 'plat-blonde',
+    },
+    {
+      'level': 10,
+      'title': '10. Extra Light Blonde',
+      'subtitle': 'Underlying pigment: White',
+      'asset': 'extra-light-blonde',
+    },
+    {
+      'level': 11,
+      'title': '11. Lightest Blonde',
+      'subtitle': 'Underlying pigment: White',
+      'asset': 'lightest-blonde',
+    },
+    {
+      'level': 12,
+      'title': '12. Extremely Light Blonde',
+      'subtitle': 'Underlying pigment: White',
+      'asset': 'extrem-light-blonde',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
     if (Get.arguments != null && Get.arguments is Map) {
-      previousData = Get.arguments;
+      previousData = Map<String, dynamic>.from(Get.arguments as Map);
       imageUrl = previousData?['imageUrl'] ?? "";
+      suggestion = FormulationAnalysisModel.fromJsonLike(
+        previousData?['suggestion'],
+      );
 
       if (previousData?['suggestion'] != null) {
         var suggestion = previousData!['suggestion'];
@@ -54,14 +120,22 @@ class _ChooseNblState extends State<ChooseNbl> {
   }
 
   void _onNext() {
-
     Map<String, dynamic> wizardData = {
+      ...?previousData,
       'imageUrl': imageUrl,
       'naturalBaseLevel': selectedLevel,
       'suggestion': previousData?['suggestion'],
     };
 
-    Get.toNamed(AppRoutes.selectDesireLevel, arguments: wizardData);
+    final formulationType =
+        wizardData['formulationType']?.toString() ?? 'color_formulation';
+
+    Get.toNamed(
+      formulationType == 'color_correction'
+          ? AppRoutes.correctionDetails
+          : AppRoutes.greyCoverage,
+      arguments: wizardData,
+    );
   }
 
   @override
@@ -71,7 +145,10 @@ class _ChooseNblState extends State<ChooseNbl> {
         leadingIcon: BackButton(),
         actionIcon: Text(
           'Preview',
-          style: TextStyle(fontSize: Dimensions.font15, color: AppColors.primary5),
+          style: TextStyle(
+            fontSize: Dimensions.font15,
+            color: AppColors.primary5,
+          ),
         ),
       ),
       body: Container(
@@ -88,7 +165,10 @@ class _ChooseNblState extends State<ChooseNbl> {
 
             Text(
               'Choose Natural Base Color (NBL)',
-              style: TextStyle(fontSize: Dimensions.font20, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: Dimensions.font20,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             SizedBox(height: Dimensions.height5),
             Text(
@@ -101,6 +181,11 @@ class _ChooseNblState extends State<ChooseNbl> {
               ),
             ),
             SizedBox(height: Dimensions.height20),
+            FormulationAnalysisCard(
+              analysis: suggestion,
+              title: 'AI Upload Reading',
+            ),
+            if (suggestion != null) SizedBox(height: Dimensions.height20),
 
             // --- SCROLLABLE LIST ---
             Expanded(
@@ -171,9 +256,13 @@ class _ChooseNblState extends State<ChooseNbl> {
             // Assuming your AppConstants.getBaseAsset adds the path/extension
             image: AssetImage(AppConstants.getBaseAsset(imageAsset)),
             // Optional: Darken non-selected items slightly for focus
-            colorFilter: isSelected
-                ? null
-                : ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken),
+            colorFilter:
+                isSelected
+                    ? null
+                    : ColorFilter.mode(
+                      Colors.black.withValues(alpha: 0.3),
+                      BlendMode.darken,
+                    ),
           ),
         ),
         child: Row(
