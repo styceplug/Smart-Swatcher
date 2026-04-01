@@ -16,6 +16,8 @@ class StylistModel {
   String? documentType;
   String? documentUrl;
   String? profileImageUrl;
+  bool isEmailVerified;
+  bool isVerified;
 
   StylistModel({
     this.id,
@@ -35,6 +37,8 @@ class StylistModel {
     this.documentType,
     this.documentUrl,
     this.profileImageUrl,
+    this.isEmailVerified = false,
+    this.isVerified = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -56,6 +60,8 @@ class StylistModel {
       if (documentType != null) "documentType": documentType,
       if (documentUrl != null) "documentUrl": documentUrl,
       if (profileImageUrl != null) "profileImageUrl": profileImageUrl,
+      "isEmailVerified": isEmailVerified,
+      "isVerified": isVerified,
     };
   }
 
@@ -70,6 +76,8 @@ class StylistModel {
       state: json['state'],
       experienceLevel: json['experienceLevel'],
       profileImageUrl: json['profileImageUrl'],
+      isEmailVerified: json['isEmailVerified'] == true,
+      isVerified: json['isVerified'] == true,
     );
   }
 

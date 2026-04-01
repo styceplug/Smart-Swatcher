@@ -4,6 +4,7 @@ import 'package:smart_swatcher/screens/auth/company/company_profile_info.dart';
 import 'package:smart_swatcher/screens/auth/company/company_role_selection.dart';
 import 'package:smart_swatcher/screens/auth/company/company_username_check.dart';
 import 'package:smart_swatcher/screens/auth/company/create_company_account.dart';
+import 'package:smart_swatcher/screens/auth/shared/otp_verification_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/create_stylist_account_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/licence_upload_screen.dart';
 import 'package:smart_swatcher/screens/auth/stylist/pro_registration_screen.dart';
@@ -82,6 +83,7 @@ class AppRoutes {
   static const String createStylistAccountScreen =
       '/create-stylist-account-screen';
   static const String setStylistUsernameScreen = '/set-stylist-username-screen';
+  static const String otpVerificationScreen = '/otp-verification-screen';
   static const String companyUsernameScreen = '/company-username-screen';
   static const String experienceScreen = '/experience-screen';
   static const String licenceUploadScreen = '/licence-upload-screen';
@@ -317,6 +319,13 @@ class AppRoutes {
       name: createStylistAccountScreen,
       page: () {
         return const CreateStylistAccountScreen();
+      },
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: otpVerificationScreen,
+      page: () {
+        return const OtpVerificationScreen();
       },
       transition: Transition.fadeIn,
     ),

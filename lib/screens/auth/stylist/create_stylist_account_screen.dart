@@ -1,10 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:smart_swatcher/controllers/auth_controller.dart';
 import 'package:smart_swatcher/models/stylist_model.dart';
+import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
@@ -12,9 +10,6 @@ import 'package:smart_swatcher/widgets/country_state_dropdown.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
 import 'package:smart_swatcher/widgets/custom_textfield.dart';
-import 'package:smart_swatcher/widgets/otp_box.dart';
-
-import '../../../routes/routes.dart';
 
 class CreateStylistAccountScreen extends StatefulWidget {
   const CreateStylistAccountScreen({super.key});
@@ -33,106 +28,12 @@ class _CreateStylistAccountScreenState
   TextEditingController phoneController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  bool isButtonEnabled = false;
-  String otp = "";
   AuthController authController = Get.find<AuthController>();
-
-  late Future<List<CountryData>> _countriesFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _countriesFuture = loadCountries();
-  }
-
-  Future<List<CountryData>> loadCountries() async {
-    final jsonStr = await rootBundle.loadString('assets/countries_state.json');
-    final List<dynamic> data = json.decode(jsonStr);
-    return data.map((e) => CountryData.fromJson(e)).toList();
-  }
 
   void viewPassword() {
     setState(() {
       passwordVisible = !passwordVisible;
     });
-  }
-
-  void showOtpModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(Dimensions.radius20),
-        ),
-      ),
-      builder:
-          (context) => Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimensions.width20,
-              vertical: Dimensions.height30,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Enter OTP',
-                      style: TextStyle(
-                        fontSize: Dimensions.font18,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    Icon(Icons.cancel, color: Colors.grey),
-                  ],
-                ),
-
-                SizedBox(height: Dimensions.height40),
-                Text(
-                  'Enter the code sent to ${emailController.text}',
-                  style: TextStyle(
-                    fontSize: Dimensions.font15,
-                    fontWeight: FontWeight.w400,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-                SizedBox(height: Dimensions.height10),
-                OtpInput(
-                  length: 6,
-                  onCompleted: (enteredOtp) {
-                    setState(() {
-                      otp = enteredOtp;
-                      isButtonEnabled = true;
-                    });
-                  },
-                ),
-                SizedBox(height: Dimensions.height20),
-                Text(
-                  'Resend Code in 00:32',
-                  style: TextStyle(
-                    fontSize: Dimensions.font15,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-
-                SizedBox(height: Dimensions.height20),
-                CustomButton(
-                  text: 'Verify',
-                  onPressed: () {
-                    authController.verifyOtp(otp);
-                  },
-                  backgroundColor: AppColors.primary5,
-                ),
-                SizedBox(height: Dimensions.height50),
-              ],
-            ),
-          ),
-    );
   }
 
   void signUp() {
@@ -152,7 +53,6 @@ class _CreateStylistAccountScreenState
       state: selectedState,
     );
     authController.registerStylist(signupData);
-    showOtpModal();
   }
 
   @override
@@ -256,7 +156,7 @@ class _CreateStylistAccountScreenState
                   SizedBox(height: Dimensions.height20),
                   CustomButton(
                     text: 'Create Account',
-                    onPressed: (){
+                    onPressed: () {
                       signUp();
                     },
                     backgroundColor: AppColors.primary5,

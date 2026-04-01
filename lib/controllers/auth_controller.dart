@@ -14,6 +14,34 @@ import '../routes/routes.dart';
 
 enum AccountType { stylist, company }
 
+class PendingOtpFlow {
+  final AccountType accountType;
+  final String? destination;
+  final String? message;
+  final String postVerifyRoute;
+
+  const PendingOtpFlow({
+    required this.accountType,
+    required this.postVerifyRoute,
+    this.destination,
+    this.message,
+  });
+
+  PendingOtpFlow copyWith({
+    AccountType? accountType,
+    String? destination,
+    String? message,
+    String? postVerifyRoute,
+  }) {
+    return PendingOtpFlow(
+      accountType: accountType ?? this.accountType,
+      destination: destination ?? this.destination,
+      message: message ?? this.message,
+      postVerifyRoute: postVerifyRoute ?? this.postVerifyRoute,
+    );
+  }
+}
+
 class AuthController extends GetxController {
   final AuthRepo authRepo;
   AuthController({required this.authRepo});
@@ -24,6 +52,7 @@ class AuthController extends GetxController {
   final Rx<StylistModel?> stylistProfile = Rx<StylistModel?>(null);
   final Rx<CompanyModel?> companyProfile = Rx<CompanyModel?>(null);
   final Rxn<File> selectedImage = Rxn<File>();
+  final Rxn<PendingOtpFlow> pendingOtpFlow = Rxn<PendingOtpFlow>();
 
   /// 0 = idle, 1 = checking, 2 = available, 3 = taken/error
   final RxInt usernameCheckStatus = 0.obs;
@@ -177,14 +206,45 @@ class AuthController extends GetxController {
       final response = await authRepo.signUp(_tempUserData.toJson());
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final token = response.body['token'] as String;
+        final token = response.body?['token']?.toString();
+        if (token == null || token.isEmpty) {
+          CustomSnackBar.failure(
+            message:
+                'Signup succeeded but no verification session was returned',
+          );
+          return;
+        }
+
         await authRepo.saveUserToken(token);
-        await getProfile();
+        currentAccountType.value = AccountType.stylist;
+
+        final stylistJson = response.body?['stylist'];
+        if (stylistJson is Map<String, dynamic>) {
+          final model = StylistModel.fromJson(stylistJson);
+          await saveStylistProfile(model);
+          _fillStylistForm();
+        }
+
+        pendingOtpFlow.value = PendingOtpFlow(
+          accountType: AccountType.stylist,
+          destination: _extractOtpDestination(response.body),
+          message:
+              _extractSuccessMessage(response) ??
+              'Verification code sent to email',
+          postVerifyRoute: AppRoutes.setStylistUsernameScreen,
+        );
+
+        CustomSnackBar.success(
+          message:
+              pendingOtpFlow.value?.message ??
+              'Verification code sent to email',
+        );
+        Get.toNamed(AppRoutes.otpVerificationScreen);
       } else {
-        Get.snackbar('Error', response.statusText ?? 'Registration failed');
+        CustomSnackBar.failure(message: _extractErrorMessage(response));
       }
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      CustomSnackBar.failure(message: 'Registration failed: $e');
     } finally {
       _loader.hideLoader();
       update();
@@ -204,12 +264,40 @@ class AuthController extends GetxController {
       final response = await authRepo.registerCompany(data);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final token = response.body['token'];
-        if (token != null) await authRepo.saveUserToken(token as String);
-        await getProfile();
+        final token = response.body?['token']?.toString();
+        if (token == null || token.isEmpty) {
+          CustomSnackBar.failure(
+            message:
+                'Signup succeeded but no verification session was returned',
+          );
+          return;
+        }
 
-        Get.offAllNamed(AppRoutes.companyHomePage);
-        CustomSnackBar.success(message: 'Company account created!');
+        await authRepo.saveUserToken(token);
+        currentAccountType.value = AccountType.company;
+
+        final companyJson = response.body?['company'];
+        if (companyJson is Map<String, dynamic>) {
+          final model = CompanyModel.fromJson(companyJson);
+          await saveCompanyProfile(model);
+          _fillCompanyForm();
+        }
+
+        pendingOtpFlow.value = PendingOtpFlow(
+          accountType: AccountType.company,
+          destination: _extractOtpDestination(response.body),
+          message:
+              _extractSuccessMessage(response) ??
+              'Verification code sent to email',
+          postVerifyRoute: AppRoutes.companyHomePage,
+        );
+
+        CustomSnackBar.success(
+          message:
+              pendingOtpFlow.value?.message ??
+              'Verification code sent to email',
+        );
+        Get.toNamed(AppRoutes.otpVerificationScreen);
       } else {
         CustomSnackBar.failure(message: _extractErrorMessage(response));
       }
@@ -236,7 +324,17 @@ class AuthController extends GetxController {
       if (response.statusCode == 200) {
         await authRepo.saveUserToken(response.body['token'] as String);
         await getProfile();
-        Get.offAllNamed(AppRoutes.homeScreen);
+        if (stylistProfile.value?.isEmailVerified == true) {
+          Get.offAllNamed(AppRoutes.homeScreen);
+        } else {
+          pendingOtpFlow.value = PendingOtpFlow(
+            accountType: AccountType.stylist,
+            destination: stylistProfile.value?.email,
+            message: 'Verification code sent to email',
+            postVerifyRoute: AppRoutes.setStylistUsernameScreen,
+          );
+          Get.offAllNamed(AppRoutes.otpVerificationScreen);
+        }
       } else {
         CustomSnackBar.failure(message: _extractErrorMessage(response));
       }
@@ -263,7 +361,17 @@ class AuthController extends GetxController {
       if (response.statusCode == 200) {
         await authRepo.saveUserToken(response.body['token'] as String);
         await getCompanyProfile();
-        Get.offAllNamed(AppRoutes.companyHomePage);
+        if (companyProfile.value?.isEmailVerified == true) {
+          Get.offAllNamed(AppRoutes.companyHomePage);
+        } else {
+          pendingOtpFlow.value = PendingOtpFlow(
+            accountType: AccountType.company,
+            destination: companyProfile.value?.email,
+            message: 'Verification code sent to email',
+            postVerifyRoute: AppRoutes.companyHomePage,
+          );
+          Get.offAllNamed(AppRoutes.otpVerificationScreen);
+        }
       } else {
         CustomSnackBar.failure(message: _extractErrorMessage(response));
       }
@@ -278,35 +386,73 @@ class AuthController extends GetxController {
 
   // ─── Auth — OTP ───────────────────────────────────────────────────────────────
 
-  Future<void> verifyOtp(String otp) async {
+  Future<bool> verifyOtp(String otp) async {
     _loader.showLoader();
     update();
 
     try {
+      final flow = pendingOtpFlow.value;
+      if (flow == null) {
+        CustomSnackBar.failure(
+          message: 'Verification session expired. Please sign up again.',
+        );
+        return false;
+      }
+
       final response = await authRepo.verifyOtp({'otp': otp});
 
       if (response.statusCode == 200) {
-        CustomSnackBar.success(message: 'Account Verified');
-        Get.toNamed(AppRoutes.setStylistUsernameScreen);
+        if (flow.accountType == AccountType.company) {
+          await getCompanyProfile();
+        } else {
+          await getProfile();
+        }
+
+        pendingOtpFlow.value = null;
+        CustomSnackBar.success(
+          message: _extractSuccessMessage(response) ?? 'Account verified',
+        );
+        Get.offAllNamed(flow.postVerifyRoute);
+        return true;
       }
+      CustomSnackBar.failure(message: _extractErrorMessage(response));
+      return false;
     } catch (e) {
       debugPrint('verifyOtp error: $e');
+      CustomSnackBar.failure(message: 'Failed to verify code');
+      return false;
     } finally {
       _loader.hideLoader();
       update();
     }
   }
 
-  Future<void> resendOtp() async {
+  Future<bool> resendOtp() async {
     _loader.showLoader();
 
     try {
       final response = await authRepo.resendOtp({});
       if (response.statusCode == 200) {
-        CustomSnackBar.success(message: 'OTP Sent');
+        final destination = _extractOtpDestination(response.body);
+        if (destination != null && pendingOtpFlow.value != null) {
+          pendingOtpFlow.value = pendingOtpFlow.value!.copyWith(
+            destination: destination,
+          );
+        }
+
+        final message =
+            _extractSuccessMessage(response) ?? 'Verification code sent';
+        final decoratedMessage =
+            destination != null ? '$message to $destination' : message;
+        CustomSnackBar.success(message: decoratedMessage);
+        return true;
       }
+      CustomSnackBar.failure(message: _extractErrorMessage(response));
+      return false;
     } catch (e) {
       debugPrint('resendOtp error: $e');
+      CustomSnackBar.failure(message: 'Failed to resend verification code');
+      return false;
     } finally {
       _loader.hideLoader();
       update();
@@ -663,5 +809,24 @@ class AuthController extends GetxController {
           'An unknown error occurred';
     }
     return response.statusText ?? 'An unknown error occurred';
+  }
+
+  String? _extractSuccessMessage(Response response) {
+    if (response.body is Map) {
+      return response.body['message']?.toString();
+    }
+    return response.statusText;
+  }
+
+  String? _extractOtpDestination(dynamic body) {
+    if (body is! Map) return null;
+    final delivery = body['otpDelivery'];
+    if (delivery is Map) {
+      final destination = delivery['destination']?.toString().trim();
+      if (destination != null && destination.isNotEmpty) {
+        return destination;
+      }
+    }
+    return null;
   }
 }

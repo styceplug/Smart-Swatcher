@@ -1,16 +1,18 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../controllers/event_controller.dart';
+import '../../helpers/agora_audio_helper.dart';
 import '../../models/event_model.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/colors.dart';
 import '../../utils/dimensions.dart';
 import '../../widgets/app_cached_network_image.dart';
-import 'package:smart_swatcher/helpers/agora_audio_helper.dart';
 
 class AudioSessionScreen extends StatefulWidget {
   const AudioSessionScreen({super.key});
@@ -25,18 +27,6 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
   late Worker _remoteJoinWorker;
   late Worker _remoteVideoWorker;
   Timer? _participantRefreshTimer;
-
-  Future<void> _leaveSession() async {
-    await controller.leaveEventSession();
-    if (mounted) Get.back();
-  }
-
-  Future<void> _endSession() async {
-    await controller.endEventSession();
-    if (mounted && Get.isOverlaysOpen == false) {
-      Get.back();
-    }
-  }
 
   @override
   void initState() {
@@ -70,246 +60,550 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
     });
   }
 
+  Future<void> _leaveSession() async {
+    await controller.leaveEventSession();
+    if (mounted) {
+      Get.back();
+    }
+  }
+
+  Future<void> _endSession() async {
+    await controller.endEventSession();
+    if (mounted && !Get.isOverlaysOpen) {
+      Get.back();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.black1,
-      body: SafeArea(
-        child: Obx(() {
-          final event = controller.selectedEvent.value;
-
-          if (event == null) {
-            return const Center(
+      body: Obx(() {
+        final event = controller.selectedEvent.value;
+        if (event == null) {
+          return const SafeArea(
+            child: Center(
               child: Text(
                 'No active event',
                 style: TextStyle(color: Colors.white),
               ),
-            );
-          }
-
-          final viewer = event.viewer;
-          final isCreator = viewer?.isCreator ?? false;
-          final joined = agoraHelper.isJoined.value;
-          final speakerOn = agoraHelper.speakerEnabled.value;
-          final isMuted = agoraHelper.micMuted.value;
-          final cameraOn = agoraHelper.cameraEnabled.value;
-          final participants = [...event.liveParticipants]..sort((left, right) {
-            final order = {'host': 0, 'cohost': 1, 'speaker': 2, 'audience': 3};
-            final leftRank = order[left.role] ?? 99;
-            final rightRank = order[right.role] ?? 99;
-            if (leftRank != rightRank) return leftRank - rightRank;
-            return (left.joinedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
-                .compareTo(
-                  right.joinedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
-                );
-          });
-          final stageParticipants =
-              participants
-                  .where(
-                    (participant) =>
-                        participant.role == 'host' ||
-                        participant.role == 'cohost',
-                  )
-                  .toList();
-          final totalListeners =
-              event.liveParticipantCount > 0
-                  ? event.liveParticipantCount
-                  : participants.length;
-
-          return Padding(
-            padding: EdgeInsets.all(Dimensions.width18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildTopBar(event, isCreator),
-                SizedBox(height: Dimensions.height18),
-                _buildStage(event, stageParticipants),
-                SizedBox(height: Dimensions.height15),
-                _buildEventMeta(event, joined, totalListeners),
-                if (event.handRaiseQueue.isNotEmpty &&
-                    (viewer?.canManageHands ?? false)) ...[
-                  SizedBox(height: Dimensions.height15),
-                  _buildHandRaiseQueue(event.handRaiseQueue),
-                ],
-                SizedBox(height: Dimensions.height15),
-                Expanded(
-                  child: _buildParticipantsList(
-                    event,
-                    participants,
-                    viewer?.canManageHands ?? false,
-                    viewer?.canInviteCohosts ?? false,
-                  ),
-                ),
-                SizedBox(height: Dimensions.height12),
-                _buildReactionStrip(viewer?.canSendReactions ?? false),
-                SizedBox(height: Dimensions.height12),
-                _buildControls(
-                  event,
-                  speakerOn: speakerOn,
-                  isMuted: isMuted,
-                  cameraOn: cameraOn,
-                  canPublishAudio: viewer?.canPublishAudio ?? false,
-                  canPublishVideo: viewer?.canPublishVideo ?? false,
-                  canRaiseHand: viewer?.canRaiseHand ?? false,
-                  isHandRaised: viewer?.isHandRaised ?? false,
-                  isCreator: isCreator,
-                ),
-              ],
             ),
           );
-        }),
-      ),
+        }
+
+        final viewer = event.viewer;
+        final joined = agoraHelper.isJoined.value;
+        final participants = [...event.liveParticipants]..sort((left, right) {
+          const order = {'host': 0, 'cohost': 1, 'speaker': 2, 'audience': 3};
+          final leftRank = order[left.role] ?? 99;
+          final rightRank = order[right.role] ?? 99;
+          if (leftRank != rightRank) return leftRank - rightRank;
+          return (left.joinedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+              .compareTo(
+                right.joinedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+              );
+        });
+
+        final stageParticipants =
+            participants
+                .where(
+                  (participant) =>
+                      participant.role == 'host' ||
+                      participant.role == 'cohost',
+                )
+                .toList();
+        final featuredParticipant =
+            stageParticipants.isNotEmpty ? stageParticipants.first : null;
+        final supportingStageParticipants =
+            stageParticipants.length > 1
+                ? stageParticipants.skip(1).take(3).toList()
+                : const <EventParticipantModel>[];
+        final totalListeners =
+            event.liveParticipantCount > 0
+                ? event.liveParticipantCount
+                : participants.length;
+        final isCreator = viewer?.isCreator ?? false;
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: _buildStageBackdrop(
+                event: event,
+                featuredParticipant: featuredParticipant,
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.28),
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.18),
+                        Colors.black.withValues(alpha: 0.82),
+                      ],
+                      stops: const [0.0, 0.28, 0.58, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: 10,
+                    child: _GlassPanel(
+                      borderRadius: BorderRadius.circular(28),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        children: [
+                          _CircleIconButton(
+                            icon: Icons.keyboard_arrow_down_rounded,
+                            onTap: _leaveSession,
+                          ),
+                          const SizedBox(width: 10),
+                          _StatusPill(
+                            text:
+                                event.sessionMode == 'audio'
+                                    ? 'LIVE AUDIO'
+                                    : 'LIVE STAGE',
+                            color: const Color(0xFFFF5D5D),
+                          ),
+                          const SizedBox(width: 10),
+                          _StatusPill(
+                            text: '$totalListeners',
+                            color: Colors.white,
+                            icon: Icons.remove_red_eye_outlined,
+                            textColor: Colors.white,
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.12,
+                            ),
+                          ),
+                          const Spacer(),
+                          _CircleIconButton(
+                            icon: Icons.group_outlined,
+                            onTap:
+                                () => _showPeopleSheet(
+                                  event: event,
+                                  participants: participants,
+                                  canManageHands:
+                                      viewer?.canManageHands ?? false,
+                                  canInviteCohosts:
+                                      viewer?.canInviteCohosts ?? false,
+                                ),
+                          ),
+                          if (isCreator) ...[
+                            const SizedBox(width: 10),
+                            _StatusPill(
+                              text: 'End',
+                              color: Colors.white,
+                              textColor: Colors.white,
+                              backgroundColor: const Color(0xFFEB5545),
+                              onTap: _endSession,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (supportingStageParticipants.isNotEmpty)
+                    Positioned(
+                      top: 94,
+                      right: 16,
+                      child: Column(
+                        children:
+                            supportingStageParticipants
+                                .map(
+                                  (participant) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: SizedBox(
+                                      width: 108,
+                                      height: 152,
+                                      child: _GlassPanel(
+                                        borderRadius: BorderRadius.circular(24),
+                                        padding: const EdgeInsets.all(6),
+                                        backgroundColor: Colors.black
+                                            .withValues(alpha: 0.18),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
+                                          child: _buildParticipantVideoTile(
+                                            event: event,
+                                            participant: participant,
+                                            fullscreen: false,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                      ),
+                    ),
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 158,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _GlassPanel(
+                          borderRadius: BorderRadius.circular(28),
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      event.title ?? 'Untitled Event',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: Dimensions.font22,
+                                        fontWeight: FontWeight.w700,
+                                        fontFamily: 'Poppins',
+                                      ),
+                                    ),
+                                  ),
+                                  if (event.handRaiseQueue.isNotEmpty &&
+                                      (viewer?.canManageHands ?? false))
+                                    _StatusPill(
+                                      text:
+                                          '${event.handRaiseQueue.length} hands',
+                                      color: const Color(0xFFFFC95B),
+                                      textColor: AppColors.black1,
+                                      backgroundColor: const Color(0xFFFFC95B),
+                                      onTap:
+                                          () => _showPeopleSheet(
+                                            event: event,
+                                            participants: participants,
+                                            canManageHands:
+                                                viewer?.canManageHands ?? false,
+                                            canInviteCohosts:
+                                                viewer?.canInviteCohosts ??
+                                                false,
+                                          ),
+                                    ),
+                                ],
+                              ),
+                              if ((event.description ?? '')
+                                  .trim()
+                                  .isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                Text(
+                                  event.description!.trim(),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: Colors.white24,
+                                    backgroundImage: appCachedImageProvider(
+                                      event.creator?.profileImageUrl,
+                                    ),
+                                    child:
+                                        event.creator?.profileImageUrl == null
+                                            ? const Icon(
+                                              Icons.person,
+                                              color: Colors.white,
+                                            )
+                                            : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          event.creator?.name ?? 'Host',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${_formatRoleLabel(event.creator?.role ?? 'Host')} • $totalListeners in room',
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    joined ? 'Connected' : 'Connecting...',
+                                    style: TextStyle(
+                                      color:
+                                          joined
+                                              ? const Color(0xFF8AFBA6)
+                                              : const Color(0xFFFFC95B),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 56,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _reactionOrder.length,
+                            separatorBuilder:
+                                (_, __) => SizedBox(width: Dimensions.width10),
+                            itemBuilder: (context, index) {
+                              final reaction = _reactionOrder[index];
+                              final meta = _reactionMeta(reaction);
+                              final enabled = viewer?.canSendReactions ?? false;
+
+                              return GestureDetector(
+                                onTap:
+                                    enabled
+                                        ? () =>
+                                            controller.sendReaction(reaction)
+                                        : null,
+                                child: _GlassPanel(
+                                  borderRadius: BorderRadius.circular(999),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  backgroundColor:
+                                      enabled
+                                          ? meta.background
+                                          : Colors.white.withValues(
+                                            alpha: 0.08,
+                                          ),
+                                  child: AnimatedScale(
+                                    scale: enabled ? 1 : 0.96,
+                                    duration: const Duration(milliseconds: 180),
+                                    child: Text(
+                                      meta.emoji,
+                                      style: const TextStyle(fontSize: 24),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: IgnorePointer(child: _buildFloatingReactions()),
+                  ),
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 24,
+                    child: _GlassPanel(
+                      borderRadius: BorderRadius.circular(999),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _controlButton(
+                            icon:
+                                agoraHelper.speakerEnabled.value
+                                    ? Icons.volume_up_rounded
+                                    : Icons.volume_off_rounded,
+                            onTap: () => agoraHelper.toggleSpeaker(),
+                          ),
+                          _controlButton(
+                            icon:
+                                agoraHelper.micMuted.value
+                                    ? Icons.mic_off_rounded
+                                    : Icons.mic_rounded,
+                            onTap:
+                                viewer?.canPublishAudio ?? false
+                                    ? () => agoraHelper.toggleMute()
+                                    : null,
+                            disabled: !(viewer?.canPublishAudio ?? false),
+                          ),
+                          if (event.sessionMode == 'interactive')
+                            _controlButton(
+                              icon:
+                                  agoraHelper.cameraEnabled.value
+                                      ? Icons.videocam_rounded
+                                      : Icons.videocam_off_rounded,
+                              onTap:
+                                  viewer?.canPublishVideo ?? false
+                                      ? () async {
+                                        final granted =
+                                            await controller
+                                                .requestCameraPermission();
+                                        if (!granted) {
+                                          return;
+                                        }
+                                        await agoraHelper.toggleCamera();
+                                      }
+                                      : null,
+                              disabled: !(viewer?.canPublishVideo ?? false),
+                            ),
+                          if ((viewer?.canRaiseHand ?? false) ||
+                              (viewer?.isHandRaised ?? false))
+                            _controlButton(
+                              icon:
+                                  (viewer?.isHandRaised ?? false)
+                                      ? Icons.pan_tool_alt_rounded
+                                      : Icons.pan_tool_outlined,
+                              onTap: () async {
+                                if (viewer?.isHandRaised ?? false) {
+                                  await controller.lowerHand();
+                                } else {
+                                  await controller.raiseHand();
+                                }
+                              },
+                              accentColor: const Color(0xFFFFC95B),
+                            ),
+                          _controlButton(
+                            icon:
+                                isCreator
+                                    ? Icons.call_end_rounded
+                                    : Icons.logout,
+                            onTap: isCreator ? _endSession : _leaveSession,
+                            backgroundColor: const Color(0xFFEB5545),
+                            iconColor: Colors.white,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 
-  Widget _buildTopBar(EventModel event, bool isCreator) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: _leaveSession,
-          child: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-        ),
-        SizedBox(width: Dimensions.width10),
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: Dimensions.width10,
-            vertical: Dimensions.height5,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.red.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            event.sessionMode == 'audio' ? 'LIVE AUDIO' : 'LIVE STAGE',
-            style: const TextStyle(
-              color: Colors.redAccent,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const Spacer(),
-        if (isCreator)
-          InkWell(
-            onTap: _endSession,
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: Dimensions.width15,
-                vertical: Dimensions.height10,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text('End', style: TextStyle(color: Colors.white)),
-            ),
-          ),
-      ],
-    );
-  }
+  Widget _buildStageBackdrop({
+    required EventModel event,
+    required EventParticipantModel? featuredParticipant,
+  }) {
+    final fallbackImage =
+        MediaUrlHelper.resolve(event.coverImageUrl) ??
+        MediaUrlHelper.resolve(event.creator?.backgroundImageUrl) ??
+        MediaUrlHelper.resolve(event.creator?.profileImageUrl);
 
-  Widget _buildStage(
-    EventModel event,
-    List<EventParticipantModel> stageParticipants,
-  ) {
     if (event.sessionMode == 'audio') {
-      return _buildAudioOnlyStage(event);
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          if (fallbackImage != null)
+            AppCachedNetworkImage(
+              imageUrl: fallbackImage,
+              fit: BoxFit.cover,
+              placeholderColor: AppColors.primary6,
+              placeholderIcon: Icons.mic_none_rounded,
+            )
+          else
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF302018), Color(0xFF141414)],
+                ),
+              ),
+            ),
+          Center(
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.14),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.24),
+                  width: 1.2,
+                ),
+              ),
+              child: const Icon(
+                Icons.multitrack_audio_rounded,
+                color: Colors.white,
+                size: 58,
+              ),
+            ),
+          ),
+        ],
+      );
     }
 
-    return Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          height: 240,
-          padding: EdgeInsets.all(Dimensions.width10),
-          decoration: BoxDecoration(
-            color: Colors.white12,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child:
-              stageParticipants.isEmpty
-                  ? _buildEmptyStage()
-                  : GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: stageParticipants.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: stageParticipants.length == 1 ? 1 : 2,
-                      crossAxisSpacing: Dimensions.width10,
-                      mainAxisSpacing: Dimensions.height10,
-                      childAspectRatio: 1,
-                    ),
-                    itemBuilder: (context, index) {
-                      return _buildStageTile(event, stageParticipants[index]);
-                    },
-                  ),
-        ),
-        if (controller.liveReactions.isNotEmpty)
-          Positioned(right: 12, top: 12, child: _buildReactionOverlay()),
-      ],
-    );
-  }
-
-  Widget _buildAudioOnlyStage(EventModel event) {
-    return Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          height: 200,
-          padding: EdgeInsets.all(Dimensions.width20),
-          decoration: BoxDecoration(
-            color: Colors.white12,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                radius: 36,
-                backgroundColor: Colors.white24,
-                child: const Icon(Icons.mic, color: Colors.white, size: 30),
-              ),
-              SizedBox(height: Dimensions.height15),
-              Text(
-                'Audio room in progress',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: Dimensions.font18,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Poppins',
+    if (featuredParticipant == null) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          if (fallbackImage != null)
+            AppCachedNetworkImage(
+              imageUrl: fallbackImage,
+              fit: BoxFit.cover,
+              placeholderColor: AppColors.primary6,
+              placeholderIcon: Icons.videocam_off_rounded,
+            )
+          else
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF493226), Color(0xFF141414)],
                 ),
               ),
-              SizedBox(height: Dimensions.height5),
-              Text(
-                event.title ?? 'Live event',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: Dimensions.font13,
-                  fontFamily: 'Poppins',
-                ),
+            ),
+          const Center(
+            child: Text(
+              'Waiting for host video',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
-            ],
+            ),
           ),
-        ),
-        if (controller.liveReactions.isNotEmpty)
-          Positioned(right: 12, top: 12, child: _buildReactionOverlay()),
-      ],
+        ],
+      );
+    }
+
+    return _buildParticipantVideoTile(
+      event: event,
+      participant: featuredParticipant,
+      fullscreen: true,
     );
   }
 
-  Widget _buildEmptyStage() {
-    return Center(
-      child: Text(
-        'Waiting for host video',
-        style: TextStyle(
-          color: Colors.white70,
-          fontSize: Dimensions.font14,
-          fontFamily: 'Poppins',
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStageTile(EventModel event, EventParticipantModel participant) {
+  Widget _buildParticipantVideoTile({
+    required EventModel event,
+    required EventParticipantModel participant,
+    required bool fullscreen,
+  }) {
     final currentRtc = controller.currentRtc.value;
     final channelName =
         currentRtc?.channelName ?? agoraHelper.currentChannelName;
@@ -324,106 +618,132 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                   participant.agoraUid,
                 )));
 
-    Widget child;
+    final label =
+        participant.name?.isNotEmpty == true
+            ? participant.name!
+            : participant.username?.isNotEmpty == true
+            ? participant.username!
+            : 'Participant';
+
+    Widget content;
     if (hasVideo && agoraHelper.engine != null && channelName != null) {
-      child = ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child:
-            isSelf
-                ? AgoraVideoView(
-                  controller: VideoViewController(
-                    rtcEngine: agoraHelper.engine!,
-                    canvas: const VideoCanvas(uid: 0),
-                  ),
-                )
-                : AgoraVideoView(
-                  controller: VideoViewController.remote(
-                    rtcEngine: agoraHelper.engine!,
-                    canvas: VideoCanvas(uid: participant.agoraUid),
-                    connection: RtcConnection(channelId: channelName),
-                  ),
+      content =
+          isSelf
+              ? AgoraVideoView(
+                controller: VideoViewController(
+                  rtcEngine: agoraHelper.engine!,
+                  canvas: const VideoCanvas(uid: 0),
                 ),
-      );
+              )
+              : AgoraVideoView(
+                controller: VideoViewController.remote(
+                  rtcEngine: agoraHelper.engine!,
+                  canvas: VideoCanvas(uid: participant.agoraUid),
+                  connection: RtcConnection(channelId: channelName),
+                ),
+              );
     } else {
-      child = Container(
-        decoration: BoxDecoration(
-          color: Colors.white10,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Center(
-          child: CircleAvatar(
-            radius: 32,
-            backgroundColor: Colors.white24,
-            backgroundImage:
-                MediaUrlHelper.resolve(participant.profileImageUrl) != null
-                    ? appCachedImageProvider(
-                      MediaUrlHelper.resolve(participant.profileImageUrl),
-                    )
-                    : null,
-            child:
-                MediaUrlHelper.resolve(participant.profileImageUrl) == null
-                    ? Text(
-                      participant.name?.isNotEmpty == true
-                          ? participant.name![0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(color: Colors.white),
-                    )
-                    : null,
+      final imageUrl = MediaUrlHelper.resolve(participant.profileImageUrl);
+      content = Stack(
+        fit: StackFit.expand,
+        children: [
+          if (imageUrl != null)
+            AppCachedNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.cover,
+              placeholderColor: Colors.black,
+              placeholderIcon: Icons.person,
+            )
+          else
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF69473A), Color(0xFF1E1E1E)],
+                ),
+              ),
+            ),
+          Center(
+            child: CircleAvatar(
+              radius: fullscreen ? 54 : 30,
+              backgroundColor: Colors.white.withValues(alpha: 0.18),
+              backgroundImage:
+                  imageUrl != null ? appCachedImageProvider(imageUrl) : null,
+              child:
+                  imageUrl == null
+                      ? Text(
+                        label.isNotEmpty ? label[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: fullscreen ? 30 : 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      )
+                      : null,
+            ),
           ),
-        ),
+        ],
       );
     }
 
     return Stack(
+      fit: StackFit.expand,
       children: [
-        Positioned.fill(child: child),
+        Positioned.fill(child: content),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.center,
+                colors: [
+                  Colors.black.withValues(alpha: 0.72),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
         Positioned(
-          left: 10,
-          right: 10,
-          bottom: 10,
+          left: 14,
+          right: 14,
+          bottom: 14,
           child: Row(
             children: [
-              Expanded(
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width10,
-                    vertical: Dimensions.height5,
+              Flexible(
+                child: _GlassPanel(
+                  borderRadius: BorderRadius.circular(999),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
+                  backgroundColor: Colors.black.withValues(alpha: 0.24),
                   child: Text(
-                    participant.name?.isNotEmpty == true
-                        ? participant.name!
-                        : participant.username?.isNotEmpty == true
-                        ? participant.username!
-                        : 'Participant',
+                    label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: Dimensions.width8),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimensions.width10,
-                  vertical: Dimensions.height5,
+              const SizedBox(width: 8),
+              _GlassPanel(
+                borderRadius: BorderRadius.circular(999),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(999),
-                ),
+                backgroundColor: Colors.black.withValues(alpha: 0.24),
                 child: Text(
-                  participant.role?.toUpperCase() ?? 'LIVE',
+                  (participant.role ?? 'live').toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
                     fontWeight: FontWeight.w700,
+                    fontSize: 11,
                   ),
                 ),
               ),
@@ -434,499 +754,598 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
     );
   }
 
-  Widget _buildReactionOverlay() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children:
-          controller.liveReactions
-              .take(4)
-              .map(
-                (reaction) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _reactionIcon(reaction.reaction),
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        reaction.actorName?.isNotEmpty == true
-                            ? reaction.actorName!
-                            : 'Reaction',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-              .toList(),
-    );
-  }
+  Widget _buildFloatingReactions() {
+    final reactions = controller.liveReactions.reversed.take(6).toList();
+    if (reactions.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  Widget _buildEventMeta(EventModel event, bool joined, int totalListeners) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
       children: [
-        Text(
-          event.title ?? 'Untitled Event',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: Dimensions.font22,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Poppins',
-          ),
-        ),
-        SizedBox(height: Dimensions.height8),
-        Text(
-          event.description ?? '',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: Dimensions.font14,
-            fontFamily: 'Poppins',
-          ),
-        ),
-        SizedBox(height: Dimensions.height15),
-        Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: Colors.white24,
-              child: const Icon(Icons.person, color: Colors.white),
-            ),
-            SizedBox(width: Dimensions.width10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    event.creator?.name ?? 'Host',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '${event.creator?.role ?? 'Host'} • $totalListeners listening',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
+        for (int index = 0; index < reactions.length; index++)
+          Positioned(
+            right: 20 + (index % 3) * 44,
+            bottom: 118 + (index % 4) * 10,
+            child: _FloatingReactionBubble(
+              key: ValueKey(
+                '${reactions[index].createdAt?.millisecondsSinceEpoch}-${reactions[index].actorId}-${reactions[index].reaction}-$index',
               ),
+              reaction: reactions[index],
+              meta: _reactionMeta(reactions[index].reaction),
             ),
-            Text(
-              joined ? 'Connected' : 'Connecting...',
-              style: TextStyle(
-                color: joined ? Colors.greenAccent : Colors.orangeAccent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+          ),
       ],
     );
   }
 
-  Widget _buildHandRaiseQueue(List<EventParticipantModel> queue) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(Dimensions.width15),
-      decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Hands Raised',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: Dimensions.font15,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          SizedBox(height: Dimensions.height10),
-          Wrap(
-            spacing: Dimensions.width10,
-            runSpacing: Dimensions.height10,
-            children:
-                queue.map((participant) {
-                  return Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Dimensions.width10,
-                      vertical: Dimensions.height10,
-                    ),
+  void _showPeopleSheet({
+    required EventModel event,
+    required List<EventParticipantModel> participants,
+    required bool canManageHands,
+    required bool canInviteCohosts,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.72,
+          minChildSize: 0.48,
+          maxChildSize: 0.94,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF151515),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                children: [
+                  SizedBox(height: Dimensions.height12),
+                  Container(
+                    width: 48,
+                    height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.white12,
-                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(999),
                     ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          participant.name?.isNotEmpty == true
-                              ? participant.name!
-                              : participant.username ?? 'Participant',
-                          style: const TextStyle(color: Colors.white),
+                        const Text(
+                          'People in room',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        SizedBox(width: Dimensions.width10),
-                        TextButton(
-                          onPressed:
-                              () => controller.grantSpeaker(
-                                targetId: participant.id ?? '',
-                                targetType: participant.type ?? '',
-                              ),
-                          child: const Text('Let speak'),
+                        const Spacer(),
+                        Text(
+                          '${participants.length}',
+                          style: const TextStyle(color: Colors.white70),
                         ),
                       ],
                     ),
-                  );
-                }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildParticipantsList(
-    EventModel event,
-    List<EventParticipantModel> participants,
-    bool canManageHands,
-    bool canInviteCohosts,
-  ) {
-    if (participants.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(Dimensions.width15),
-        decoration: BoxDecoration(
-          color: Colors.white10,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Text(
-          'No participant data yet. Waiting for the live roster...',
-          style: TextStyle(color: Colors.white70),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      itemCount: participants.length,
-      separatorBuilder: (_, __) => SizedBox(height: Dimensions.height10),
-      itemBuilder: (context, index) {
-        final participant = participants[index];
-        final imageUrl = MediaUrlHelper.resolve(participant.profileImageUrl);
-        final subtitleParts = <String>[
-          if (participant.role?.isNotEmpty ?? false) participant.role!,
-          if (participant.handRaisedAt != null) 'Hand raised',
-          if (participant.isVerified) 'Verified',
-        ];
-
-        return Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: Dimensions.width15,
-            vertical: Dimensions.height12,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white10,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.white24,
-                backgroundImage:
-                    imageUrl != null ? appCachedImageProvider(imageUrl) : null,
-                child:
-                    imageUrl == null
-                        ? Text(
-                          (participant.name?.isNotEmpty ?? false)
-                              ? participant.name![0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(color: Colors.white),
-                        )
-                        : null,
-              ),
-              SizedBox(width: Dimensions.width15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      participant.name?.isNotEmpty == true
-                          ? participant.name!
-                          : participant.username?.isNotEmpty == true
-                          ? participant.username!
-                          : 'Unknown participant',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                  ),
+                  if (event.handRaiseQueue.isNotEmpty && canManageHands)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Hands raised',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children:
+                                event.handRaiseQueue.map((participant) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          participant.name?.isNotEmpty == true
+                                              ? participant.name!
+                                              : participant.username ??
+                                                  'Participant',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        TextButton(
+                                          onPressed:
+                                              () => controller.grantSpeaker(
+                                                targetId: participant.id ?? '',
+                                                targetType:
+                                                    participant.type ?? '',
+                                              ),
+                                          child: const Text('Let speak'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                          ),
+                        ],
                       ),
                     ),
-                    if (subtitleParts.isNotEmpty)
-                      Text(
-                        subtitleParts.join(' • '),
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                  ],
-                ),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      itemCount: participants.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final participant = participants[index];
+                        final imageUrl = MediaUrlHelper.resolve(
+                          participant.profileImageUrl,
+                        );
+                        final subtitleParts = <String>[
+                          if (participant.role?.isNotEmpty ?? false)
+                            _formatRoleLabel(participant.role!),
+                          if (participant.handRaisedAt != null) 'Hand raised',
+                          if (participant.isVerified) 'Verified',
+                        ];
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor: Colors.white24,
+                                backgroundImage:
+                                    imageUrl != null
+                                        ? appCachedImageProvider(imageUrl)
+                                        : null,
+                                child:
+                                    imageUrl == null
+                                        ? Text(
+                                          (participant.name?.isNotEmpty ??
+                                                  false)
+                                              ? participant.name![0]
+                                                  .toUpperCase()
+                                              : '?',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                        : null,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      participant.name?.isNotEmpty == true
+                                          ? participant.name!
+                                          : participant.username?.isNotEmpty ==
+                                              true
+                                          ? participant.username!
+                                          : 'Unknown participant',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (subtitleParts.isNotEmpty)
+                                      Text(
+                                        subtitleParts.join(' • '),
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              if (canManageHands || canInviteCohosts)
+                                PopupMenuButton<String>(
+                                  color: AppColors.black1,
+                                  icon: const Icon(
+                                    Icons.more_horiz,
+                                    color: Colors.white,
+                                  ),
+                                  onSelected: (value) {
+                                    switch (value) {
+                                      case 'make_cohost':
+                                        controller.assignCohost(
+                                          eventId: event.id ?? '',
+                                          targetId: participant.id ?? '',
+                                          targetType: participant.type ?? '',
+                                        );
+                                        break;
+                                      case 'remove_cohost':
+                                        controller.revokeCohost(
+                                          eventId: event.id ?? '',
+                                          targetId: participant.id ?? '',
+                                          targetType: participant.type ?? '',
+                                        );
+                                        break;
+                                      case 'make_speaker':
+                                        controller.grantSpeaker(
+                                          targetId: participant.id ?? '',
+                                          targetType: participant.type ?? '',
+                                        );
+                                        break;
+                                      case 'remove_speaker':
+                                        controller.revokeSpeaker(
+                                          targetId: participant.id ?? '',
+                                          targetType: participant.type ?? '',
+                                        );
+                                        break;
+                                    }
+                                  },
+                                  itemBuilder: (_) {
+                                    final items = <PopupMenuEntry<String>>[];
+                                    if (canInviteCohosts &&
+                                        participant.role != 'host') {
+                                      items.add(
+                                        PopupMenuItem<String>(
+                                          value:
+                                              participant.role == 'cohost'
+                                                  ? 'remove_cohost'
+                                                  : 'make_cohost',
+                                          child: Text(
+                                            participant.role == 'cohost'
+                                                ? 'Remove cohost'
+                                                : 'Make cohost',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    if (canManageHands) {
+                                      if (participant.role == 'audience') {
+                                        items.add(
+                                          const PopupMenuItem<String>(
+                                            value: 'make_speaker',
+                                            child: Text(
+                                              'Invite to speak',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      } else if (participant.role ==
+                                          'speaker') {
+                                        items.add(
+                                          const PopupMenuItem<String>(
+                                            value: 'remove_speaker',
+                                            child: Text(
+                                              'Move to audience',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                    return items;
+                                  },
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-              if (canManageHands || canInviteCohosts)
-                PopupMenuButton<String>(
-                  color: AppColors.black1,
-                  icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'make_cohost':
-                        controller.assignCohost(
-                          eventId: event.id ?? '',
-                          targetId: participant.id ?? '',
-                          targetType: participant.type ?? '',
-                        );
-                        break;
-                      case 'remove_cohost':
-                        controller.revokeCohost(
-                          eventId: event.id ?? '',
-                          targetId: participant.id ?? '',
-                          targetType: participant.type ?? '',
-                        );
-                        break;
-                      case 'make_speaker':
-                        controller.grantSpeaker(
-                          targetId: participant.id ?? '',
-                          targetType: participant.type ?? '',
-                        );
-                        break;
-                      case 'remove_speaker':
-                        controller.revokeSpeaker(
-                          targetId: participant.id ?? '',
-                          targetType: participant.type ?? '',
-                        );
-                        break;
-                    }
-                  },
-                  itemBuilder: (_) {
-                    final items = <PopupMenuEntry<String>>[];
-                    if (canInviteCohosts && participant.role != 'host') {
-                      items.add(
-                        PopupMenuItem<String>(
-                          value:
-                              participant.role == 'cohost'
-                                  ? 'remove_cohost'
-                                  : 'make_cohost',
-                          child: Text(
-                            participant.role == 'cohost'
-                                ? 'Remove cohost'
-                                : 'Make cohost',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      );
-                    }
-                    if (canManageHands) {
-                      if (participant.role == 'audience') {
-                        items.add(
-                          const PopupMenuItem<String>(
-                            value: 'make_speaker',
-                            child: Text(
-                              'Invite to speak',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        );
-                      } else if (participant.role == 'speaker') {
-                        items.add(
-                          const PopupMenuItem<String>(
-                            value: 'remove_speaker',
-                            child: Text(
-                              'Move to audience',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                    return items;
-                  },
-                ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildReactionStrip(bool canSendReactions) {
-    final reactions = <String>[
-      'clap',
-      'heart',
-      'fire',
-      'party',
-      'wow',
-      'thumbs_up',
-    ];
+  _ReactionMeta _reactionMeta(String reaction) {
+    switch (reaction) {
+      case 'heart':
+        return const _ReactionMeta(emoji: '❤️', background: Color(0x66FF577A));
+      case 'fire':
+        return const _ReactionMeta(emoji: '🔥', background: Color(0x66FF8C42));
+      case 'party':
+        return const _ReactionMeta(emoji: '🎉', background: Color(0x66C26DFF));
+      case 'wow':
+        return const _ReactionMeta(emoji: '😮', background: Color(0x66FFD76A));
+      case 'thumbs_up':
+        return const _ReactionMeta(emoji: '👍', background: Color(0x665A9CFF));
+      case 'clap':
+      default:
+        return const _ReactionMeta(emoji: '👏', background: Color(0x66FFB15A));
+    }
+  }
 
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: reactions.length,
-        separatorBuilder: (_, __) => SizedBox(width: Dimensions.width10),
-        itemBuilder: (context, index) {
-          final reaction = reactions[index];
-          return InkWell(
-            onTap:
-                canSendReactions
-                    ? () => controller.sendReaction(reaction)
-                    : null,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: canSendReactions ? Colors.white12 : Colors.white10,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _reactionIcon(reaction),
-                color: canSendReactions ? Colors.white : Colors.white38,
-                size: 20,
-              ),
+  String _formatRoleLabel(String value) {
+    switch (value.toLowerCase()) {
+      case 'cohost':
+        return 'Cohost';
+      case 'speaker':
+        return 'Speaker';
+      case 'audience':
+        return 'Audience';
+      case 'host':
+      default:
+        return 'Host';
+    }
+  }
+
+  static const List<String> _reactionOrder = <String>[
+    'clap',
+    'heart',
+    'fire',
+    'party',
+    'wow',
+    'thumbs_up',
+  ];
+}
+
+class _GlassPanel extends StatelessWidget {
+  const _GlassPanel({
+    required this.child,
+    required this.borderRadius,
+    this.padding,
+    this.backgroundColor,
+  });
+
+  final Widget child;
+  final BorderRadius borderRadius;
+  final EdgeInsetsGeometry? padding;
+  final Color? backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: backgroundColor ?? Colors.white.withValues(alpha: 0.14),
+            borderRadius: borderRadius,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.18),
+              width: 1,
             ),
-          );
-        },
+          ),
+          child: child,
+        ),
       ),
     );
   }
+}
 
-  Widget _buildControls(
-    EventModel event, {
-    required bool speakerOn,
-    required bool isMuted,
-    required bool cameraOn,
-    required bool canPublishAudio,
-    required bool canPublishVideo,
-    required bool canRaiseHand,
-    required bool isHandRaised,
-    required bool isCreator,
-  }) {
-    return Center(
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
+    required this.text,
+    required this.color,
+    this.icon,
+    this.textColor,
+    this.backgroundColor,
+    this.onTap,
+  });
+
+  final String text;
+  final Color color;
+  final IconData? icon;
+  final Color? textColor;
+  final Color? backgroundColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? color.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _controlButton(
-            icon: speakerOn ? Icons.volume_up : Icons.volume_off,
-            onTap: () async {
-              await agoraHelper.toggleSpeaker();
-            },
-          ),
-          SizedBox(width: Dimensions.width15),
-          _controlButton(
-            icon: isMuted ? Icons.mic_off : Icons.mic,
-            onTap:
-                canPublishAudio
-                    ? () async {
-                      await agoraHelper.toggleMute();
-                    }
-                    : null,
-            disabled: !canPublishAudio,
-          ),
-          if (event.sessionMode == 'interactive') ...[
-            SizedBox(width: Dimensions.width15),
-            _controlButton(
-              icon: cameraOn ? Icons.videocam : Icons.videocam_off,
-              onTap:
-                  canPublishVideo
-                      ? () async {
-                        final granted =
-                            await controller.requestCameraPermission();
-                        if (!granted) {
-                          return;
-                        }
-                        await agoraHelper.toggleCamera();
-                      }
-                      : null,
-              disabled: !canPublishVideo,
-            ),
+          if (icon != null) ...[
+            Icon(icon, color: textColor ?? color, size: 15),
+            const SizedBox(width: 6),
           ],
-          if (canRaiseHand || isHandRaised) ...[
-            SizedBox(width: Dimensions.width15),
-            _controlButton(
-              icon: isHandRaised ? Icons.pan_tool_alt : Icons.pan_tool_outlined,
-              onTap: () async {
-                if (isHandRaised) {
-                  await controller.lowerHand();
-                } else {
-                  await controller.raiseHand();
-                }
-              },
-            ),
-          ],
-          SizedBox(width: Dimensions.width15),
-          InkWell(
-            onTap: isCreator ? _endSession : _leaveSession,
-            child: Container(
-              height: 60,
-              width: 60,
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isCreator ? Icons.call_end : Icons.exit_to_app,
-                color: Colors.white,
-              ),
+          Text(
+            text,
+            style: TextStyle(
+              color: textColor ?? color,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
             ),
           ),
         ],
       ),
     );
-  }
 
-  Widget _controlButton({
-    required IconData icon,
-    VoidCallback? onTap,
-    bool disabled = false,
-  }) {
+    if (onTap == null) {
+      return content;
+    }
     return InkWell(
-      onTap: disabled ? null : onTap,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: content,
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
       child: Container(
-        height: 54,
-        width: 54,
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: disabled ? Colors.white10 : Colors.white12,
           shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.08),
         ),
-        child: Icon(icon, color: disabled ? Colors.white38 : Colors.white),
+        child: Icon(icon, color: Colors.white),
       ),
     );
   }
+}
 
-  IconData _reactionIcon(String reaction) {
-    switch (reaction) {
-      case 'heart':
-        return Icons.favorite;
-      case 'fire':
-        return Icons.local_fire_department;
-      case 'party':
-        return Icons.celebration;
-      case 'wow':
-        return Icons.sentiment_very_satisfied;
-      case 'thumbs_up':
-        return Icons.thumb_up;
-      case 'clap':
-      default:
-        return Icons.pan_tool_alt_rounded;
-    }
+class _ReactionMeta {
+  const _ReactionMeta({required this.emoji, required this.background});
+
+  final String emoji;
+  final Color background;
+}
+
+class _FloatingReactionBubble extends StatelessWidget {
+  const _FloatingReactionBubble({
+    super.key,
+    required this.reaction,
+    required this.meta,
+  });
+
+  final LiveEventReactionModel reaction;
+  final _ReactionMeta meta;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 2600),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final sway = math.sin(value * math.pi * 2) * 12;
+        final opacity = value < 0.82 ? 1.0 : (1 - ((value - 0.82) / 0.18));
+        return Opacity(
+          opacity: opacity.clamp(0, 1),
+          child: Transform.translate(
+            offset: Offset(sway, -value * 180),
+            child: Transform.scale(scale: 0.85 + (value * 0.35), child: child),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (reaction.actorName?.isNotEmpty == true)
+            Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.48),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                reaction.actorName!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: meta.background,
+              boxShadow: [
+                BoxShadow(
+                  color: meta.background.withValues(alpha: 0.45),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(meta.emoji, style: const TextStyle(fontSize: 30)),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+Widget _controlButton({
+  required IconData icon,
+  Future<void> Function()? onTap,
+  bool disabled = false,
+  Color? backgroundColor,
+  Color? iconColor,
+  Color? accentColor,
+}) {
+  return InkWell(
+    onTap: disabled || onTap == null ? null : () => onTap(),
+    borderRadius: BorderRadius.circular(999),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color:
+            backgroundColor ??
+            (disabled
+                ? Colors.white.withValues(alpha: 0.08)
+                : (accentColor ?? Colors.white).withValues(alpha: 0.14)),
+        border: Border.all(
+          color: (accentColor ?? Colors.white).withValues(
+            alpha: disabled ? 0.08 : 0.22,
+          ),
+        ),
+      ),
+      child: Icon(
+        icon,
+        color:
+            disabled
+                ? Colors.white38
+                : iconColor ?? accentColor ?? Colors.white,
+      ),
+    ),
+  );
 }
