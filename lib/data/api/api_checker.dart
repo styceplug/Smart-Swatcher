@@ -8,7 +8,7 @@ class ApiChecker {
     bool redirectOnUnauthorized = true,
   }) {
     if (response.statusCode == 401 && redirectOnUnauthorized) {
-      Get.offAllNamed(AppRoutes.onboardingScreen);
+      Get.offAllNamed(AppRoutes.getStarted);
     } else if (response.statusCode == 403) {
       // Forbidden
     } else if (response.statusCode == 500) {
