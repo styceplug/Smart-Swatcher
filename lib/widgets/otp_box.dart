@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 
+import '../utils/colors.dart';
+import '../utils/dimensions.dart';
 
 class OtpInput extends StatefulWidget {
   final int length;
@@ -68,36 +71,75 @@ class _OtpInputState extends State<OtpInput> with CodeAutoFill {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(widget.length, (index) {
-        return SizedBox(
-          width: widget.boxSize,
-          height: widget.boxSize,
-          child: TextField(
-            controller: controllers[index],
-            focusNode: focusNodes[index],
-            maxLength: 1,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-            decoration: InputDecoration(
-              counterText: '',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+    final theme = Theme.of(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalSpacing = (widget.length - 1) * Dimensions.width10;
+        final maxBoxWidth =
+            (constraints.maxWidth - totalSpacing) / widget.length;
+        final boxExtent =
+            maxBoxWidth.isFinite
+                ? maxBoxWidth.clamp(44.0, widget.boxSize).toDouble()
+                : widget.boxSize;
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(widget.length, (index) {
+            return SizedBox(
+              width: boxExtent,
+              height: boxExtent,
+              child: TextField(
+                controller: controllers[index],
+                focusNode: focusNodes[index],
+                maxLength: 1,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                textAlign: TextAlign.center,
+                cursorColor: AppColors.primary5,
+                style: TextStyle(
+                  fontSize: boxExtent * 0.36,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.black1,
+                ),
+                decoration: InputDecoration(
+                  counterText: '',
+                  filled: true,
+                  fillColor: theme.inputDecorationTheme.fillColor,
+                  contentPadding: EdgeInsets.zero,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
+                    borderSide: BorderSide(
+                      color: AppColors.primary5.withValues(alpha: 0.10),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
+                    borderSide: BorderSide(
+                      color: AppColors.primary5.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(
+                      color: AppColors.primary5,
+                      width: 1.6,
+                    ),
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(
+                      color: AppColors.error,
+                      width: 1.2,
+                    ),
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
+                  ),
+                ),
+                onChanged: (value) => _onChanged(value, index),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onChanged: (value) => _onChanged(value, index),
-          ),
+            );
+          }),
         );
-      }),
+      },
     );
   }
 }

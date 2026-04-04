@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:smart_swatcher/controllers/auth_controller.dart';
 import 'package:smart_swatcher/data/repo/folder_repo.dart';
 import 'package:smart_swatcher/helpers/global_loader_controller.dart';
 
@@ -30,10 +31,31 @@ class ClientFolderController extends GetxController {
   var clientImage = Rxn<File>();
   Map<String, dynamic>? suggestedMetrics;
 
+  void resetFormulationDraft() {
+    clientImage.value = null;
+    suggestedMetrics = null;
+  }
+
   @override
   void onInit() {
     super.onInit();
-    getFolders();
+    if (_hasSessionContext) {
+      refreshAfterAuthChange();
+    }
+  }
+
+  bool get _hasSessionContext {
+    final authController = Get.find<AuthController>();
+    return authController.stylistProfile.value != null ||
+        authController.companyProfile.value != null;
+  }
+
+  Future<void> refreshAfterAuthChange() async {
+    if (isFetching.value) {
+      return;
+    }
+
+    await getFolders();
   }
 
   void _replaceInList(

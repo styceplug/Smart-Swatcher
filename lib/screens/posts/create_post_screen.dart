@@ -10,17 +10,11 @@ import '../../utils/colors.dart';
 import '../../utils/dimensions.dart';
 import '../../widgets/custom_appbar.dart';
 
-
-
 class CreatePostScreen extends StatefulWidget {
   final String? draftId;
   final String? draftContent;
 
-  const CreatePostScreen({
-    Key? key,
-    this.draftId,
-    this.draftContent,
-  }) : super(key: key);
+  const CreatePostScreen({super.key, this.draftId, this.draftContent});
 
   @override
   State<CreatePostScreen> createState() => _CreatePostScreenState();
@@ -28,7 +22,7 @@ class CreatePostScreen extends StatefulWidget {
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
   late TextEditingController postController;
-  final PostController controller = Get.put(PostController());
+  final PostController controller = Get.find<PostController>();
 
   @override
   void initState() {
@@ -47,9 +41,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       showModalBottomSheet(
         context: context,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(16),
-          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
         builder: (context) {
           return Container(
@@ -105,68 +97,64 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(16),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        return Obx(() => Container(
-          padding: EdgeInsets.fromLTRB(
-            Dimensions.width20,
-            Dimensions.height20,
-            Dimensions.width20,
-            Dimensions.height70,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Audience',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: Dimensions.font16,
-                      fontWeight: FontWeight.w500,
+        return Obx(
+          () => Container(
+            padding: EdgeInsets.fromLTRB(
+              Dimensions.width20,
+              Dimensions.height20,
+              Dimensions.width20,
+              Dimensions.height70,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Audience',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  InkWell(
-                    onTap: () => Get.back(),
-                    child: Icon(Icons.close),
-                  ),
-                ],
-              ),
-              SizedBox(height: Dimensions.height20),
-              Container(
-                height: 1,
-                width: Dimensions.screenWidth,
-                color: AppColors.grey2,
-              ),
-              SizedBox(height: Dimensions.height20),
-              _buildAudienceOption(
-                icon: CupertinoIcons.globe,
-                title: 'General Color Club',
-                isSelected:
-                controller.selectedAudience.value == 'General',
-                onTap: () => controller.setAudience('General'),
-              ),
-              SizedBox(height: Dimensions.height20),
-              _buildAudienceOption(
-                icon: Iconsax.people,
-                title: 'Elite Only',
-                isSelected: controller.selectedAudience.value == 'Elite',
-                onTap: () => controller.setAudience('Elite'),
-              ),
-              SizedBox(height: Dimensions.height20 * 2),
-              CustomButton(
-                text: 'Done',
-                onPressed: () => Get.back(),
-                backgroundColor: AppColors.primary5,
-              ),
-            ],
+                    InkWell(onTap: () => Get.back(), child: Icon(Icons.close)),
+                  ],
+                ),
+                SizedBox(height: Dimensions.height20),
+                Container(
+                  height: 1,
+                  width: Dimensions.screenWidth,
+                  color: AppColors.grey2,
+                ),
+                SizedBox(height: Dimensions.height20),
+                _buildAudienceOption(
+                  icon: CupertinoIcons.globe,
+                  title: 'General Color Club',
+                  isSelected: controller.selectedAudience.value == 'General',
+                  onTap: () => controller.setAudience('General'),
+                ),
+                SizedBox(height: Dimensions.height20),
+                _buildAudienceOption(
+                  icon: Iconsax.people,
+                  title: 'Elite Only',
+                  isSelected: controller.selectedAudience.value == 'Elite',
+                  onTap: () => controller.setAudience('Elite'),
+                ),
+                SizedBox(height: Dimensions.height20 * 2),
+                CustomButton(
+                  text: 'Done',
+                  onPressed: () => Get.back(),
+                  backgroundColor: AppColors.primary5,
+                ),
+              ],
+            ),
           ),
-        ));
+        );
       },
     );
   }
@@ -192,11 +180,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
           ),
           Spacer(),
-          if (isSelected)
-            Icon(
-              Icons.check,
-              color: AppColors.primary5,
-            ),
+          if (isSelected) Icon(Icons.check, color: AppColors.primary5),
         ],
       ),
     );
@@ -260,7 +244,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
 
             Obx(() {
-              if (controller.selectedMediaFiles.isEmpty) return SizedBox.shrink();
+              if (controller.selectedMediaFiles.isEmpty) {
+                return SizedBox.shrink();
+              }
               return Container(
                 height: 100,
                 margin: EdgeInsets.only(bottom: 10),
@@ -276,7 +262,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
                             image: DecorationImage(
-                              image: FileImage(controller.selectedMediaFiles[index]),
+                              image: FileImage(
+                                controller.selectedMediaFiles[index],
+                              ),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -289,11 +277,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             onTap: () => controller.removeMedia(index),
                             child: Container(
                               padding: EdgeInsets.all(2),
-                              decoration: BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                              child: Icon(Icons.close, size: 16, color: Colors.white),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        )
+                        ),
                       ],
                     );
                   },
@@ -301,37 +296,42 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               );
             }),
 
-          Obx((){
+            Obx(() {
+              String displayText = 'General Color Club';
+              IconData displayIcon = CupertinoIcons.globe;
 
-            String displayText = 'General Color Club';
-            IconData displayIcon = CupertinoIcons.globe;
+              if (controller.selectedAudience.value == 'Elite') {
+                displayText = 'Elite Only';
+                displayIcon = Iconsax.people;
+              }
 
-            if (controller.selectedAudience.value == 'Elite') {
-              displayText = 'Elite Only';
-              displayIcon = Iconsax.people;
-            }
-
-            return InkWell(
-              onTap: _showAudienceModal,
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppColors.grey2), top: BorderSide(color: AppColors.grey2)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(displayIcon),
-                    SizedBox(width: Dimensions.width20),
-                    Text(
-                      displayText, // Shows "General Color Club" or "Elite Only"
-                      style: TextStyle(fontSize: Dimensions.font15, fontFamily: 'Poppins', fontWeight: FontWeight.w500),
+              return InkWell(
+                onTap: _showAudienceModal,
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: AppColors.grey2),
+                      top: BorderSide(color: AppColors.grey2),
                     ),
-                  ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(displayIcon),
+                      SizedBox(width: Dimensions.width20),
+                      Text(
+                        displayText, // Shows "General Color Club" or "Elite Only"
+                        style: TextStyle(
+                          fontSize: Dimensions.font15,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
-
+              );
+            }),
 
             Container(
               padding: EdgeInsets.symmetric(vertical: Dimensions.height20),
@@ -351,14 +351,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   Spacer(),
 
                   // Upload Button (With Loading State)
-                  Obx(() => CustomButton(
-                    text: controller.isLoading.value ? 'Posting...' : 'Upload',
-                    onPressed: controller.isLoading.value
-                        ? () {}
-                        : () => controller.createPost(postController.text),
-                    backgroundColor: controller.isLoading.value ? AppColors.grey4 : AppColors.primary4,
-                    padding: EdgeInsets.symmetric(vertical: Dimensions.height10, horizontal: Dimensions.width20),
-                  )),
+                  Obx(
+                    () => CustomButton(
+                      text:
+                          controller.isLoading.value ? 'Posting...' : 'Upload',
+                      onPressed:
+                          controller.isLoading.value
+                              ? () {}
+                              : () =>
+                                  controller.createPost(postController.text),
+                      backgroundColor:
+                          controller.isLoading.value
+                              ? AppColors.grey4
+                              : AppColors.primary4,
+                      padding: EdgeInsets.symmetric(
+                        vertical: Dimensions.height10,
+                        horizontal: Dimensions.width20,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

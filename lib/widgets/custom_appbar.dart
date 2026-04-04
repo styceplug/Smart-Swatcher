@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 import '../utils/app_constants.dart';
 import '../utils/dimensions.dart';
@@ -43,12 +42,7 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
           leadingIcon != null
               ? Padding(
                 padding: EdgeInsets.only(left: Dimensions.width10),
-                child: InkWell(
-                  onTap: () {
-                    Get.back();
-                  },
-                  child: leadingIcon,
-                ),
+                child: leadingIcon,
               )
               : null,
       title:

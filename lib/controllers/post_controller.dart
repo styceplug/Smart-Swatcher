@@ -28,8 +28,7 @@ class PostController extends GetxController {
   var currentPostComments = <CommentModel>[].obs;
   var isCommentsLoading = false.obs;
   var selectedMediaFiles = <File>[].obs;
-  final Map<String, DateTime> _recordedImpressionTimes =
-      <String, DateTime>{};
+  final Map<String, DateTime> _recordedImpressionTimes = <String, DateTime>{};
   final RxSet<String> recordingImpressionIds = <String>{}.obs;
   final RxSet<String> deletingPostIds = <String>{}.obs;
   final RxSet<String> likingPostIds = <String>{}.obs;
@@ -40,10 +39,29 @@ class PostController extends GetxController {
   void onInit() {
     super.onInit();
     loadDrafts();
-    fetchFeed();
+    if (_hasSessionContext) {
+      refreshAfterAuthChange();
+    }
   }
 
+  bool get _hasSessionContext {
+    final authController = Get.find<AuthController>();
+    return authController.stylistProfile.value != null ||
+        authController.companyProfile.value != null;
+  }
 
+  Future<void> refreshAfterAuthChange() async {
+    if (isFeedLoading.value || isOwnPostsLoading.value) {
+      return;
+    }
+
+    await fetchFeed();
+    if (currentActorId != null && currentActorId!.trim().isNotEmpty) {
+      await fetchOwnPosts();
+    } else {
+      ownPostsList.clear();
+    }
+  }
 
   static const Duration _impressionCooldown = Duration(hours: 6);
 
@@ -116,11 +134,12 @@ class PostController extends GetxController {
   }
 
   Future<void> recordImpressions(List<String> postIds) async {
-    final validIds = postIds
-        .where((id) => id.trim().isNotEmpty)
-        .where(canRecordImpression)
-        .toSet()
-        .toList();
+    final validIds =
+        postIds
+            .where((id) => id.trim().isNotEmpty)
+            .where(canRecordImpression)
+            .toSet()
+            .toList();
 
     if (validIds.isEmpty) return;
 
@@ -141,7 +160,6 @@ class PostController extends GetxController {
       recordingImpressionIds.removeAll(validIds);
     }
   }
-
 
   Future<void> pickMedia(ImageSource source) async {
     try {
@@ -214,16 +232,15 @@ class PostController extends GetxController {
     }
 
     final nextLikes = ((activeProfile.likes ?? 0) + delta).clamp(0, 1 << 31);
-    userController.profile.value = activeProfile.copyWith(
-      likes: nextLikes,
-    );
+    userController.profile.value = activeProfile.copyWith(likes: nextLikes);
   }
 
   // --- Helper: Extract Tags ---
   List<String> _extractTags(String caption) {
     RegExp exp = RegExp(r"\B#\w\w+");
     Iterable<RegExpMatch> matches = exp.allMatches(caption);
-    List<String> tags = matches.map((m) => caption.substring(m.start + 1, m.end)).toList();
+    List<String> tags =
+        matches.map((m) => caption.substring(m.start + 1, m.end)).toList();
     return tags;
   }
 
@@ -237,13 +254,12 @@ class PostController extends GetxController {
     update();
 
     try {
-
       List<Map<String, dynamic>> mediaMeta = [];
       for (int i = 0; i < selectedMediaFiles.length; i++) {
         mediaMeta.add({
           "url": "", // Backend fills this
           "mediaType": "image",
-          "position": i
+          "position": i,
         });
       }
 
@@ -252,7 +268,7 @@ class PostController extends GetxController {
         "caption": caption,
         "targetAudience": selectedAudience.value,
         "tags": jsonEncode(_extractTags(caption)), // List -> JSON String
-        "media": jsonEncode(mediaMeta),            // List -> JSON String
+        "media": jsonEncode(mediaMeta), // List -> JSON String
       };
 
       // 3. Call Repo
@@ -270,11 +286,12 @@ class PostController extends GetxController {
 
         CustomSnackBar.success(message: "Post created successfully!");
       } else {
-        String msg = response.body is Map
-            ? (response.body['message']?.toString() ??
-                response.statusText?.toString() ??
-                "Failed to post")
-            : (response.statusText?.toString() ?? "Failed to post");
+        String msg =
+            response.body is Map
+                ? (response.body['message']?.toString() ??
+                    response.statusText?.toString() ??
+                    "Failed to post")
+                : (response.statusText?.toString() ?? "Failed to post");
         CustomSnackBar.failure(message: msg);
       }
     } catch (e) {
@@ -315,7 +332,9 @@ class PostController extends GetxController {
           // 1. Update Comments List
           if (postData['comments'] != null) {
             List<dynamic> commentList = postData['comments'];
-            currentPostComments.assignAll(commentList.map((e) => CommentModel.fromJson(e)).toList());
+            currentPostComments.assignAll(
+              commentList.map((e) => CommentModel.fromJson(e)).toList(),
+            );
           }
 
           final updatedPost = PostModel.fromJson(postData);
@@ -341,7 +360,6 @@ class PostController extends GetxController {
     try {
       Response response = await postRepo.getPosts();
       if (response.statusCode == 200) {
-
         // FIX: The API returns { "posts": [...] }, so we must access ['posts']
         List<dynamic> data = response.body['posts'] ?? [];
 
@@ -368,9 +386,10 @@ class PostController extends GetxController {
     );
 
     if (response.statusCode != 200) {
-      final message = response.body is Map
-          ? response.body['message']?.toString()
-          : response.statusText;
+      final message =
+          response.body is Map
+              ? response.body['message']?.toString()
+              : response.statusText;
       throw Exception(message ?? 'Failed to load posts');
     }
 
@@ -390,7 +409,8 @@ class PostController extends GetxController {
       return;
     }
 
-    final resolvedAuthorType = authorType ??
+    final resolvedAuthorType =
+        authorType ??
         (() {
           final authController = Get.find<AuthController>();
           switch (authController.currentAccountType.value) {
@@ -456,9 +476,10 @@ class PostController extends GetxController {
         return true;
       }
 
-      final message = response.body is Map
-          ? response.body['message']?.toString()
-          : response.statusText;
+      final message =
+          response.body is Map
+              ? response.body['message']?.toString()
+              : response.statusText;
       CustomSnackBar.failure(message: message ?? 'Failed to delete post');
       return false;
     } catch (e) {
@@ -481,7 +502,8 @@ class PostController extends GetxController {
 
     final originalStatus = matchingPosts.first.isLiked;
     final originalLikes = matchingPosts.first.metrics?.likes ?? 0;
-    final optimisticLikes = originalStatus ? originalLikes - 1 : originalLikes + 1;
+    final optimisticLikes =
+        originalStatus ? originalLikes - 1 : originalLikes + 1;
     final optimisticDelta = originalStatus ? -1 : 1;
 
     likingPostIds.add(postId);
@@ -543,7 +565,8 @@ class PostController extends GetxController {
 
     final originalStatus = matchingPosts.first.isSaved;
     final originalSaves = matchingPosts.first.metrics?.saves ?? 0;
-    final optimisticSaves = originalStatus ? originalSaves - 1 : originalSaves + 1;
+    final optimisticSaves =
+        originalStatus ? originalSaves - 1 : originalSaves + 1;
 
     savingPostIds.add(postId);
 
@@ -569,8 +592,7 @@ class PostController extends GetxController {
             post.metrics!.saves = savesCount < 0 ? 0 : savesCount;
           });
         }
-      }
-      else {
+      } else {
         _revertSave(postId, originalStatus, originalSaves);
       }
     } catch (e) {
@@ -589,7 +611,6 @@ class PostController extends GetxController {
     });
     CustomSnackBar.failure(message: "Failed to save post");
   }
-
 
   // --- Draft Logic ---
   Future<void> loadDrafts() async {
@@ -697,6 +718,4 @@ class PostController extends GetxController {
       return 'now';
     }
   }
-
-
 }

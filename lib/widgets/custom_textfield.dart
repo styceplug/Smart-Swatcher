@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 
 class CustomTextField extends StatelessWidget {
@@ -39,15 +40,9 @@ class CustomTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    // Use theme-based colors
-    final Color textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
-    final Color fillColor = theme.inputDecorationTheme.fillColor ??
-        (isDark ? Colors.white10 : const Color(0xFFDBD0C8).withOpacity(0.1));
-    final Color borderColor = theme.dividerColor;
-    final Color focusColor = theme.colorScheme.primary.withOpacity(0.6);
-    final Color enabledBorderColor = theme.colorScheme.secondary;
+    final textColor = theme.textTheme.bodyLarge?.color ?? AppColors.black1;
+    final hintColor = theme.hintColor;
+    final decorationTheme = theme.inputDecorationTheme;
 
     return TextField(
       onChanged: onChanged,
@@ -59,30 +54,44 @@ class CustomTextField extends StatelessWidget {
       autofillHints: autofillHints,
       // Support both naming conventions if you had 'textInputType' elsewhere
       keyboardType: textInputType ?? keyboardType,
-      style: TextStyle(color: textColor, fontFamily: 'Poppins'),
+      cursorColor: AppColors.primary5,
+      style: TextStyle(
+        color: textColor,
+        fontFamily: 'Poppins',
+        fontSize: Dimensions.font15,
+        fontWeight: FontWeight.w500,
+      ),
       decoration: InputDecoration(
-        filled: true,
-        fillColor: fillColor,
         labelText: labelText,
-        labelStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5), fontFamily: 'Poppins'),
+        labelStyle:
+            hintStyle ??
+            TextStyle(
+              color: hintColor,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w500,
+            ),
         hintText: hintText,
-        prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, color: textColor.withOpacity(0.6))
-            : null,
+        prefixIcon:
+            prefixIcon != null
+                ? Icon(prefixIcon, color: AppColors.primary4)
+                : null,
         suffixIcon: suffixIcon,
-        hintStyle: hintStyle ?? TextStyle(color: textColor.withOpacity(0.5), fontFamily: 'Poppins'),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(Dimensions.radius20),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(Dimensions.radius20),
-          borderSide: BorderSide(color: enabledBorderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(Dimensions.radius20),
-          borderSide: BorderSide(color: focusColor),
-        ),
+        hintStyle:
+            hintStyle ??
+            TextStyle(
+              color: hintColor,
+              fontFamily: 'Poppins',
+              fontSize: Dimensions.font14,
+              fontWeight: FontWeight.w400,
+            ),
+        contentPadding: decorationTheme.contentPadding,
+        filled: decorationTheme.filled,
+        fillColor: decorationTheme.fillColor,
+        border: decorationTheme.border,
+        enabledBorder: decorationTheme.enabledBorder,
+        focusedBorder: decorationTheme.focusedBorder,
+        errorBorder: decorationTheme.errorBorder,
+        focusedErrorBorder: decorationTheme.focusedErrorBorder,
       ),
     );
   }

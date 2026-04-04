@@ -16,6 +16,8 @@ class StylistModel {
   String? documentType;
   String? documentUrl;
   String? profileImageUrl;
+  bool isEmailVerified;
+  bool isVerified;
 
   StylistModel({
     this.id,
@@ -35,6 +37,8 @@ class StylistModel {
     this.documentType,
     this.documentUrl,
     this.profileImageUrl,
+    this.isEmailVerified = false,
+    this.isVerified = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -56,6 +60,8 @@ class StylistModel {
       if (documentType != null) "documentType": documentType,
       if (documentUrl != null) "documentUrl": documentUrl,
       if (profileImageUrl != null) "profileImageUrl": profileImageUrl,
+      "isEmailVerified": isEmailVerified,
+      "isVerified": isVerified,
     };
   }
 
@@ -70,19 +76,18 @@ class StylistModel {
       state: json['state'],
       experienceLevel: json['experienceLevel'],
       profileImageUrl: json['profileImageUrl'],
+      isEmailVerified: json['isEmailVerified'] == true,
+      isVerified: json['isVerified'] == true,
     );
   }
 
   static String resolveImage(String? url, String baseUrl) {
-    const placeholder =
-        'https://ui-avatars.com/api/?name=User&background=E5E7EB&color=6B7280';
-
-    if (url == null) return placeholder;
+    if (url == null) return '';
 
     final value = url.trim();
 
     if (value.isEmpty || value == 'null' || value == 'string') {
-      return placeholder;
+      return '';
     }
 
     if (value.startsWith('http')) return value;

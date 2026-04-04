@@ -6,8 +6,6 @@ import '../../../controllers/app_controller.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/home_screen_bottom_nav_bar.dart';
 
-
-
 class CompanyHomePage extends StatefulWidget {
   const CompanyHomePage({super.key});
 
@@ -17,7 +15,6 @@ class CompanyHomePage extends StatefulWidget {
 
 class _CompanyHomePageState extends State<CompanyHomePage> {
   AppController appController = Get.find<AppController>();
-
 
   DateTime? lastPressed;
 
@@ -45,12 +42,21 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      appController.refreshSessionControllers();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         bool shouldExit = await _onWillPop();
+        if (!context.mounted) return;
         if (shouldExit) {
           Navigator.of(context).maybePop(result);
         }
@@ -71,7 +77,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
                     controller: appController.pageController,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: appController.companyPages.length,
-                    itemBuilder: (context, index) => appController.companyPages[index],
+                    itemBuilder:
+                        (context, index) => appController.companyPages[index],
                     onPageChanged: (index) {
                       if (appController.currentAppPage.value != index) {
                         appController.changeCurrentAppPage(

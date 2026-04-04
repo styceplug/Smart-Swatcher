@@ -200,11 +200,19 @@ class AuthRepo extends GetxService {
   }
 
   Future<Response> verifyOtp(Map<String, dynamic> body) async {
-    return await apiClient.postData(AppConstants.VERIFY_OTP, body);
+    return await apiClient.postData(
+      AppConstants.VERIFY_OTP,
+      body,
+      redirectOnUnauthorized: false,
+    );
   }
 
   Future<Response> resendOtp(Map<String, dynamic> body) async {
-    return await apiClient.postData(AppConstants.RESEND_OTP, body);
+    return await apiClient.postData(
+      AppConstants.RESEND_OTP,
+      body,
+      redirectOnUnauthorized: false,
+    );
   }
 
   Future<Response> checkUsernameAvailability(String username) async {

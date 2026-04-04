@@ -33,6 +33,9 @@ Future<void> init() async {
   final sharedPreferences = await SharedPreferences.getInstance();
 
   Get.put(sharedPreferences);
+  if (!Get.isRegistered<GlobalLoaderController>()) {
+    Get.put(GlobalLoaderController(), permanent: true);
+  }
 
   //api clients
   Get.lazyPut(
@@ -42,10 +45,7 @@ Future<void> init() async {
     ),
   );
   Get.put(AgoraAudioHelper(), permanent: true);
-  Get.put(
-    ChatSocketService(sharedPreferences: Get.find()),
-    permanent: true,
-  );
+  Get.put(ChatSocketService(sharedPreferences: Get.find()), permanent: true);
 
   // repos
   Get.lazyPut(
@@ -66,11 +66,10 @@ Future<void> init() async {
 
   //controllers
 
-  Get.lazyPut(() => AppController(appRepo: Get.find()));
+  Get.put(AuthController(authRepo: Get.find()), permanent: true);
+  Get.put(AppController(appRepo: Get.find()), permanent: true);
   Get.lazyPut(() => VersionController(versionRepo: Get.find()));
-  Get.lazyPut(() => GlobalLoaderController());
   Get.lazyPut(() => PostController(), fenix: true);
-  Get.lazyPut(() => AuthController(authRepo: Get.find()), fenix: true);
   Get.lazyPut(() => ClientFolderController(), fenix: true);
   Get.lazyPut(
     () => CompanyAnalyticsController(companyAnalyticsRepo: Get.find()),

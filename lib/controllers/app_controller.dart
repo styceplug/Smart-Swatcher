@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/controllers/event_controller.dart';
+import 'package:smart_swatcher/controllers/folder_controller.dart';
+import 'package:smart_swatcher/controllers/notification_controller.dart';
+import 'package:smart_swatcher/controllers/post_controller.dart';
+import 'package:smart_swatcher/controllers/user_controller.dart';
 import 'package:smart_swatcher/screens/company/home/company_profile.dart';
 import 'package:smart_swatcher/screens/company/home/dashboard_screen.dart';
 import 'package:smart_swatcher/screens/home/pages/studio_screen.dart';
@@ -23,7 +28,7 @@ class AppController extends GetxController {
 
   var currentAppPage = 0.obs;
   PageController pageController = PageController();
-  AuthController authController = Get.find<AuthController>();
+  AuthController get authController => Get.find<AuthController>();
 
   final List<Widget> pages = [
     const StudioScreen(),
@@ -50,6 +55,32 @@ class AppController extends GetxController {
     _routeByAccountType();
   }
 
+  Future<void> refreshSessionControllers() async {
+    final hasAuthenticatedProfile =
+        authController.companyProfile.value != null ||
+        authController.stylistProfile.value != null;
+
+    if (!hasAuthenticatedProfile) {
+      return;
+    }
+
+    changeCurrentAppPage(0, movePage: false);
+
+    final postController = Get.find<PostController>();
+    final folderController = Get.find<ClientFolderController>();
+    final notificationController = Get.find<NotificationController>();
+    final userController = Get.find<UserController>();
+    final eventController = Get.find<EventController>();
+
+    await Future.wait([
+      postController.refreshAfterAuthChange(),
+      folderController.refreshAfterAuthChange(),
+      notificationController.refreshAfterAuthChange(),
+      userController.refreshAfterAuthChange(),
+      eventController.refreshAfterAuthChange(),
+    ]);
+  }
+
   Future<void> _loadProfiles() async {
     await Future.wait([
       authController.loadCompanyProfile(),
@@ -58,13 +89,35 @@ class AppController extends GetxController {
   }
 
   void _routeByAccountType() {
-    final hasCompany = authController.companyProfile.value != null;
-    final hasStylist = authController.stylistProfile.value != null;
+    final company = authController.companyProfile.value;
+    final stylist = authController.stylistProfile.value;
+    final hasCompany = company != null;
+    final hasStylist = stylist != null;
 
     if (hasCompany) {
-      Get.offAllNamed(AppRoutes.companyHomePage);
+      if (company.isEmailVerified) {
+        Get.offAllNamed(AppRoutes.companyHomePage);
+      } else {
+        authController.pendingOtpFlow.value = PendingOtpFlow(
+          accountType: AccountType.company,
+          destination: company.email,
+          message: 'Enter the verification code sent to your email',
+          postVerifyRoute: AppRoutes.companyHomePage,
+        );
+        Get.offAllNamed(AppRoutes.otpVerificationScreen);
+      }
     } else if (hasStylist) {
-      Get.offAllNamed(AppRoutes.homeScreen);
+      if (stylist.isEmailVerified) {
+        Get.offAllNamed(AppRoutes.homeScreen);
+      } else {
+        authController.pendingOtpFlow.value = PendingOtpFlow(
+          accountType: AccountType.stylist,
+          destination: stylist.email,
+          message: 'Enter the verification code sent to your email',
+          postVerifyRoute: AppRoutes.setStylistUsernameScreen,
+        );
+        Get.offAllNamed(AppRoutes.otpVerificationScreen);
+      }
     } else {
       Get.offAllNamed(AppRoutes.getStarted);
     }

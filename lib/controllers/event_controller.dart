@@ -11,6 +11,7 @@ import '../helpers/global_loader_controller.dart';
 import '../models/event_model.dart';
 import '../routes/routes.dart';
 import '../widgets/snackbars.dart';
+import 'auth_controller.dart';
 
 class EventController extends GetxController {
   final EventRepo eventRepo;
@@ -45,6 +46,7 @@ class EventController extends GetxController {
   final Rxn<EventRtcModel> currentRtc = Rxn<EventRtcModel>();
   final RxList<LiveEventReactionModel> liveReactions =
       <LiveEventReactionModel>[].obs;
+  final Map<String, DateTime> _pendingReactionEchoes = <String, DateTime>{};
 
   final RxList<EventModel> events = <EventModel>[].obs;
   final RxList<EventModel> recommendedEvents = <EventModel>[].obs;
@@ -65,13 +67,30 @@ class EventController extends GetxController {
   void onInit() {
     super.onInit();
     _bindRealtimeEvents();
-    fetchRecommendedEvents();
-    fetchEvents();
+    if (_hasSessionContext) {
+      refreshAfterAuthChange();
+    }
+  }
+
+  bool get _hasSessionContext {
+    final authController = Get.find<AuthController>();
+    return authController.companyProfile.value != null ||
+        authController.stylistProfile.value != null;
+  }
+
+  Future<void> refreshAfterAuthChange() async {
+    if (isGettingEvents.value || isGettingRecommendedEvents.value) {
+      return;
+    }
+
+    await Future.wait([fetchRecommendedEvents(), fetchEvents()]);
   }
 
   void _bindRealtimeEvents() {
     _chatEventSubscription?.cancel();
-    _chatEventSubscription = chatSocketService.events.listen(_handleSocketEvent);
+    _chatEventSubscription = chatSocketService.events.listen(
+      _handleSocketEvent,
+    );
   }
 
   void _handleSocketEvent(ChatSocketEvent socketEvent) {
@@ -84,7 +103,9 @@ class EventController extends GetxController {
     final currentEventId = selectedEvent.value?.id ?? createdEvent.value?.id;
     final eventId = data['eventId']?.toString();
 
-    if (eventId == null || currentEventId == null || eventId != currentEventId) {
+    if (eventId == null ||
+        currentEventId == null ||
+        eventId != currentEventId) {
       return;
     }
 
@@ -104,13 +125,69 @@ class EventController extends GetxController {
         break;
       case 'eventReaction':
         debugPrint('[EVENT_CTRL] realtime.eventReaction => $data');
-        _addReaction(
-          LiveEventReactionModel.fromJson(
-            <String, dynamic>{...data, 'eventId': eventId},
-          ),
-        );
+        final reaction = LiveEventReactionModel.fromJson(<String, dynamic>{
+          ...data,
+          'eventId': eventId,
+        });
+        if (_shouldIgnorePendingReactionEcho(reaction)) {
+          break;
+        }
+        _addReaction(reaction);
         break;
     }
+  }
+
+  String? get _currentActorId {
+    final authController = Get.find<AuthController>();
+    return authController.stylistProfile.value?.id ??
+        authController.companyProfile.value?.id;
+  }
+
+  String? get _currentActorType {
+    final authController = Get.find<AuthController>();
+    if (authController.stylistProfile.value != null) {
+      return 'stylist';
+    }
+    if (authController.companyProfile.value != null) {
+      return 'company';
+    }
+    return null;
+  }
+
+  String _reactionEchoKey(LiveEventReactionModel reaction) {
+    return [
+      reaction.eventId,
+      reaction.actorId ?? '',
+      reaction.actorType ?? '',
+      reaction.reaction,
+    ].join('|');
+  }
+
+  bool _shouldIgnorePendingReactionEcho(LiveEventReactionModel reaction) {
+    final currentActorId = _currentActorId;
+    final currentActorType = _currentActorType;
+    if (currentActorId == null || currentActorType == null) {
+      return false;
+    }
+
+    if (reaction.actorId != currentActorId ||
+        reaction.actorType?.toLowerCase() != currentActorType) {
+      return false;
+    }
+
+    final key = _reactionEchoKey(reaction);
+    final sentAt = _pendingReactionEchoes[key];
+    if (sentAt == null) {
+      return false;
+    }
+
+    if (DateTime.now().difference(sentAt) <= const Duration(seconds: 5)) {
+      _pendingReactionEchoes.remove(key);
+      return true;
+    }
+
+    _pendingReactionEchoes.remove(key);
+    return false;
   }
 
   void _logEventDebug(String label, dynamic payload) {
@@ -554,7 +631,8 @@ class EventController extends GetxController {
         CustomSnackBar.success(message: 'Speaker access granted');
       } else {
         CustomSnackBar.failure(
-          message: response.body?['message'] ?? 'Failed to grant speaker access',
+          message:
+              response.body?['message'] ?? 'Failed to grant speaker access',
         );
       }
     } catch (e) {
@@ -605,14 +683,16 @@ class EventController extends GetxController {
         reaction: reaction,
       );
       if (response.statusCode == 200 && response.body?['reaction'] != null) {
-        _addReaction(
-          LiveEventReactionModel.fromJson(
-            <String, dynamic>{
-              ...Map<String, dynamic>.from(response.body['reaction']),
-              'eventId': eventId,
-            },
-          ),
-        );
+        final localReaction = LiveEventReactionModel.fromJson(<String, dynamic>{
+          ...Map<String, dynamic>.from(response.body['reaction']),
+          'eventId': eventId,
+        });
+        final echoKey = _reactionEchoKey(localReaction);
+        _pendingReactionEchoes[echoKey] = DateTime.now();
+        Future.delayed(const Duration(seconds: 6), () {
+          _pendingReactionEchoes.remove(echoKey);
+        });
+        _addReaction(localReaction);
       } else if (response.statusCode != 200) {
         CustomSnackBar.failure(
           message: response.body?['message'] ?? 'Failed to send reaction',
@@ -642,8 +722,9 @@ class EventController extends GetxController {
       events.refresh();
     }
 
-    final recommendedIndex =
-        recommendedEvents.indexWhere((e) => e.id == eventId);
+    final recommendedIndex = recommendedEvents.indexWhere(
+      (e) => e.id == eventId,
+    );
     if (recommendedIndex != -1) {
       recommendedEvents[recommendedIndex] = updatedEvent;
       recommendedEvents.refresh();
@@ -681,12 +762,14 @@ class EventController extends GetxController {
     );
 
     if (pickedDate == null) return;
+    if (!context.mounted) return;
 
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
-      initialTime: selectedDateTime.value != null
-          ? TimeOfDay.fromDateTime(selectedDateTime.value!)
-          : TimeOfDay.now(),
+      initialTime:
+          selectedDateTime.value != null
+              ? TimeOfDay.fromDateTime(selectedDateTime.value!)
+              : TimeOfDay.now(),
     );
 
     if (pickedTime == null) return;

@@ -16,7 +16,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   AppController appController = Get.find<AppController>();
 
-
   DateTime? lastPressed;
 
   RxInt previousPage = 0.obs;
@@ -43,12 +42,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      appController.refreshSessionControllers();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         bool shouldExit = await _onWillPop();
+        if (!context.mounted) return;
         if (shouldExit) {
           Navigator.of(context).maybePop(result);
         }
@@ -97,7 +105,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-
-
-

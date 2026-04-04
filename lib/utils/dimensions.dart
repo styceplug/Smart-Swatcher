@@ -139,11 +139,15 @@ class Dimensions {
   static late bool isLargeScreen;
 
   // Reference dimensions (design was made for these)
-  static const double _referenceWidth = 430.0;  // Adjust to your design width
+  static const double _referenceWidth = 430.0; // Adjust to your design width
   static const double _referenceHeight = 932.0; // Adjust to your design height
 
   static void init(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    initFromMediaQuery(mediaQuery);
+  }
+
+  static void initFromMediaQuery(MediaQueryData mediaQuery) {
     screenWidth = mediaQuery.size.width;
     screenHeight = mediaQuery.size.height;
 
@@ -283,7 +287,12 @@ class Dimensions {
   static double get bottomNavIconWidth => _scale(36, min: 32);
 
   // Responsive padding - adjusts based on screen size
-  static double get screenPadding => isSmallScreen ? 12.0 : isMediumScreen ? 16.0 : 20.0;
+  static double get screenPadding =>
+      isSmallScreen
+          ? 12.0
+          : isMediumScreen
+          ? 16.0
+          : 20.0;
 
   // Responsive spacing multipliers
   static double get spacingMultiplier => isSmallScreen ? 0.8 : 1.0;

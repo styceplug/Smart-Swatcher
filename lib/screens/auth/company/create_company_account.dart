@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:smart_swatcher/controllers/auth_controller.dart';
 
@@ -13,7 +10,6 @@ import '../../../widgets/country_state_dropdown.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_textfield.dart';
-import '../../../widgets/otp_box.dart';
 import '../../../widgets/snackbars.dart';
 
 class CreateCompanyAccount extends StatefulWidget {
@@ -31,30 +27,13 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
   TextEditingController phoneController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  bool isButtonEnabled = false;
-  String otp = "";
   AuthController authController = Get.find<AuthController>();
-
-  late Future<List<CountryData>> _countriesFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _countriesFuture = loadCountries();
-  }
-
-  Future<List<CountryData>> loadCountries() async {
-    final jsonStr = await rootBundle.loadString('assets/countries_state.json');
-    final List<dynamic> data = json.decode(jsonStr);
-    return data.map((e) => CountryData.fromJson(e)).toList();
-  }
 
   void viewPassword() {
     setState(() {
       passwordVisible = !passwordVisible;
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -149,9 +128,9 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
                         });
                       },
                       child:
-                      passwordVisible
-                          ? Icon(Icons.visibility)
-                          : Icon(Icons.visibility_off),
+                          passwordVisible
+                              ? Icon(Icons.visibility)
+                              : Icon(Icons.visibility_off),
                     ),
                   ),
                   SizedBox(height: Dimensions.height20),
@@ -164,7 +143,9 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
                           passwordController.text.trim().isEmpty ||
                           selectedCountry == null ||
                           selectedState == null) {
-                        CustomSnackBar.failure(message: "Please fill all fields");
+                        CustomSnackBar.failure(
+                          message: "Please fill all fields",
+                        );
                         return;
                       }
 
@@ -179,14 +160,13 @@ class _CreateCompanyAccountState extends State<CreateCompanyAccount> {
                       });
 
                       Get.toNamed(AppRoutes.companyUsernameScreen);
-
                     },
                     backgroundColor: AppColors.primary5,
                   ),
 
                   SizedBox(height: Dimensions.height20),
                   InkWell(
-                    onTap: (){
+                    onTap: () {
                       Get.toNamed(AppRoutes.companyLoginScreen);
                     },
                     child: Row(
