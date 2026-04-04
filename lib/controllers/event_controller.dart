@@ -46,6 +46,7 @@ class EventController extends GetxController {
   final Rxn<EventRtcModel> currentRtc = Rxn<EventRtcModel>();
   final RxList<LiveEventReactionModel> liveReactions =
       <LiveEventReactionModel>[].obs;
+  final Map<String, DateTime> _pendingReactionEchoes = <String, DateTime>{};
 
   final RxList<EventModel> events = <EventModel>[].obs;
   final RxList<EventModel> recommendedEvents = <EventModel>[].obs;
@@ -124,14 +125,69 @@ class EventController extends GetxController {
         break;
       case 'eventReaction':
         debugPrint('[EVENT_CTRL] realtime.eventReaction => $data');
-        _addReaction(
-          LiveEventReactionModel.fromJson(<String, dynamic>{
-            ...data,
-            'eventId': eventId,
-          }),
-        );
+        final reaction = LiveEventReactionModel.fromJson(<String, dynamic>{
+          ...data,
+          'eventId': eventId,
+        });
+        if (_shouldIgnorePendingReactionEcho(reaction)) {
+          break;
+        }
+        _addReaction(reaction);
         break;
     }
+  }
+
+  String? get _currentActorId {
+    final authController = Get.find<AuthController>();
+    return authController.stylistProfile.value?.id ??
+        authController.companyProfile.value?.id;
+  }
+
+  String? get _currentActorType {
+    final authController = Get.find<AuthController>();
+    if (authController.stylistProfile.value != null) {
+      return 'stylist';
+    }
+    if (authController.companyProfile.value != null) {
+      return 'company';
+    }
+    return null;
+  }
+
+  String _reactionEchoKey(LiveEventReactionModel reaction) {
+    return [
+      reaction.eventId,
+      reaction.actorId ?? '',
+      reaction.actorType ?? '',
+      reaction.reaction,
+    ].join('|');
+  }
+
+  bool _shouldIgnorePendingReactionEcho(LiveEventReactionModel reaction) {
+    final currentActorId = _currentActorId;
+    final currentActorType = _currentActorType;
+    if (currentActorId == null || currentActorType == null) {
+      return false;
+    }
+
+    if (reaction.actorId != currentActorId ||
+        reaction.actorType?.toLowerCase() != currentActorType) {
+      return false;
+    }
+
+    final key = _reactionEchoKey(reaction);
+    final sentAt = _pendingReactionEchoes[key];
+    if (sentAt == null) {
+      return false;
+    }
+
+    if (DateTime.now().difference(sentAt) <= const Duration(seconds: 5)) {
+      _pendingReactionEchoes.remove(key);
+      return true;
+    }
+
+    _pendingReactionEchoes.remove(key);
+    return false;
   }
 
   void _logEventDebug(String label, dynamic payload) {
@@ -627,12 +683,16 @@ class EventController extends GetxController {
         reaction: reaction,
       );
       if (response.statusCode == 200 && response.body?['reaction'] != null) {
-        _addReaction(
-          LiveEventReactionModel.fromJson(<String, dynamic>{
-            ...Map<String, dynamic>.from(response.body['reaction']),
-            'eventId': eventId,
-          }),
-        );
+        final localReaction = LiveEventReactionModel.fromJson(<String, dynamic>{
+          ...Map<String, dynamic>.from(response.body['reaction']),
+          'eventId': eventId,
+        });
+        final echoKey = _reactionEchoKey(localReaction);
+        _pendingReactionEchoes[echoKey] = DateTime.now();
+        Future.delayed(const Duration(seconds: 6), () {
+          _pendingReactionEchoes.remove(echoKey);
+        });
+        _addReaction(localReaction);
       } else if (response.statusCode != 200) {
         CustomSnackBar.failure(
           message: response.body?['message'] ?? 'Failed to send reaction',

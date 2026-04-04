@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 
 import '../../controllers/event_controller.dart';
 import '../../helpers/agora_audio_helper.dart';
+import '../../helpers/navigation_helper.dart';
 import '../../models/event_model.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/colors.dart';
@@ -27,6 +28,7 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
   late Worker _remoteJoinWorker;
   late Worker _remoteVideoWorker;
   Timer? _participantRefreshTimer;
+  bool _chromeVisible = true;
 
   @override
   void initState() {
@@ -63,15 +65,43 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
   Future<void> _leaveSession() async {
     await controller.leaveEventSession();
     if (mounted) {
-      Get.back();
+      await NavigationHelper.maybePop(context);
     }
   }
 
   Future<void> _endSession() async {
     await controller.endEventSession();
     if (mounted && !Get.isOverlaysOpen) {
-      Get.back();
+      await NavigationHelper.maybePop(context);
     }
+  }
+
+  void _toggleChrome() {
+    if (!mounted) return;
+    setState(() {
+      _chromeVisible = !_chromeVisible;
+    });
+  }
+
+  Widget _chrome({
+    required Widget child,
+    EdgeInsetsGeometry? padding,
+    bool visible = true,
+  }) {
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        opacity: visible ? 1 : 0,
+        child: AnimatedSlide(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          offset: visible ? Offset.zero : const Offset(0, 0.06),
+          child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
+        ),
+      ),
+    );
   }
 
   @override
@@ -127,9 +157,13 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
         return Stack(
           children: [
             Positioned.fill(
-              child: _buildStageBackdrop(
-                event: event,
-                featuredParticipant: featuredParticipant,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _toggleChrome,
+                child: _buildStageBackdrop(
+                  event: event,
+                  featuredParticipant: featuredParticipant,
+                ),
               ),
             ),
             Positioned.fill(
@@ -157,109 +191,119 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                   Positioned(
                     left: 16,
                     right: 16,
-                    top: 10,
-                    child: _GlassPanel(
-                      borderRadius: BorderRadius.circular(28),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        children: [
-                          _CircleIconButton(
-                            icon: Icons.keyboard_arrow_down_rounded,
-                            onTap: _leaveSession,
-                          ),
-                          const SizedBox(width: 10),
-                          _StatusPill(
-                            text:
-                                event.sessionMode == 'audio'
-                                    ? 'LIVE AUDIO'
-                                    : 'LIVE STAGE',
-                            color: const Color(0xFFFF5D5D),
-                          ),
-                          const SizedBox(width: 10),
-                          _StatusPill(
-                            text: '$totalListeners',
-                            color: Colors.white,
-                            icon: Icons.remove_red_eye_outlined,
-                            textColor: Colors.white,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.12,
+                    top: 8,
+                    child: _chrome(
+                      visible: _chromeVisible,
+                      child: _GlassPanel(
+                        borderRadius: BorderRadius.circular(24),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            _CircleIconButton(
+                              icon: Icons.keyboard_arrow_down_rounded,
+                              onTap: _leaveSession,
                             ),
-                          ),
-                          const Spacer(),
-                          _CircleIconButton(
-                            icon: Icons.group_outlined,
-                            onTap:
-                                () => _showPeopleSheet(
-                                  event: event,
-                                  participants: participants,
-                                  canManageHands:
-                                      viewer?.canManageHands ?? false,
-                                  canInviteCohosts:
-                                      viewer?.canInviteCohosts ?? false,
-                                ),
-                          ),
-                          if (isCreator) ...[
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             _StatusPill(
-                              text: 'End',
-                              color: Colors.white,
-                              textColor: Colors.white,
-                              backgroundColor: const Color(0xFFEB5545),
-                              onTap: _endSession,
+                              text:
+                                  event.sessionMode == 'audio'
+                                      ? 'LIVE AUDIO'
+                                      : 'LIVE STAGE',
+                              color: const Color(0xFFFF5D5D),
                             ),
+                            const SizedBox(width: 8),
+                            _StatusPill(
+                              text: '$totalListeners',
+                              color: Colors.white,
+                              icon: Icons.remove_red_eye_outlined,
+                              textColor: Colors.white,
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.12,
+                              ),
+                            ),
+                            const Spacer(),
+                            _CircleIconButton(
+                              icon: Icons.group_outlined,
+                              onTap:
+                                  () => _showPeopleSheet(
+                                    event: event,
+                                    participants: participants,
+                                    canManageHands:
+                                        viewer?.canManageHands ?? false,
+                                    canInviteCohosts:
+                                        viewer?.canInviteCohosts ?? false,
+                                  ),
+                            ),
+                            if (isCreator) ...[
+                              const SizedBox(width: 8),
+                              _StatusPill(
+                                text: 'End',
+                                color: Colors.white,
+                                textColor: Colors.white,
+                                backgroundColor: const Color(0xFFEB5545),
+                                onTap: _endSession,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
                   if (supportingStageParticipants.isNotEmpty)
                     Positioned(
-                      top: 94,
+                      top: 82,
                       right: 16,
-                      child: Column(
-                        children:
-                            supportingStageParticipants
-                                .map(
-                                  (participant) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: SizedBox(
-                                      width: 108,
-                                      height: 152,
-                                      child: _GlassPanel(
-                                        borderRadius: BorderRadius.circular(24),
-                                        padding: const EdgeInsets.all(6),
-                                        backgroundColor: Colors.black
-                                            .withValues(alpha: 0.18),
-                                        child: ClipRRect(
+                      child: _chrome(
+                        visible: _chromeVisible,
+                        child: Column(
+                          children:
+                              supportingStageParticipants
+                                  .map(
+                                    (participant) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: SizedBox(
+                                        width: 88,
+                                        height: 128,
+                                        child: _GlassPanel(
                                           borderRadius: BorderRadius.circular(
-                                            18,
+                                            20,
                                           ),
-                                          child: _buildParticipantVideoTile(
-                                            event: event,
-                                            participant: participant,
-                                            fullscreen: false,
+                                          padding: const EdgeInsets.all(5),
+                                          backgroundColor: Colors.black
+                                              .withValues(alpha: 0.18),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              15,
+                                            ),
+                                            child: _buildParticipantVideoTile(
+                                              event: event,
+                                              participant: participant,
+                                              fullscreen: false,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                )
-                                .toList(),
+                                  )
+                                  .toList(),
+                        ),
                       ),
                     ),
                   Positioned(
                     left: 16,
                     right: 16,
-                    bottom: 158,
-                    child: Column(
+                    bottom: 112,
+                    child: _chrome(
+                      visible: _chromeVisible,
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _GlassPanel(
-                          borderRadius: BorderRadius.circular(28),
-                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          borderRadius: BorderRadius.circular(24),
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -270,7 +314,7 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                                       event.title ?? 'Untitled Event',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: Dimensions.font22,
+                                        fontSize: Dimensions.font18,
                                         fontWeight: FontWeight.w700,
                                         fontFamily: 'Poppins',
                                       ),
@@ -300,22 +344,23 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                               if ((event.description ?? '')
                                   .trim()
                                   .isNotEmpty) ...[
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 6),
                                 Text(
                                   event.description!.trim(),
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: Colors.white70,
-                                    height: 1.45,
+                                    height: 1.35,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 10),
                               Row(
                                 children: [
                                   CircleAvatar(
-                                    radius: 20,
+                                    radius: 16,
                                     backgroundColor: Colors.white24,
                                     backgroundImage: appCachedImageProvider(
                                       event.creator?.profileImageUrl,
@@ -339,12 +384,14 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w700,
+                                            fontSize: 13,
                                           ),
                                         ),
                                         Text(
                                           '${_formatRoleLabel(event.creator?.role ?? 'Host')} • $totalListeners in room',
                                           style: const TextStyle(
                                             color: Colors.white70,
+                                            fontSize: 11,
                                           ),
                                         ),
                                       ],
@@ -358,6 +405,7 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                                               ? const Color(0xFF8AFBA6)
                                               : const Color(0xFFFFC95B),
                                       fontWeight: FontWeight.w700,
+                                      fontSize: 11,
                                     ),
                                   ),
                                 ],
@@ -365,9 +413,9 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         SizedBox(
-                          height: 56,
+                          height: 42,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: _reactionOrder.length,
@@ -387,8 +435,8 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                                 child: _GlassPanel(
                                   borderRadius: BorderRadius.circular(999),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
+                                    horizontal: 10,
+                                    vertical: 6,
                                   ),
                                   backgroundColor:
                                       enabled
@@ -401,7 +449,7 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                                     duration: const Duration(milliseconds: 180),
                                     child: Text(
                                       meta.emoji,
-                                      style: const TextStyle(fontSize: 24),
+                                      style: const TextStyle(fontSize: 20),
                                     ),
                                   ),
                                 ),
@@ -411,87 +459,130 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                         ),
                       ],
                     ),
+                    ),
                   ),
                   Positioned.fill(
                     child: IgnorePointer(child: _buildFloatingReactions()),
                   ),
+                  if (!_chromeVisible)
+                    Positioned(
+                      top: 10,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: _GlassPanel(
+                          borderRadius: BorderRadius.circular(999),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          backgroundColor: Colors.black.withValues(alpha: 0.16),
+                          child: InkWell(
+                            onTap: _toggleChrome,
+                            borderRadius: BorderRadius.circular(999),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.visibility_outlined,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Show controls',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     left: 16,
                     right: 16,
                     bottom: 24,
-                    child: _GlassPanel(
-                      borderRadius: BorderRadius.circular(999),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _controlButton(
-                            icon:
-                                agoraHelper.speakerEnabled.value
-                                    ? Icons.volume_up_rounded
-                                    : Icons.volume_off_rounded,
-                            onTap: () => agoraHelper.toggleSpeaker(),
-                          ),
-                          _controlButton(
-                            icon:
-                                agoraHelper.micMuted.value
-                                    ? Icons.mic_off_rounded
-                                    : Icons.mic_rounded,
-                            onTap:
-                                viewer?.canPublishAudio ?? false
-                                    ? () => agoraHelper.toggleMute()
-                                    : null,
-                            disabled: !(viewer?.canPublishAudio ?? false),
-                          ),
-                          if (event.sessionMode == 'interactive')
+                    child: _chrome(
+                      visible: _chromeVisible,
+                      child: _GlassPanel(
+                        borderRadius: BorderRadius.circular(999),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
                             _controlButton(
                               icon:
-                                  agoraHelper.cameraEnabled.value
-                                      ? Icons.videocam_rounded
-                                      : Icons.videocam_off_rounded,
+                                  agoraHelper.speakerEnabled.value
+                                      ? Icons.volume_up_rounded
+                                      : Icons.volume_off_rounded,
+                              onTap: () => agoraHelper.toggleSpeaker(),
+                            ),
+                            _controlButton(
+                              icon:
+                                  agoraHelper.micMuted.value
+                                      ? Icons.mic_off_rounded
+                                      : Icons.mic_rounded,
                               onTap:
-                                  viewer?.canPublishVideo ?? false
-                                      ? () async {
-                                        final granted =
-                                            await controller
-                                                .requestCameraPermission();
-                                        if (!granted) {
-                                          return;
-                                        }
-                                        await agoraHelper.toggleCamera();
-                                      }
+                                  viewer?.canPublishAudio ?? false
+                                      ? () => agoraHelper.toggleMute()
                                       : null,
-                              disabled: !(viewer?.canPublishVideo ?? false),
+                              disabled: !(viewer?.canPublishAudio ?? false),
                             ),
-                          if ((viewer?.canRaiseHand ?? false) ||
-                              (viewer?.isHandRaised ?? false))
+                            if (event.sessionMode == 'interactive')
+                              _controlButton(
+                                icon:
+                                    agoraHelper.cameraEnabled.value
+                                        ? Icons.videocam_rounded
+                                        : Icons.videocam_off_rounded,
+                                onTap:
+                                    viewer?.canPublishVideo ?? false
+                                        ? () async {
+                                          final granted =
+                                              await controller
+                                                  .requestCameraPermission();
+                                          if (!granted) {
+                                            return;
+                                          }
+                                          await agoraHelper.toggleCamera();
+                                        }
+                                        : null,
+                                disabled: !(viewer?.canPublishVideo ?? false),
+                              ),
+                            if ((viewer?.canRaiseHand ?? false) ||
+                                (viewer?.isHandRaised ?? false))
+                              _controlButton(
+                                icon:
+                                    (viewer?.isHandRaised ?? false)
+                                        ? Icons.pan_tool_alt_rounded
+                                        : Icons.pan_tool_outlined,
+                                onTap: () async {
+                                  if (viewer?.isHandRaised ?? false) {
+                                    await controller.lowerHand();
+                                  } else {
+                                    await controller.raiseHand();
+                                  }
+                                },
+                                accentColor: const Color(0xFFFFC95B),
+                              ),
                             _controlButton(
                               icon:
-                                  (viewer?.isHandRaised ?? false)
-                                      ? Icons.pan_tool_alt_rounded
-                                      : Icons.pan_tool_outlined,
-                              onTap: () async {
-                                if (viewer?.isHandRaised ?? false) {
-                                  await controller.lowerHand();
-                                } else {
-                                  await controller.raiseHand();
-                                }
-                              },
-                              accentColor: const Color(0xFFFFC95B),
+                                  isCreator
+                                      ? Icons.call_end_rounded
+                                      : Icons.logout,
+                              onTap: isCreator ? _endSession : _leaveSession,
+                              backgroundColor: const Color(0xFFEB5545),
+                              iconColor: Colors.white,
                             ),
-                          _controlButton(
-                            icon:
-                                isCreator
-                                    ? Icons.call_end_rounded
-                                    : Icons.logout,
-                            onTap: isCreator ? _endSession : _leaveSession,
-                            backgroundColor: const Color(0xFFEB5545),
-                            iconColor: Colors.white,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -706,17 +797,17 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
           ),
         ),
         Positioned(
-          left: 14,
-          right: 14,
-          bottom: 14,
+          left: 10,
+          right: 10,
+          bottom: 10,
           child: Row(
             children: [
               Flexible(
                 child: _GlassPanel(
                   borderRadius: BorderRadius.circular(999),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+                    horizontal: 10,
+                    vertical: 6,
                   ),
                   backgroundColor: Colors.black.withValues(alpha: 0.24),
                   child: Text(
@@ -726,6 +817,7 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
+                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -734,8 +826,8 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
               _GlassPanel(
                 borderRadius: BorderRadius.circular(999),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: 10,
+                  vertical: 6,
                 ),
                 backgroundColor: Colors.black.withValues(alpha: 0.24),
                 child: Text(
@@ -743,7 +835,7 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
                 ),
               ),
@@ -764,8 +856,8 @@ class _AudioSessionScreenState extends State<AudioSessionScreen> {
       children: [
         for (int index = 0; index < reactions.length; index++)
           Positioned(
-            right: 20 + (index % 3) * 44,
-            bottom: 118 + (index % 4) * 10,
+            right: 18 + (index % 2) * 34,
+            bottom: 92 + (index * 6),
             child: _FloatingReactionBubble(
               key: ValueKey(
                 '${reactions[index].createdAt?.millisecondsSinceEpoch}-${reactions[index].actorId}-${reactions[index].reaction}-$index',
@@ -1175,7 +1267,7 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: backgroundColor ?? color.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(999),
@@ -1184,15 +1276,15 @@ class _StatusPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, color: textColor ?? color, size: 15),
-            const SizedBox(width: 6),
+            Icon(icon, color: textColor ?? color, size: 13),
+            const SizedBox(width: 5),
           ],
           Text(
             text,
             style: TextStyle(
               color: textColor ?? color,
               fontWeight: FontWeight.w700,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ],
@@ -1222,13 +1314,13 @@ class _CircleIconButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        width: 40,
-        height: 40,
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white.withValues(alpha: 0.08),
         ),
-        child: Icon(icon, color: Colors.white),
+        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }
@@ -1253,57 +1345,84 @@ class _FloatingReactionBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final seed = ((reaction.actorId ?? reaction.reaction).hashCode & 0x7fffffff);
+    final horizontalDirection = seed.isEven ? 1.0 : -1.0;
+    final horizontalDrift = 12 + (seed % 12);
+    final spin = ((seed % 9) / 9) * 0.26;
+
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 2600),
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 2800),
+      curve: Curves.easeOutQuart,
       builder: (context, value, child) {
-        final sway = math.sin(value * math.pi * 2) * 12;
-        final opacity = value < 0.82 ? 1.0 : (1 - ((value - 0.82) / 0.18));
+        final sway =
+            math.sin((value * math.pi * 1.6) + spin) *
+            horizontalDrift *
+            horizontalDirection;
+        final opacity = value < 0.84 ? 1.0 : (1 - ((value - 0.84) / 0.16));
         return Opacity(
           opacity: opacity.clamp(0, 1),
           child: Transform.translate(
-            offset: Offset(sway, -value * 180),
-            child: Transform.scale(scale: 0.85 + (value * 0.35), child: child),
+            offset: Offset(sway, -value * 220),
+            child: Transform.rotate(
+              angle: (value - 0.5) * spin,
+              child: Transform.scale(
+                scale: 0.82 + (value * 0.34),
+                child: child,
+              ),
+            ),
           ),
         );
       },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
         children: [
-          if (reaction.actorName?.isNotEmpty == true)
-            Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          Positioned(
+            top: 6,
+            right: 2,
+            child: Container(
+              width: 12,
+              height: 12,
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.48),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                reaction.actorName!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+                color: Colors.white.withValues(alpha: 0.28),
+                shape: BoxShape.circle,
               ),
             ),
+          ),
+          Positioned(
+            bottom: 4,
+            left: 0,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: meta.background.withValues(alpha: 0.7),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
           Container(
-            width: 54,
-            height: 54,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: meta.background,
+              gradient: RadialGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.2),
+                  meta.background,
+                ],
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: meta.background.withValues(alpha: 0.45),
-                  blurRadius: 18,
-                  spreadRadius: 1,
+                  color: meta.background.withValues(alpha: 0.5),
+                  blurRadius: 22,
+                  spreadRadius: 1.5,
                 ),
               ],
             ),
             alignment: Alignment.center,
-            child: Text(meta.emoji, style: const TextStyle(fontSize: 30)),
+            child: Text(meta.emoji, style: const TextStyle(fontSize: 28)),
           ),
         ],
       ),
@@ -1324,8 +1443,8 @@ Widget _controlButton({
     borderRadius: BorderRadius.circular(999),
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 180),
-      width: 54,
-      height: 54,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color:
@@ -1341,6 +1460,7 @@ Widget _controlButton({
       ),
       child: Icon(
         icon,
+        size: 20,
         color:
             disabled
                 ? Colors.white38
