@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/colors.dart';
 import '../utils/dimensions.dart';
-
 
 class DropdownTextField<T> extends StatelessWidget {
   final String label;
@@ -26,17 +26,14 @@ class DropdownTextField<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final Color effectiveFillColor = backgroundColor ??
-        (isDark
-            ? Colors.white.withOpacity(0.05)
-            : theme.inputDecorationTheme.fillColor ??
-            const Color(0xFFF2F2F2));
-    final Color textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
-    final Color borderColor = isDark
-        ? Colors.grey.shade700
-        : Colors.grey.shade300;
+    final effectiveFillColor =
+        backgroundColor ??
+        theme.inputDecorationTheme.fillColor ??
+        AppColors.primary1;
+    final textColor = theme.textTheme.bodyLarge?.color ?? AppColors.black1;
+    final normalizedSelectedItem =
+        items.contains(selectedItem) ? selectedItem : null;
+    final decorationTheme = theme.inputDecorationTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,47 +45,51 @@ class DropdownTextField<T> extends StatelessWidget {
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
+                fontSize: Dimensions.font14,
                 color: textColor,
               ),
             ),
           ),
         DropdownButtonFormField<T>(
-          value: selectedItem,
-          dropdownColor: isDark ? Colors.grey.shade900 : Colors.white,
+          initialValue: normalizedSelectedItem,
+          dropdownColor: Colors.white,
+          style: TextStyle(
+            color: textColor,
+            fontFamily: 'Poppins',
+            fontSize: Dimensions.font15,
+            fontWeight: FontWeight.w500,
+          ),
+          iconEnabledColor: AppColors.primary4,
           decoration: InputDecoration(
             filled: true,
             fillColor: effectiveFillColor,
             hintText: hintText ?? "Select an option",
-            hintStyle: TextStyle(color: textColor.withOpacity(0.5)),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: borderColor),
+            hintStyle: TextStyle(
+              color: theme.hintColor,
+              fontFamily: 'Poppins',
+              fontSize: Dimensions.font14,
+              fontWeight: FontWeight.w400,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: borderColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: theme.colorScheme.primary.withOpacity(0.6),
-              ),
-            ),
+            border: decorationTheme.border,
+            enabledBorder: decorationTheme.enabledBorder,
+            focusedBorder: decorationTheme.focusedBorder,
+            errorBorder: decorationTheme.errorBorder,
+            focusedErrorBorder: decorationTheme.focusedErrorBorder,
             contentPadding: EdgeInsets.symmetric(
-              horizontal: Dimensions.width10,
-              vertical: Dimensions.height10,
+              horizontal: Dimensions.width15,
+              vertical: Dimensions.height12,
             ),
           ),
-          items: items.map((item) {
-            return DropdownMenuItem<T>(
-              value: item,
-              child: Text(
-                itemToString(item),
-                style: TextStyle(color: textColor),
-              ),
-            );
-          }).toList(),
+          items:
+              items.map((item) {
+                return DropdownMenuItem<T>(
+                  value: item,
+                  child: Text(
+                    itemToString(item),
+                    style: TextStyle(color: textColor),
+                  ),
+                );
+              }).toList(),
           onChanged: onChanged,
         ),
       ],

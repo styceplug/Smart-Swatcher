@@ -45,7 +45,9 @@ class _CommentsScreenState extends State<CommentsScreen> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      postController.loadPostDetails(post.id);
+      if (post.id.isNotEmpty) {
+        postController.loadPostDetails(post.id);
+      }
     });
   }
 
@@ -63,39 +65,36 @@ class _CommentsScreenState extends State<CommentsScreen> {
         title: 'Comments',
         actionIcon: Icon(Icons.notifications),
       ),
-      body: Container(
-        child: Column(
-          children: [
-            Obx((){
-              var livePost = postController.postsList.firstWhere(
-                      (p) => p.id == post.id,
-                  orElse: () => post
-              );
+      body: Column(
+        children: [
+          Obx(() {
+            var livePost = postController.postsList.firstWhere(
+              (p) => p.id == post.id,
+              orElse: () => post,
+            );
 
-
-              return PostCard(post: livePost);
-            }),
-            Expanded(
-              child: Obx(() {
-                if (postController.isCommentsLoading.value &&
-                    postController.currentPostComments.isEmpty) {
-                  return Center(
-                    child: CircularProgressIndicator(color: AppColors.primary5),
-                  );
-                }
-                return ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: postController.currentPostComments.length,
-                  itemBuilder: (context, index) {
-                    final comment = postController.currentPostComments[index];
-
-                    return CommentCard(comment: comment);
-                  },
+            return PostCard(post: livePost);
+          }),
+          Expanded(
+            child: Obx(() {
+              if (postController.isCommentsLoading.value &&
+                  postController.currentPostComments.isEmpty) {
+                return Center(
+                  child: CircularProgressIndicator(color: AppColors.primary5),
                 );
-              }),
-            ),
-          ],
-        ),
+              }
+              return ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: postController.currentPostComments.length,
+                itemBuilder: (context, index) {
+                  final comment = postController.currentPostComments[index];
+
+                  return CommentCard(comment: comment);
+                },
+              );
+            }),
+          ),
+        ],
       ),
       bottomSheet: Container(
         color: AppColors.white,
@@ -119,6 +118,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
             child: Icon(Icons.send),
           ),
           controller: commentInputController,
+          enabled: post.id.isNotEmpty,
         ),
       ),
     );

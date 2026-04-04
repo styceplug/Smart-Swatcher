@@ -2,13 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
-
-import '../models/country_state.dart';
-
-
-import 'dart:convert';
-import 'package:flutter/services.dart';
 
 class CountryService {
   static final CountryService _instance = CountryService._internal();
@@ -70,9 +65,10 @@ class CountryData {
   factory CountryData.fromJson(Map<String, dynamic> json) {
     return CountryData(
       name: json['name'] as String,
-      states: (json['states'] as List<dynamic>)
-          .map((e) => StateData.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      states:
+          (json['states'] as List<dynamic>)
+              .map((e) => StateData.fromJson(e as Map<String, dynamic>))
+              .toList(),
     );
   }
 }
@@ -136,30 +132,48 @@ class _CountryStateState extends State<CountryState> {
 
         final countries = snapshot.data!;
         final countryNames = countries.map((c) => c.name).toList();
+        final selectedCountryValue =
+            countryNames.contains(widget.selectedCountry)
+                ? widget.selectedCountry
+                : null;
 
-        final selectedCountryObj = widget.selectedCountry != null
-            ? countries.firstWhere(
-              (c) => c.name == widget.selectedCountry,
-          orElse: () => countries.first,
-        )
-            : countries.first;
+        final selectedCountryObj =
+            selectedCountryValue != null
+                ? countries.firstWhere(
+                  (c) => c.name == selectedCountryValue,
+                  orElse: () => countries.first,
+                )
+                : countries.first;
 
-        final stateNames = selectedCountryObj.states.map((s) => s.name).toList();
+        final stateNames =
+            selectedCountryObj.states.map((s) => s.name).toList();
+        final selectedStateValue =
+            stateNames.contains(widget.selectedState)
+                ? widget.selectedState
+                : null;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // COUNTRY
             DropdownButtonFormField<String>(
-              value: widget.selectedCountry,
+              initialValue: selectedCountryValue,
               decoration: _inputDecoration(),
               style: TextStyle(
-                color: Theme.of(context).hintColor,
+                color: AppColors.black1,
                 fontFamily: 'Poppins',
+                fontSize: Dimensions.font15,
+                fontWeight: FontWeight.w500,
               ),
-              items: countryNames.map((country) {
-                return DropdownMenuItem(value: country, child: Text(country));
-              }).toList(),
+              dropdownColor: Colors.white,
+              iconEnabledColor: AppColors.primary4,
+              items:
+                  countryNames.map((country) {
+                    return DropdownMenuItem(
+                      value: country,
+                      child: Text(country),
+                    );
+                  }).toList(),
               onChanged: (value) {
                 widget.onCountryChanged(value);
                 widget.onStateChanged(null);
@@ -169,6 +183,7 @@ class _CountryStateState extends State<CountryState> {
                 style: TextStyle(
                   color: Theme.of(context).hintColor,
                   fontFamily: 'Poppins',
+                  fontSize: Dimensions.font14,
                 ),
               ),
             ),
@@ -177,21 +192,27 @@ class _CountryStateState extends State<CountryState> {
 
             // STATE
             DropdownButtonFormField<String>(
-              value: widget.selectedState,
+              initialValue: selectedStateValue,
               style: TextStyle(
-                color: Theme.of(context).hintColor,
+                color: AppColors.black1,
                 fontFamily: 'Poppins',
+                fontSize: Dimensions.font15,
+                fontWeight: FontWeight.w500,
               ),
+              dropdownColor: Colors.white,
+              iconEnabledColor: AppColors.primary4,
               decoration: _inputDecoration(),
-              items: stateNames.map((state) {
-                return DropdownMenuItem(value: state, child: Text(state));
-              }).toList(),
+              items:
+                  stateNames.map((state) {
+                    return DropdownMenuItem(value: state, child: Text(state));
+                  }).toList(),
               onChanged: widget.onStateChanged,
               hint: Text(
                 "Choose a state",
                 style: TextStyle(
                   color: Theme.of(context).hintColor,
                   fontFamily: 'Poppins',
+                  fontSize: Dimensions.font14,
                 ),
               ),
             ),
@@ -203,34 +224,22 @@ class _CountryStateState extends State<CountryState> {
 
   InputDecoration _inputDecoration() {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final Color textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
-    final Color fillColor = theme.inputDecorationTheme.fillColor ??
-        (isDark ? Colors.white10 : const Color(0xFFDBD0C8).withOpacity(0.1));
-    final Color borderColor = theme.dividerColor;
-    final Color focusColor = theme.colorScheme.primary.withOpacity(0.6);
-    final Color enabledBorderColor = theme.colorScheme.secondary;
+    final decorationTheme = theme.inputDecorationTheme;
 
     return InputDecoration(
-      filled: true,
-      fillColor: fillColor,
+      filled: decorationTheme.filled,
+      fillColor: decorationTheme.fillColor,
+      contentPadding: decorationTheme.contentPadding,
       hintStyle: TextStyle(
-        color: textColor.withOpacity(0.5),
+        color: theme.hintColor,
         fontFamily: 'Poppins',
+        fontSize: Dimensions.font14,
       ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: enabledBorderColor),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: focusColor),
-      ),
+      border: decorationTheme.border,
+      enabledBorder: decorationTheme.enabledBorder,
+      focusedBorder: decorationTheme.focusedBorder,
+      errorBorder: decorationTheme.errorBorder,
+      focusedErrorBorder: decorationTheme.focusedErrorBorder,
     );
   }
 }
@@ -240,10 +249,10 @@ class CountryDropdown extends StatefulWidget {
   final ValueChanged<String?> onCountryChanged;
 
   const CountryDropdown({
-    Key? key,
+    super.key,
     this.selectedCountry,
     required this.onCountryChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<CountryDropdown> createState() => _CountryDropdownState();
@@ -284,23 +293,33 @@ class _CountryDropdownState extends State<CountryDropdown> {
         }
 
         final countries = snapshot.data!;
+        final selectedCountryValue =
+            countries.contains(widget.selectedCountry)
+                ? widget.selectedCountry
+                : null;
 
         return DropdownButtonFormField<String>(
-          value: widget.selectedCountry,
+          initialValue: selectedCountryValue,
           decoration: _inputDecoration(context),
           style: TextStyle(
-            color: Theme.of(context).hintColor,
+            color: AppColors.black1,
             fontFamily: 'Poppins',
+            fontSize: Dimensions.font15,
+            fontWeight: FontWeight.w500,
           ),
-          items: countries.map((country) {
-            return DropdownMenuItem(value: country, child: Text(country));
-          }).toList(),
+          dropdownColor: Colors.white,
+          iconEnabledColor: AppColors.primary4,
+          items:
+              countries.map((country) {
+                return DropdownMenuItem(value: country, child: Text(country));
+              }).toList(),
           onChanged: widget.onCountryChanged,
           hint: Text(
             "Choose a country",
             style: TextStyle(
               color: Theme.of(context).hintColor,
               fontFamily: 'Poppins',
+              fontSize: Dimensions.font14,
             ),
           ),
         );
@@ -310,34 +329,22 @@ class _CountryDropdownState extends State<CountryDropdown> {
 
   InputDecoration _inputDecoration(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final Color textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
-    final Color fillColor = theme.inputDecorationTheme.fillColor ??
-        (isDark ? Colors.white10 : const Color(0xFFDBD0C8).withOpacity(0.1));
-    final Color borderColor = theme.dividerColor;
-    final Color focusColor = theme.colorScheme.primary.withOpacity(0.6);
-    final Color enabledBorderColor = theme.colorScheme.secondary;
+    final decorationTheme = theme.inputDecorationTheme;
 
     return InputDecoration(
-      filled: true,
-      fillColor: fillColor,
+      filled: decorationTheme.filled,
+      fillColor: decorationTheme.fillColor,
+      contentPadding: decorationTheme.contentPadding,
       hintStyle: TextStyle(
-        color: textColor.withOpacity(0.5),
+        color: theme.hintColor,
         fontFamily: 'Poppins',
+        fontSize: Dimensions.font14,
       ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: enabledBorderColor),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: focusColor),
-      ),
+      border: decorationTheme.border,
+      enabledBorder: decorationTheme.enabledBorder,
+      focusedBorder: decorationTheme.focusedBorder,
+      errorBorder: decorationTheme.errorBorder,
+      focusedErrorBorder: decorationTheme.focusedErrorBorder,
     );
   }
 }

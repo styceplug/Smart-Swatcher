@@ -42,6 +42,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_launcher_icons: "^0.14.4"
+  flutter_lints: ^5.0.0
 
 icons_launcher:
   image_path: "assets/images/logo-swatch.png"
@@ -50,12 +51,6 @@ icons_launcher:
       enable: true
     ios:
       enable: true
-
-
-
-
-  flutter_lints: ^5.0.0
-
 
 flutter:
 

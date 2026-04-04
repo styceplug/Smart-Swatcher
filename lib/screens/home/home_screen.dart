@@ -56,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         bool shouldExit = await _onWillPop();
+        if (!context.mounted) return;
         if (shouldExit) {
           Navigator.of(context).maybePop(result);
         }

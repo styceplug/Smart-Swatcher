@@ -11,6 +11,7 @@ import '../helpers/global_loader_controller.dart';
 import '../models/event_model.dart';
 import '../routes/routes.dart';
 import '../widgets/snackbars.dart';
+import 'auth_controller.dart';
 
 class EventController extends GetxController {
   final EventRepo eventRepo;
@@ -65,13 +66,30 @@ class EventController extends GetxController {
   void onInit() {
     super.onInit();
     _bindRealtimeEvents();
-    fetchRecommendedEvents();
-    fetchEvents();
+    if (_hasSessionContext) {
+      refreshAfterAuthChange();
+    }
+  }
+
+  bool get _hasSessionContext {
+    final authController = Get.find<AuthController>();
+    return authController.companyProfile.value != null ||
+        authController.stylistProfile.value != null;
+  }
+
+  Future<void> refreshAfterAuthChange() async {
+    if (isGettingEvents.value || isGettingRecommendedEvents.value) {
+      return;
+    }
+
+    await Future.wait([fetchRecommendedEvents(), fetchEvents()]);
   }
 
   void _bindRealtimeEvents() {
     _chatEventSubscription?.cancel();
-    _chatEventSubscription = chatSocketService.events.listen(_handleSocketEvent);
+    _chatEventSubscription = chatSocketService.events.listen(
+      _handleSocketEvent,
+    );
   }
 
   void _handleSocketEvent(ChatSocketEvent socketEvent) {
@@ -84,7 +102,9 @@ class EventController extends GetxController {
     final currentEventId = selectedEvent.value?.id ?? createdEvent.value?.id;
     final eventId = data['eventId']?.toString();
 
-    if (eventId == null || currentEventId == null || eventId != currentEventId) {
+    if (eventId == null ||
+        currentEventId == null ||
+        eventId != currentEventId) {
       return;
     }
 
@@ -105,9 +125,10 @@ class EventController extends GetxController {
       case 'eventReaction':
         debugPrint('[EVENT_CTRL] realtime.eventReaction => $data');
         _addReaction(
-          LiveEventReactionModel.fromJson(
-            <String, dynamic>{...data, 'eventId': eventId},
-          ),
+          LiveEventReactionModel.fromJson(<String, dynamic>{
+            ...data,
+            'eventId': eventId,
+          }),
         );
         break;
     }
@@ -554,7 +575,8 @@ class EventController extends GetxController {
         CustomSnackBar.success(message: 'Speaker access granted');
       } else {
         CustomSnackBar.failure(
-          message: response.body?['message'] ?? 'Failed to grant speaker access',
+          message:
+              response.body?['message'] ?? 'Failed to grant speaker access',
         );
       }
     } catch (e) {
@@ -606,12 +628,10 @@ class EventController extends GetxController {
       );
       if (response.statusCode == 200 && response.body?['reaction'] != null) {
         _addReaction(
-          LiveEventReactionModel.fromJson(
-            <String, dynamic>{
-              ...Map<String, dynamic>.from(response.body['reaction']),
-              'eventId': eventId,
-            },
-          ),
+          LiveEventReactionModel.fromJson(<String, dynamic>{
+            ...Map<String, dynamic>.from(response.body['reaction']),
+            'eventId': eventId,
+          }),
         );
       } else if (response.statusCode != 200) {
         CustomSnackBar.failure(
@@ -642,8 +662,9 @@ class EventController extends GetxController {
       events.refresh();
     }
 
-    final recommendedIndex =
-        recommendedEvents.indexWhere((e) => e.id == eventId);
+    final recommendedIndex = recommendedEvents.indexWhere(
+      (e) => e.id == eventId,
+    );
     if (recommendedIndex != -1) {
       recommendedEvents[recommendedIndex] = updatedEvent;
       recommendedEvents.refresh();
@@ -681,12 +702,14 @@ class EventController extends GetxController {
     );
 
     if (pickedDate == null) return;
+    if (!context.mounted) return;
 
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
-      initialTime: selectedDateTime.value != null
-          ? TimeOfDay.fromDateTime(selectedDateTime.value!)
-          : TimeOfDay.now(),
+      initialTime:
+          selectedDateTime.value != null
+              ? TimeOfDay.fromDateTime(selectedDateTime.value!)
+              : TimeOfDay.now(),
     );
 
     if (pickedTime == null) return;

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -61,7 +59,7 @@ class HomeScreenBottomNavBar extends StatelessWidget {
                 onClick: () {
                   appController.changeCurrentAppPage(3);
                 },
-                onHold: (){
+                onHold: () {
                   appController.showMoreAccount(context);
                 },
               ),
@@ -81,7 +79,7 @@ class CompanyBottomNavBar extends StatelessWidget {
     AppController appController = Get.find<AppController>();
 
     return Obx(
-          () => ClipRect(
+      () => ClipRect(
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -127,7 +125,7 @@ class CompanyBottomNavBar extends StatelessWidget {
                 onClick: () {
                   appController.changeCurrentAppPage(3);
                 },
-                onHold: (){
+                onHold: () {
                   appController.showMoreAccount(context);
                 },
               ),
@@ -138,4 +136,3 @@ class CompanyBottomNavBar extends StatelessWidget {
     );
   }
 }
-

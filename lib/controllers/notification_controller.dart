@@ -5,6 +5,7 @@ import '../data/repo/notification_repo.dart';
 import '../helpers/global_loader_controller.dart';
 import '../models/notification_model.dart';
 import '../widgets/snackbars.dart';
+import 'auth_controller.dart';
 
 class NotificationController extends GetxController {
   final NotificationRepo notificationRepo;
@@ -15,12 +16,29 @@ class NotificationController extends GetxController {
 
   final RxBool isGettingNotifications = false.obs;
   final RxInt unreadCount = 0.obs;
-  final RxList<AppNotificationModel> notifications = <AppNotificationModel>[].obs;
+  final RxList<AppNotificationModel> notifications =
+      <AppNotificationModel>[].obs;
 
   @override
   void onInit() {
     super.onInit();
-    fetchNotifications();
+    if (_hasSessionContext) {
+      refreshAfterAuthChange();
+    }
+  }
+
+  bool get _hasSessionContext {
+    final authController = Get.find<AuthController>();
+    return authController.companyProfile.value != null ||
+        authController.stylistProfile.value != null;
+  }
+
+  Future<void> refreshAfterAuthChange() async {
+    if (isGettingNotifications.value) {
+      return;
+    }
+
+    await fetchNotifications();
   }
 
   Future<void> fetchNotifications({
@@ -73,7 +91,9 @@ class NotificationController extends GetxController {
     }
 
     try {
-      final response = await notificationRepo.markNotificationRead(notificationId);
+      final response = await notificationRepo.markNotificationRead(
+        notificationId,
+      );
       if (response.statusCode != 200) {
         return;
       }
@@ -85,7 +105,9 @@ class NotificationController extends GetxController {
         return;
       }
 
-      notifications[index] = notifications[index].copyWith(readAt: DateTime.now());
+      notifications[index] = notifications[index].copyWith(
+        readAt: DateTime.now(),
+      );
       notifications.refresh();
       if (unreadCount.value > 0) {
         unreadCount.value -= 1;

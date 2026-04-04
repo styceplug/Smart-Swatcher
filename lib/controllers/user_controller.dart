@@ -33,8 +33,31 @@ class UserController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    Future.microtask(() => fetchSuggestions());
+    if (_hasSessionContext) {
+      Future.microtask(refreshAfterAuthChange);
+    }
   }
+
+  bool get _hasSessionContext =>
+      authController.companyProfile.value != null ||
+      authController.stylistProfile.value != null;
+
+  Future<void> refreshAfterAuthChange() async {
+    if (!_hasSessionContext) {
+      suggestedAccounts.clear();
+      acceptedConnections.clear();
+      return;
+    }
+
+    await Future.wait([
+      fetchSuggestions(
+        type:
+            selectedTypeFilter.value.isEmpty ? null : selectedTypeFilter.value,
+      ),
+      fetchAcceptedConnections(),
+    ]);
+  }
+
   Future<void> fetchProfile(String id, {bool showLoader = true}) async {
     try {
       if (showLoader) {
@@ -56,7 +79,7 @@ class UserController extends GetxController {
         profilePosts.clear();
       }
     } catch (e) {
-      print('Profile error: $e');
+      debugPrint('Profile error: $e');
       profilePosts.clear();
     } finally {
       if (showLoader) {
@@ -88,9 +111,7 @@ class UserController extends GetxController {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.body['posts'] ?? <dynamic>[];
-        profilePosts.assignAll(
-          data.map((e) => PostModel.fromJson(e)).toList(),
-        );
+        profilePosts.assignAll(data.map((e) => PostModel.fromJson(e)).toList());
       } else {
         profilePosts.clear();
       }
@@ -125,9 +146,9 @@ class UserController extends GetxController {
 
     try {
       final cleanType =
-      (type == null || type.trim().isEmpty || type == 'null')
-          ? null
-          : type.trim();
+          (type == null || type.trim().isEmpty || type == 'null')
+              ? null
+              : type.trim();
 
       final response = await userRepo.getRecommendedProfiles(
         limit: limit,
@@ -155,9 +176,7 @@ class UserController extends GetxController {
 
   Future<void> refreshSuggestions() async {
     await fetchSuggestions(
-      type: selectedTypeFilter.value.isEmpty
-          ? null
-          : selectedTypeFilter.value,
+      type: selectedTypeFilter.value.isEmpty ? null : selectedTypeFilter.value,
     );
   }
 
@@ -167,9 +186,10 @@ class UserController extends GetxController {
     final selfId =
         authController.companyProfile.value?.id ??
         authController.stylistProfile.value?.id;
-    final selfType = authController.companyProfile.value != null
-        ? 'company'
-        : authController.stylistProfile.value != null
+    final selfType =
+        authController.companyProfile.value != null
+            ? 'company'
+            : authController.stylistProfile.value != null
             ? 'stylist'
             : null;
 
@@ -300,9 +320,10 @@ class UserController extends GetxController {
           ),
         );
 
-        final successMessage = normalizedStatus == 'connected'
-            ? 'Connection accepted'
-            : 'Connection request sent';
+        final successMessage =
+            normalizedStatus == 'connected'
+                ? 'Connection accepted'
+                : 'Connection request sent';
 
         CustomSnackBar.success(message: successMessage);
         if (refreshProfile || profile.value?.id == targetId) {
@@ -310,9 +331,11 @@ class UserController extends GetxController {
         }
         return true;
       } else {
-        final message = response.body is Map
-            ? (response.body['message'] ?? 'Failed to send connection request')
-            : 'Failed to send connection request';
+        final message =
+            response.body is Map
+                ? (response.body['message'] ??
+                    'Failed to send connection request')
+                : 'Failed to send connection request';
 
         CustomSnackBar.failure(message: message);
         return false;
@@ -369,7 +392,7 @@ class UserController extends GetxController {
         }
 
         NotificationController notificationController =
-        Get.find<NotificationController>();
+            Get.find<NotificationController>();
 
         await notificationController.refreshNotifications();
         return true;
@@ -486,10 +509,7 @@ class UserController extends GetxController {
     }
   }
 
-  Future<bool> blockUser(
-    String targetId, {
-    bool closeProfile = false,
-  }) async {
+  Future<bool> blockUser(String targetId, {bool closeProfile = false}) async {
     if (targetId.trim().isEmpty) {
       return false;
     }

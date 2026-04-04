@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/controllers/event_controller.dart';
 import 'package:smart_swatcher/controllers/folder_controller.dart';
+import 'package:smart_swatcher/controllers/notification_controller.dart';
 import 'package:smart_swatcher/controllers/post_controller.dart';
+import 'package:smart_swatcher/controllers/user_controller.dart';
 import 'package:smart_swatcher/screens/company/home/company_profile.dart';
 import 'package:smart_swatcher/screens/company/home/dashboard_screen.dart';
 import 'package:smart_swatcher/screens/home/pages/studio_screen.dart';
@@ -25,7 +28,7 @@ class AppController extends GetxController {
 
   var currentAppPage = 0.obs;
   PageController pageController = PageController();
-  AuthController authController = Get.find<AuthController>();
+  AuthController get authController => Get.find<AuthController>();
 
   final List<Widget> pages = [
     const StudioScreen(),
@@ -65,10 +68,16 @@ class AppController extends GetxController {
 
     final postController = Get.find<PostController>();
     final folderController = Get.find<ClientFolderController>();
+    final notificationController = Get.find<NotificationController>();
+    final userController = Get.find<UserController>();
+    final eventController = Get.find<EventController>();
 
     await Future.wait([
       postController.refreshAfterAuthChange(),
       folderController.refreshAfterAuthChange(),
+      notificationController.refreshAfterAuthChange(),
+      userController.refreshAfterAuthChange(),
+      eventController.refreshAfterAuthChange(),
     ]);
   }
 

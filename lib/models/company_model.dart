@@ -1,7 +1,3 @@
-import 'package:get/get.dart';
-
-import '../data/repo/user_repo.dart';
-
 class CompanyModel {
   final String? id;
   final String? token;

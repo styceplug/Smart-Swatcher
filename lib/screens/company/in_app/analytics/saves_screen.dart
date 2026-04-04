@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
@@ -6,8 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../../utils/colors.dart';
 import '../../../../utils/dimensions.dart';
 import '../../../../widgets/custom_appbar.dart';
-
-
 
 class SavesScreen extends StatefulWidget {
   const SavesScreen({super.key});
@@ -166,7 +163,6 @@ class _SavesScreenState extends State<SavesScreen> {
                         Text('223', style: TextStyle(color: AppColors.grey5)),
                       ],
                     ),
-
                   ],
                 ),
               ),

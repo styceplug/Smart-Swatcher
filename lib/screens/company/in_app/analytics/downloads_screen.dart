@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
@@ -6,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../../utils/colors.dart';
 import '../../../../utils/dimensions.dart';
 import '../../../../widgets/custom_appbar.dart';
-
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -147,8 +145,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                         ),
                       ],
                     ),
-
-
                   ],
                 ),
               ),
