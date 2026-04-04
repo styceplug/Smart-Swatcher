@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 import 'package:smart_swatcher/controllers/auth_controller.dart';
+import 'package:smart_swatcher/controllers/folder_controller.dart';
+import 'package:smart_swatcher/controllers/post_controller.dart';
 import 'package:smart_swatcher/screens/company/home/company_profile.dart';
 import 'package:smart_swatcher/screens/company/home/dashboard_screen.dart';
 import 'package:smart_swatcher/screens/home/pages/studio_screen.dart';
@@ -48,6 +50,26 @@ class AppController extends GetxController {
   Future<void> initializeApp() async {
     await _loadProfiles();
     _routeByAccountType();
+  }
+
+  Future<void> refreshSessionControllers() async {
+    final hasAuthenticatedProfile =
+        authController.companyProfile.value != null ||
+        authController.stylistProfile.value != null;
+
+    if (!hasAuthenticatedProfile) {
+      return;
+    }
+
+    changeCurrentAppPage(0, movePage: false);
+
+    final postController = Get.find<PostController>();
+    final folderController = Get.find<ClientFolderController>();
+
+    await Future.wait([
+      postController.refreshAfterAuthChange(),
+      folderController.refreshAfterAuthChange(),
+    ]);
   }
 
   Future<void> _loadProfiles() async {

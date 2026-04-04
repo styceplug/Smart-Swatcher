@@ -16,7 +16,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   AppController appController = Get.find<AppController>();
 
-
   DateTime? lastPressed;
 
   RxInt previousPage = 0.obs;
@@ -40,6 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
       return false;
     }
     return true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      appController.refreshSessionControllers();
+    });
   }
 
   @override
@@ -97,7 +104,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-
-
-
