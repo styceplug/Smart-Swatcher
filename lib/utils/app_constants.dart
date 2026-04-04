@@ -135,7 +135,7 @@ class MediaUrlHelper {
     if (value.isEmpty || value == 'null') return null;
 
     if (value.startsWith('http://') || value.startsWith('https://')) {
-      return value;
+      return _normalizeRemoteUrl(value);
     }
 
     final normalizedBaseUrl =
@@ -151,5 +151,15 @@ class MediaUrlHelper {
     }
 
     return '$normalizedBaseUrl/$value';
+  }
+
+  static String _normalizeRemoteUrl(String value) {
+    if (value.contains('ui-avatars.com/api/')) {
+      final separator = value.contains('?') ? '&' : '?';
+      if (!value.contains('format=')) {
+        return '$value${separator}format=png&size=128';
+      }
+    }
+    return value;
   }
 }

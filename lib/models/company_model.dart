@@ -254,15 +254,12 @@ class CompanyModel {
   }
 
   static String resolveImage(String? url, String baseUrl) {
-    const placeholder =
-        'https://ui-avatars.com/api/?name=User&background=E5E7EB&color=6B7280';
-
-    if (url == null) return placeholder;
+    if (url == null) return '';
 
     final value = url.trim();
 
     if (value.isEmpty || value == 'null' || value == 'string') {
-      return placeholder;
+      return '';
     }
 
     if (value.startsWith('http')) return value;

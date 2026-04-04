@@ -9,7 +9,7 @@ import '../utils/dimensions.dart';
 
 ImageProvider<Object>? appCachedImageProvider(String? imageUrl) {
   final resolvedUrl = MediaUrlHelper.resolve(imageUrl);
-  if (resolvedUrl == null) {
+  if (resolvedUrl == null || _isUnsupportedImageUrl(resolvedUrl)) {
     return null;
   }
   return CachedNetworkImageProvider(resolvedUrl);
@@ -42,7 +42,7 @@ class AppCachedNetworkImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedUrl = MediaUrlHelper.resolve(imageUrl);
-    if (resolvedUrl == null) {
+    if (resolvedUrl == null || _isUnsupportedImageUrl(resolvedUrl)) {
       return _buildFallback();
     }
 
@@ -52,7 +52,12 @@ class AppCachedNetworkImage extends StatelessWidget {
       height: height,
       fit: fit,
       placeholder: (_, __) => _buildFallback(),
-      errorWidget: (_, __, ___) => _buildFallback(),
+      errorWidget: (_, __, error) {
+        debugPrint(
+          'AppCachedNetworkImage failed: url=$resolvedUrl error=$error',
+        );
+        return _buildFallback();
+      },
     );
 
     if (heroTag != null) {
@@ -105,6 +110,19 @@ class AppNetworkImageViewer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedUrl = MediaUrlHelper.resolve(imageUrl) ?? imageUrl;
+    if (_isUnsupportedImageUrl(resolvedUrl)) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(
+          child: Icon(Icons.broken_image_outlined, color: Colors.white),
+        ),
+      );
+    }
 
     Widget image = CachedNetworkImage(
       imageUrl: resolvedUrl,
@@ -114,9 +132,14 @@ class AppNetworkImageViewer extends StatelessWidget {
             child: CircularProgressIndicator(color: AppColors.primary5),
           ),
       errorWidget:
-          (_, __, ___) => const Center(
-            child: Icon(Icons.broken_image_outlined, color: Colors.white),
-          ),
+          (_, __, error) {
+            debugPrint(
+              'AppNetworkImageViewer failed: url=$resolvedUrl error=$error',
+            );
+            return const Center(
+              child: Icon(Icons.broken_image_outlined, color: Colors.white),
+            );
+          },
     );
 
     if (heroTag != null) {
@@ -145,4 +168,9 @@ class AppNetworkImageViewer extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _isUnsupportedImageUrl(String url) {
+  final normalized = url.toLowerCase();
+  return normalized.endsWith('.svg') || normalized.contains('.svg?');
 }

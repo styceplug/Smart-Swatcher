@@ -273,6 +273,7 @@ class _FolderScreenState extends State<FolderScreen> {
                     child: CustomButton(
                       text: 'Add New',
                       onPressed: () {
+                        controller.resetFormulationDraft();
                         Get.toNamed(
                           AppRoutes.formulationOrCorrection,
                           arguments: {'folderId': folder.id},
@@ -521,6 +522,7 @@ class _FolderScreenState extends State<FolderScreen> {
             ),
             heroTag: "folder_fab",
             onPressed: () {
+              controller.resetFormulationDraft();
               Get.toNamed(
                 AppRoutes.formulationOrCorrection,
                 arguments: {'folderId': folder.id},

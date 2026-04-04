@@ -31,6 +31,11 @@ class ClientFolderController extends GetxController {
   var clientImage = Rxn<File>();
   Map<String, dynamic>? suggestedMetrics;
 
+  void resetFormulationDraft() {
+    clientImage.value = null;
+    suggestedMetrics = null;
+  }
+
   @override
   void onInit() {
     super.onInit();

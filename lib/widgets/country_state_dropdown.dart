@@ -155,91 +155,54 @@ class _CountryStateState extends State<CountryState> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // COUNTRY
-            DropdownButtonFormField<String>(
-              initialValue: selectedCountryValue,
-              decoration: _inputDecoration(),
-              style: TextStyle(
-                color: AppColors.black1,
-                fontFamily: 'Poppins',
-                fontSize: Dimensions.font15,
-                fontWeight: FontWeight.w500,
-              ),
-              dropdownColor: Colors.white,
-              iconEnabledColor: AppColors.primary4,
-              items:
-                  countryNames.map((country) {
-                    return DropdownMenuItem(
-                      value: country,
-                      child: Text(country),
-                    );
-                  }).toList(),
-              onChanged: (value) {
-                widget.onCountryChanged(value);
+            _SearchSelectorField(
+              label: 'Country',
+              value: selectedCountryValue,
+              hintText: 'Search country',
+              icon: Icons.public_rounded,
+              onTap: () async {
+                final selected = await _showSelectionSheet(
+                  context,
+                  title: 'Select Country',
+                  searchHint: 'Search country',
+                  items: countryNames,
+                  selectedValue: selectedCountryValue,
+                  emptyText: 'No countries match your search.',
+                );
+                if (selected == null) return;
+                widget.onCountryChanged(selected);
                 widget.onStateChanged(null);
               },
-              hint: Text(
-                "Choose a country",
-                style: TextStyle(
-                  color: Theme.of(context).hintColor,
-                  fontFamily: 'Poppins',
-                  fontSize: Dimensions.font14,
-                ),
-              ),
             ),
-
-            SizedBox(height: 20),
-
-            // STATE
-            DropdownButtonFormField<String>(
-              initialValue: selectedStateValue,
-              style: TextStyle(
-                color: AppColors.black1,
-                fontFamily: 'Poppins',
-                fontSize: Dimensions.font15,
-                fontWeight: FontWeight.w500,
-              ),
-              dropdownColor: Colors.white,
-              iconEnabledColor: AppColors.primary4,
-              decoration: _inputDecoration(),
-              items:
-                  stateNames.map((state) {
-                    return DropdownMenuItem(value: state, child: Text(state));
-                  }).toList(),
-              onChanged: widget.onStateChanged,
-              hint: Text(
-                "Choose a state",
-                style: TextStyle(
-                  color: Theme.of(context).hintColor,
-                  fontFamily: 'Poppins',
-                  fontSize: Dimensions.font14,
-                ),
-              ),
+            SizedBox(height: Dimensions.height20),
+            _SearchSelectorField(
+              label: 'State',
+              value: selectedStateValue,
+              hintText:
+                  selectedCountryValue == null
+                      ? 'Select country first'
+                      : 'Search state',
+              icon: Icons.location_on_outlined,
+              enabled: selectedCountryValue != null && stateNames.isNotEmpty,
+              onTap: () async {
+                if (selectedCountryValue == null || stateNames.isEmpty) {
+                  return;
+                }
+                final selected = await _showSelectionSheet(
+                  context,
+                  title: 'Select State',
+                  searchHint: 'Search state',
+                  items: stateNames,
+                  selectedValue: selectedStateValue,
+                  emptyText: 'No states match your search.',
+                );
+                if (selected == null) return;
+                widget.onStateChanged(selected);
+              },
             ),
           ],
         );
       },
-    );
-  }
-
-  InputDecoration _inputDecoration() {
-    final theme = Theme.of(context);
-    final decorationTheme = theme.inputDecorationTheme;
-
-    return InputDecoration(
-      filled: decorationTheme.filled,
-      fillColor: decorationTheme.fillColor,
-      contentPadding: decorationTheme.contentPadding,
-      hintStyle: TextStyle(
-        color: theme.hintColor,
-        fontFamily: 'Poppins',
-        fontSize: Dimensions.font14,
-      ),
-      border: decorationTheme.border,
-      enabledBorder: decorationTheme.enabledBorder,
-      focusedBorder: decorationTheme.focusedBorder,
-      errorBorder: decorationTheme.errorBorder,
-      focusedErrorBorder: decorationTheme.focusedErrorBorder,
     );
   }
 }
@@ -298,53 +261,357 @@ class _CountryDropdownState extends State<CountryDropdown> {
                 ? widget.selectedCountry
                 : null;
 
-        return DropdownButtonFormField<String>(
-          initialValue: selectedCountryValue,
-          decoration: _inputDecoration(context),
-          style: TextStyle(
-            color: AppColors.black1,
-            fontFamily: 'Poppins',
-            fontSize: Dimensions.font15,
-            fontWeight: FontWeight.w500,
-          ),
-          dropdownColor: Colors.white,
-          iconEnabledColor: AppColors.primary4,
-          items:
-              countries.map((country) {
-                return DropdownMenuItem(value: country, child: Text(country));
-              }).toList(),
-          onChanged: widget.onCountryChanged,
-          hint: Text(
-            "Choose a country",
-            style: TextStyle(
-              color: Theme.of(context).hintColor,
-              fontFamily: 'Poppins',
-              fontSize: Dimensions.font14,
-            ),
-          ),
+        return _SearchSelectorField(
+          label: 'Country',
+          value: selectedCountryValue,
+          hintText: 'Search country',
+          icon: Icons.public_rounded,
+          onTap: () async {
+            final selected = await _showSelectionSheet(
+              context,
+              title: 'Select Country',
+              searchHint: 'Search country',
+              items: countries,
+              selectedValue: selectedCountryValue,
+              emptyText: 'No countries match your search.',
+            );
+            if (selected == null) return;
+            widget.onCountryChanged(selected);
+          },
         );
       },
     );
   }
+}
 
-  InputDecoration _inputDecoration(BuildContext context) {
+Future<String?> _showSelectionSheet(
+  BuildContext context, {
+  required String title,
+  required String searchHint,
+  required List<String> items,
+  required String? selectedValue,
+  required String emptyText,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) {
+      return _SelectionSheet(
+        title: title,
+        searchHint: searchHint,
+        items: items,
+        selectedValue: selectedValue,
+        emptyText: emptyText,
+      );
+    },
+  );
+}
+
+class _SearchSelectorField extends StatelessWidget {
+  const _SearchSelectorField({
+    required this.label,
+    required this.hintText,
+    required this.icon,
+    required this.onTap,
+    this.value,
+    this.enabled = true,
+  });
+
+  final String label;
+  final String hintText;
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? value;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final decorationTheme = theme.inputDecorationTheme;
+    final hasValue = value != null && value!.trim().isNotEmpty;
 
-    return InputDecoration(
-      filled: decorationTheme.filled,
-      fillColor: decorationTheme.fillColor,
-      contentPadding: decorationTheme.contentPadding,
-      hintStyle: TextStyle(
-        color: theme.hintColor,
-        fontFamily: 'Poppins',
-        fontSize: Dimensions.font14,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: Dimensions.font14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.black1,
+          ),
+        ),
+        SizedBox(height: Dimensions.height8),
+        InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(Dimensions.radius20),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              filled: decorationTheme.filled,
+              fillColor:
+                  enabled
+                      ? decorationTheme.fillColor
+                      : AppColors.grey2.withValues(alpha: 0.55),
+              contentPadding: decorationTheme.contentPadding,
+              prefixIcon: Icon(icon, color: AppColors.primary4),
+              suffixIcon: Icon(
+                Icons.search_rounded,
+                color: enabled ? AppColors.primary4 : AppColors.grey4,
+              ),
+              border: decorationTheme.border,
+              enabledBorder: decorationTheme.enabledBorder,
+              focusedBorder: decorationTheme.focusedBorder,
+              errorBorder: decorationTheme.errorBorder,
+              focusedErrorBorder: decorationTheme.focusedErrorBorder,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    hasValue ? value! : hintText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: Dimensions.font15,
+                      fontWeight: hasValue ? FontWeight.w500 : FontWeight.w400,
+                      color: hasValue ? AppColors.black1 : theme.hintColor,
+                    ),
+                  ),
+                ),
+                if (enabled)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width10,
+                      vertical: Dimensions.height5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary1,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Search',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary5,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SelectionSheet extends StatefulWidget {
+  const _SelectionSheet({
+    required this.title,
+    required this.searchHint,
+    required this.items,
+    required this.selectedValue,
+    required this.emptyText,
+  });
+
+  final String title;
+  final String searchHint;
+  final List<String> items;
+  final String? selectedValue;
+  final String emptyText;
+
+  @override
+  State<_SelectionSheet> createState() => _SelectionSheetState();
+}
+
+class _SelectionSheetState extends State<_SelectionSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredItems =
+        widget.items
+            .where(
+              (item) => item.toLowerCase().contains(_query.trim().toLowerCase()),
+            )
+            .toList();
+
+    return SafeArea(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.78,
+        minChildSize: 0.46,
+        maxChildSize: 0.94,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: Column(
+              children: [
+                SizedBox(height: Dimensions.height12),
+                Container(
+                  width: 52,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.grey3,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    Dimensions.width20,
+                    Dimensions.height18,
+                    Dimensions.width20,
+                    Dimensions.height10,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: Dimensions.font18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.black1,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    Dimensions.width20,
+                    0,
+                    Dimensions.width20,
+                    Dimensions.height12,
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    onChanged: (value) => setState(() => _query = value),
+                    cursorColor: AppColors.primary5,
+                    decoration: InputDecoration(
+                      hintText: widget.searchHint,
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon:
+                          _query.isEmpty
+                              ? null
+                              : IconButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _query = '');
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child:
+                      filteredItems.isEmpty
+                          ? Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(Dimensions.width20),
+                              child: Text(
+                                widget.emptyText,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: AppColors.grey5,
+                                  fontSize: Dimensions.font14,
+                                ),
+                              ),
+                            ),
+                          )
+                          : ListView.separated(
+                            controller: scrollController,
+                            padding: EdgeInsets.fromLTRB(
+                              Dimensions.width20,
+                              0,
+                              Dimensions.width20,
+                              Dimensions.height30,
+                            ),
+                            itemBuilder: (context, index) {
+                              final item = filteredItems[index];
+                              final isSelected = item == widget.selectedValue;
+
+                              return Material(
+                                color:
+                                    isSelected
+                                        ? AppColors.primary1.withValues(
+                                          alpha: 0.8,
+                                        )
+                                        : Colors.transparent,
+                                borderRadius: BorderRadius.circular(
+                                  Dimensions.radius20,
+                                ),
+                                child: ListTile(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      Dimensions.radius20,
+                                    ),
+                                  ),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: Dimensions.width15,
+                                    vertical: Dimensions.height5,
+                                  ),
+                                  title: Text(
+                                    item,
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: Dimensions.font15,
+                                      fontWeight:
+                                          isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                      color: AppColors.black1,
+                                    ),
+                                  ),
+                                  trailing:
+                                      isSelected
+                                          ? const Icon(
+                                            Icons.check_circle_rounded,
+                                            color: AppColors.primary5,
+                                          )
+                                          : const Icon(
+                                            Icons.chevron_right_rounded,
+                                            color: AppColors.grey4,
+                                          ),
+                                  onTap: () => Navigator.of(context).pop(item),
+                                ),
+                              );
+                            },
+                            separatorBuilder:
+                                (_, __) =>
+                                    SizedBox(height: Dimensions.height8),
+                            itemCount: filteredItems.length,
+                          ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
-      border: decorationTheme.border,
-      enabledBorder: decorationTheme.enabledBorder,
-      focusedBorder: decorationTheme.focusedBorder,
-      errorBorder: decorationTheme.errorBorder,
-      focusedErrorBorder: decorationTheme.focusedErrorBorder,
     );
   }
 }
