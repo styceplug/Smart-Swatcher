@@ -1,6 +1,6 @@
 import 'package:smart_swatcher/utils/app_constants.dart';
 
-class AppointmentEmailDeliveryModel {
+class EmailDeliveryResultModel {
   final bool attempted;
   final String status;
   final String? destination;
@@ -8,7 +8,7 @@ class AppointmentEmailDeliveryModel {
   final String? reason;
   final String? error;
 
-  const AppointmentEmailDeliveryModel({
+  const EmailDeliveryResultModel({
     this.attempted = false,
     this.status = 'not_requested',
     this.destination,
@@ -17,8 +17,8 @@ class AppointmentEmailDeliveryModel {
     this.error,
   });
 
-  factory AppointmentEmailDeliveryModel.fromJson(Map<String, dynamic> json) {
-    return AppointmentEmailDeliveryModel(
+  factory EmailDeliveryResultModel.fromJson(Map<String, dynamic> json) {
+    return EmailDeliveryResultModel(
       attempted: json['attempted'] == true,
       status: json['status']?.toString() ?? 'not_requested',
       destination: json['destination']?.toString(),
@@ -28,6 +28,8 @@ class AppointmentEmailDeliveryModel {
     );
   }
 }
+
+typedef AppointmentEmailDeliveryModel = EmailDeliveryResultModel;
 
 class ClientFolderModel {
   String? id;

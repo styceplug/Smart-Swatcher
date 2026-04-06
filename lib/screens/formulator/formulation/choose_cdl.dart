@@ -10,7 +10,7 @@ import 'package:smart_swatcher/widgets/custom_button.dart';
 import 'package:smart_swatcher/widgets/formulation_analysis_card.dart';
 
 class ChooseCdl extends StatefulWidget {
-  const ChooseCdl({Key? key}) : super(key: key);
+  const ChooseCdl({super.key});
 
   @override
   State<ChooseCdl> createState() => _ChooseCdlState();
@@ -141,12 +141,12 @@ class _ChooseCdlState extends State<ChooseCdl> {
           ),
         ),
       ),
-      body: Container(
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Progress Bar (Adjust fraction as needed, e.g. 6/6)
             Container(
               width: Dimensions.screenWidth,
               height: Dimensions.height5,
@@ -171,32 +171,27 @@ class _ChooseCdlState extends State<ChooseCdl> {
                 color: AppColors.grey4,
               ),
             ),
-            SizedBox(height: Dimensions.height20),
+            SizedBox(height: Dimensions.height15),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'AI Upload Reading',
+              title: 'Preview Analysis',
             ),
-            if (suggestion != null) SizedBox(height: Dimensions.height20),
-
-            // --- SCROLLABLE LIST ---
-            Expanded(
-              child: ListView.builder(
-                itemCount: cdlOptions.length,
-                itemBuilder: (context, index) {
-                  final option = cdlOptions[index];
-                  return cdlCard(
-                    option['title'],
-                    option['subtitle'],
-                    option['asset'],
-                    option['level'],
-                  );
-                },
-              ),
+            if (suggestion != null) SizedBox(height: Dimensions.height15),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: cdlOptions.length,
+              itemBuilder: (context, index) {
+                final option = cdlOptions[index];
+                return cdlCard(
+                  option['title'],
+                  option['subtitle'],
+                  option['asset'],
+                  option['level'],
+                );
+              },
             ),
-
             SizedBox(height: Dimensions.height20),
-
-            // --- BUTTONS ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -211,7 +206,6 @@ class _ChooseCdlState extends State<ChooseCdl> {
                 Expanded(
                   child: Obx(
                     () => CustomButton(
-                      // Show Loading State
                       text:
                           controller.isLoading.value ? 'Generating...' : 'Next',
                       isDisabled:

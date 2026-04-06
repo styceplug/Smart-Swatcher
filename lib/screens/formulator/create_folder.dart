@@ -213,7 +213,8 @@ class _CreateFolderScreenState extends State<CreateFolderScreen> {
 
                       _CheckboxTile(
                         value: reminder,
-                        label: 'Send appointment details to customer',
+                        label:
+                            'Email appointment details and reminder links',
                         onChanged: (value) {
                           setState(() {
                             reminder = value;
@@ -223,7 +224,8 @@ class _CreateFolderScreenState extends State<CreateFolderScreen> {
                       SizedBox(height: Dimensions.height12),
                       _CheckboxTile(
                         value: sendConsent,
-                        label: 'Send consent form',
+                        label:
+                            'Email the client a consent form to approve or waive the 24-hour color patch test.',
                         onChanged: (value) {
                           setState(() {
                             sendConsent = value;

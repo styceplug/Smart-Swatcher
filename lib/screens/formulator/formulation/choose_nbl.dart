@@ -10,7 +10,7 @@ import 'package:smart_swatcher/widgets/custom_button.dart';
 import 'package:smart_swatcher/widgets/formulation_analysis_card.dart';
 
 class ChooseNbl extends StatefulWidget {
-  const ChooseNbl({Key? key}) : super(key: key);
+  const ChooseNbl({super.key});
 
   @override
   State<ChooseNbl> createState() => _ChooseNblState();
@@ -151,7 +151,8 @@ class _ChooseNblState extends State<ChooseNbl> {
           ),
         ),
       ),
-      body: Container(
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,39 +181,34 @@ class _ChooseNblState extends State<ChooseNbl> {
                 color: AppColors.grey4,
               ),
             ),
-            SizedBox(height: Dimensions.height20),
+            SizedBox(height: Dimensions.height15),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'AI Upload Reading',
+              title: 'Preview Analysis',
             ),
-            if (suggestion != null) SizedBox(height: Dimensions.height20),
-
-            // --- SCROLLABLE LIST ---
-            Expanded(
-              child: ListView.builder(
-                itemCount: nblOptions.length,
-                itemBuilder: (context, index) {
-                  final option = nblOptions[index];
-                  return nblCard(
-                    option['title'],
-                    option['subtitle'],
-                    option['asset'],
-                    option['level'],
-                  );
-                },
-              ),
+            if (suggestion != null) SizedBox(height: Dimensions.height15),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: nblOptions.length,
+              itemBuilder: (context, index) {
+                final option = nblOptions[index];
+                return nblCard(
+                  option['title'],
+                  option['subtitle'],
+                  option['asset'],
+                  option['level'],
+                );
+              },
             ),
-
             SizedBox(height: Dimensions.height20),
-
-            // --- BUTTONS ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: CustomButton(
                     text: 'Prev',
-                    onPressed: () => Get.back(), // Go back to upload
+                    onPressed: () => Get.back(),
                     backgroundColor: AppColors.primary1,
                   ),
                 ),
@@ -220,7 +216,6 @@ class _ChooseNblState extends State<ChooseNbl> {
                 Expanded(
                   child: CustomButton(
                     text: 'Next',
-                    // Disable if nothing selected
                     isDisabled: selectedLevel == 0,
                     onPressed: _onNext,
                     backgroundColor: AppColors.primary4,
