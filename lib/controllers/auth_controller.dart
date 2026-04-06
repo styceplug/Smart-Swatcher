@@ -793,9 +793,32 @@ class AuthController extends GetxController {
 
   Future<void> logout() async {
     await authRepo.clearSharedData();
+    pendingOtpFlow.value = null;
     stylistProfile.value = null;
     companyProfile.value = null;
     Get.offAllNamed(AppRoutes.getStarted);
+    update();
+  }
+
+  Future<void> exitOtpFlowToLogin() async {
+    final flowAccountType =
+        pendingOtpFlow.value?.accountType ??
+        currentAccountType.value ??
+        (companyProfile.value != null
+            ? AccountType.company
+            : AccountType.stylist);
+
+    await authRepo.clearSharedData();
+    pendingOtpFlow.value = null;
+    stylistProfile.value = null;
+    companyProfile.value = null;
+
+    final route =
+        flowAccountType == AccountType.company
+            ? AppRoutes.companyLoginScreen
+            : AppRoutes.stylistLoginScreen;
+
+    Get.offAllNamed(route);
     update();
   }
 

@@ -595,6 +595,7 @@ class ClientFolderController extends GetxController {
     required String phone,
     String? dob,
     String? appointmentDate,
+    bool setReminder = false,
     bool shouldSendConsent = false,
   }) async {
     if (name.isEmpty) {
@@ -611,18 +612,32 @@ class ClientFolderController extends GetxController {
       clientPhone: phone,
       dateOfBirth: dob,
       appointmentDate: appointmentDate,
+      setReminder: setReminder,
       shouldSendConsent: shouldSendConsent,
     );
 
     try {
       Response response = await repo.createFolder(newFolder);
 
-      if (response.statusCode == 201) {
-        CustomSnackBar.success(message: "Folder created successfully!");
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        AppointmentEmailDeliveryModel? appointmentEmailDelivery;
+        if (response.body is Map &&
+            response.body['appointmentEmailDelivery'] is Map) {
+          appointmentEmailDelivery = AppointmentEmailDeliveryModel.fromJson(
+            Map<String, dynamic>.from(response.body['appointmentEmailDelivery']),
+          );
+        }
+
+        _showFolderCreationFeedback(appointmentEmailDelivery);
         await getFolders();
         return true;
       } else {
-        String msg = response.body['message'] ?? response.statusText;
+        final String msg =
+            response.body is Map
+                ? response.body['message']?.toString() ??
+                    response.statusText ??
+                    'Failed to create folder'
+                : response.statusText ?? 'Failed to create folder';
         CustomSnackBar.failure(message: msg);
         return false;
       }
@@ -633,6 +648,64 @@ class ClientFolderController extends GetxController {
       isLoading.value = false;
       update();
     }
+  }
+
+  void _showFolderCreationFeedback(
+    AppointmentEmailDeliveryModel? appointmentEmailDelivery,
+  ) {
+    if (appointmentEmailDelivery == null ||
+        appointmentEmailDelivery.status == 'not_requested') {
+      CustomSnackBar.success(message: 'Folder created successfully!');
+      return;
+    }
+
+    switch (appointmentEmailDelivery.status) {
+      case 'sent':
+        final destination =
+            appointmentEmailDelivery.destination?.trim().isNotEmpty == true
+                ? ' to ${appointmentEmailDelivery.destination}'
+                : '';
+        CustomSnackBar.success(
+          message: 'Appointment details sent to client email$destination',
+        );
+        return;
+      case 'skipped':
+        CustomSnackBar.success(
+          message:
+              'Folder created. ${_appointmentSkippedMessage(appointmentEmailDelivery)}',
+        );
+        return;
+      case 'failed':
+        CustomSnackBar.failure(
+          message:
+              'Folder created, but ${appointmentEmailDelivery.error?.trim().isNotEmpty == true ? appointmentEmailDelivery.error!.trim() : 'appointment email could not be sent'}',
+        );
+        return;
+      default:
+        CustomSnackBar.success(message: 'Folder created successfully!');
+        return;
+    }
+  }
+
+  String _appointmentSkippedMessage(
+    AppointmentEmailDeliveryModel delivery,
+  ) {
+    final reason = delivery.reason?.toLowerCase().trim() ?? '';
+    if (reason.contains('email')) {
+      return 'appointment email was skipped because the client email is missing.';
+    }
+    if (reason.contains('appointment') || reason.contains('date')) {
+      return 'appointment email was skipped because no appointment date was set.';
+    }
+    if (reason.contains('not requested') ||
+        reason.contains('setreminder') ||
+        reason.contains('reminder')) {
+      return 'appointment email was not requested.';
+    }
+    if (delivery.reason?.trim().isNotEmpty == true) {
+      return delivery.reason!.trim();
+    }
+    return 'appointment email was skipped.';
   }
 
   Future<bool> deleteFormulation(String formulationId) async {

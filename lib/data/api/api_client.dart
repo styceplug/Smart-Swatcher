@@ -266,9 +266,13 @@ class ApiClient extends GetConnect implements GetxService {
   }) {
     final label = _formatRequestId(requestId);
     _logLine('[API][$label][$method] REQUEST ${_resolveUri(uri)}');
-    _logLine('[API][$label][$method] HEADERS ${_stringify(headers)}');
+    _logLine(
+      '[API][$label][$method] HEADERS ${_stringify(_sanitizeForLog(headers))}',
+    );
     if (body != null) {
-      _logLine('[API][$label][$method] BODY ${_stringify(body)}');
+      _logLine(
+        '[API][$label][$method] BODY ${_stringify(_sanitizeForLog(body))}',
+      );
     }
   }
 
@@ -288,7 +292,7 @@ class ApiClient extends GetConnect implements GetxService {
       _logLine('[API][$label][$method] STATUS_TEXT ${response.statusText}');
     }
     _logLine(
-      '[API][$label][$method] RESPONSE_BODY ${_stringify(response.body)}',
+      '[API][$label][$method] RESPONSE_BODY ${_stringify(_sanitizeForLog(response.body))}',
     );
   }
 
@@ -323,6 +327,42 @@ class ApiClient extends GetConnect implements GetxService {
     } catch (_) {
       return value.toString();
     }
+  }
+
+  static const Set<String> _sensitiveKeys = <String>{
+    'authorization',
+    'password',
+    'otp',
+    'token',
+  };
+
+  Object? _sanitizeForLog(Object? value, {String? parentKey}) {
+    final normalizedKey = parentKey?.toLowerCase().trim();
+    if (normalizedKey != null && _sensitiveKeys.contains(normalizedKey)) {
+      if (normalizedKey == 'authorization') {
+        return 'Bearer [REDACTED]';
+      }
+      return '[REDACTED]';
+    }
+
+    if (value is Map) {
+      final sanitized = <String, dynamic>{};
+      value.forEach((key, dynamic nestedValue) {
+        sanitized[key.toString()] = _sanitizeForLog(
+          nestedValue,
+          parentKey: key.toString(),
+        );
+      });
+      return sanitized;
+    }
+
+    if (value is List) {
+      return value
+          .map((item) => _sanitizeForLog(item, parentKey: parentKey))
+          .toList();
+    }
+
+    return value;
   }
 
   void _logLine(String message) {

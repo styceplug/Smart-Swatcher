@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -44,9 +47,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     _coachChecked = true;
-    final hasShown = sharedPreferences.getBool(
-          AppConstants.COMPANY_DASHBOARD_COACH_SHOWN,
-        ) ??
+    final hasShown =
+        sharedPreferences.getBool(AppConstants.COMPANY_DASHBOARD_COACH_SHOWN) ??
         false;
     if (hasShown) {
       return;
@@ -76,11 +78,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       firstDate: DateTime(now.year - 2),
       lastDate: DateTime(now.year + 1),
-      initialDateRange: existingRange ??
-          DateTimeRange(
-            start: now.subtract(const Duration(days: 6)),
-            end: now,
-          ),
+      initialDateRange:
+          existingRange ??
+          DateTimeRange(start: now.subtract(const Duration(days: 6)), end: now),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -103,6 +103,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await analyticsController.loadOverview(
       timeframe: CompanyAnalyticsTimeframe.custom,
       range: pickedRange,
+    );
+  }
+
+  Future<void> _showMetricDetailSheet(
+    _AnalyticsCardData card,
+    CompanyAnalyticsRangeModel range,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MetricDetailSheet(card: card, range: range),
     );
   }
 
@@ -172,9 +184,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   SizedBox(height: Dimensions.height20),
                   ElevatedButton(
-                    onPressed: () => analyticsController.loadOverview(
-                      showErrorSnackBar: true,
-                    ),
+                    onPressed:
+                        () => analyticsController.loadOverview(
+                          showErrorSnackBar: true,
+                        ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary5,
                     ),
@@ -249,10 +262,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return RefreshIndicator(
           color: AppColors.primary5,
-          onRefresh: () => analyticsController.loadOverview(
-            timeframe: analyticsController.selectedTimeframe.value,
-            range: analyticsController.customRange.value,
-          ),
+          onRefresh:
+              () => analyticsController.loadOverview(
+                timeframe: analyticsController.selectedTimeframe.value,
+                range: analyticsController.customRange.value,
+              ),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
@@ -297,26 +311,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Wrap(
                   spacing: Dimensions.width10,
                   runSpacing: Dimensions.height12,
-                  children: cards.map((card) {
-                    return SizedBox(
-                      width: (Dimensions.screenWidth -
-                              (Dimensions.width20 * 2) -
-                              Dimensions.width10) /
-                          2,
-                      child: _DashboardMetricCard(
-                        card: card,
-                        isSelected: selectedCard.id == card.id,
-                        onTap: () {
-                          setState(() {
-                            _selectedMetricId = card.id;
-                          });
-                        },
-                      ),
-                    );
-                  }).toList(),
+                  children:
+                      cards.map((card) {
+                        return SizedBox(
+                          width:
+                              (Dimensions.screenWidth -
+                                  (Dimensions.width20 * 2) -
+                                  Dimensions.width10) /
+                              2,
+                          child: _DashboardMetricCard(
+                            card: card,
+                            isSelected: selectedCard.id == card.id,
+                            onTap: () {
+                              setState(() {
+                                _selectedMetricId = card.id;
+                              });
+                              _showMetricDetailSheet(card, overview.range);
+                            },
+                          ),
+                        );
+                      }).toList(),
                 ),
-                SizedBox(height: Dimensions.height20),
-                _MetricDetailCard(card: selectedCard),
+                SizedBox(height: Dimensions.height15),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width15,
+                    vertical: Dimensions.height15,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8F4),
+                    borderRadius: BorderRadius.circular(Dimensions.radius20),
+                    border: Border.all(color: const Color(0xFFF1DDD2)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary5.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.insights_rounded,
+                          color: AppColors.primary5,
+                          size: 18,
+                        ),
+                      ),
+                      SizedBox(width: Dimensions.width10),
+                      Expanded(
+                        child: Text(
+                          'Tap any metric card to open a detailed analytics sheet with charts, breakdowns, and trend insights.',
+                          style: TextStyle(
+                            fontSize: Dimensions.font12,
+                            color: AppColors.grey5,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 if (isLoading) ...[
                   SizedBox(height: Dimensions.height15),
                   Row(
@@ -379,12 +435,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Offset.zero & overlay.size,
       ),
       color: Colors.white,
-      items: CompanyAnalyticsTimeframe.values.map((timeframe) {
-        return PopupMenuItem<CompanyAnalyticsTimeframe>(
-          value: timeframe,
-          child: Text(timeframe.label),
-        );
-      }).toList(),
+      items:
+          CompanyAnalyticsTimeframe.values.map((timeframe) {
+            return PopupMenuItem<CompanyAnalyticsTimeframe>(
+              value: timeframe,
+              child: Text(timeframe.label),
+            );
+          }).toList(),
     );
 
     if (selected == null) {
@@ -460,11 +517,7 @@ class _FilterChip extends StatelessWidget {
               alignLeft ? MainAxisAlignment.start : MainAxisAlignment.center,
           children: [
             if (alignLeft) ...[
-              Icon(
-                icon,
-                color: AppColors.grey5,
-                size: Dimensions.iconSize16,
-              ),
+              Icon(icon, color: AppColors.grey5, size: Dimensions.iconSize16),
               SizedBox(width: Dimensions.width10),
             ],
             Expanded(
@@ -479,11 +532,7 @@ class _FilterChip extends StatelessWidget {
               ),
             ),
             if (!alignLeft)
-              Icon(
-                icon,
-                color: AppColors.grey5,
-                size: Dimensions.iconSize16,
-              ),
+              Icon(icon, color: AppColors.grey5, size: Dimensions.iconSize16),
           ],
         ),
       ),
@@ -505,9 +554,10 @@ class _DashboardMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = card.metric.change >= 0;
-    final trendColor = card.metric.change == 0
-        ? AppColors.grey5
-        : isPositive
+    final trendColor =
+        card.metric.change == 0
+            ? AppColors.grey5
+            : isPositive
             ? const Color(0xFF2E9D50)
             : AppColors.error;
 
@@ -524,9 +574,10 @@ class _DashboardMetricCard extends StatelessWidget {
           color: card.highlight ? const Color(0xFFFBEFE9) : Colors.white,
           borderRadius: BorderRadius.circular(Dimensions.radius20),
           border: Border.all(
-            color: isSelected
-                ? AppColors.primary5
-                : card.highlight
+            color:
+                isSelected
+                    ? AppColors.primary5
+                    : card.highlight
                     ? const Color(0xFFF2CDBA)
                     : AppColors.grey3,
             width: isSelected ? 1.4 : 1,
@@ -564,8 +615,8 @@ class _DashboardMetricCard extends StatelessWidget {
                   card.metric.change == 0
                       ? Icons.remove_circle_outline_rounded
                       : isPositive
-                          ? Icons.arrow_circle_up_rounded
-                          : Icons.arrow_circle_down_rounded,
+                      ? Icons.arrow_circle_up_rounded
+                      : Icons.arrow_circle_down_rounded,
                   color: trendColor,
                   size: Dimensions.iconSize16,
                 ),
@@ -587,104 +638,640 @@ class _DashboardMetricCard extends StatelessWidget {
   }
 }
 
-class _MetricDetailCard extends StatelessWidget {
-  const _MetricDetailCard({required this.card});
+class _MetricDetailSheet extends StatelessWidget {
+  const _MetricDetailSheet({required this.card, required this.range});
 
   final _AnalyticsCardData card;
+  final CompanyAnalyticsRangeModel range;
 
   @override
   Widget build(BuildContext context) {
+    final accent = _metricAccent(card.id);
     final breakdown = card.metric.breakdown ?? const <String, dynamic>{};
-    final breakdownEntries = breakdown.entries
+    final numericEntries = breakdown.entries
+        .where((entry) => _toNumeric(entry.value) > 0)
+        .toList(growable: false);
+    final detailEntries = breakdown.entries
         .where((entry) => entry.value != null)
         .toList(growable: false);
+
+    return FractionallySizedBox(
+      heightFactor: 0.9,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F3EF),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(Dimensions.radius30),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              SizedBox(height: Dimensions.height12),
+              Container(
+                width: 52,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.grey3,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    Dimensions.width20,
+                    Dimensions.height15,
+                    Dimensions.width20,
+                    Dimensions.height24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _MetricSheetHeader(
+                        card: card,
+                        range: range,
+                        accent: accent,
+                      ),
+                      SizedBox(height: Dimensions.height18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _MetricInfoTile(
+                              label: 'Current',
+                              value: _formatNumber(card.metric.value),
+                            ),
+                          ),
+                          SizedBox(width: Dimensions.width10),
+                          Expanded(
+                            child: _MetricInfoTile(
+                              label: 'Previous',
+                              value: _formatNumber(card.metric.previousValue),
+                            ),
+                          ),
+                          SizedBox(width: Dimensions.width10),
+                          Expanded(
+                            child: _MetricInfoTile(
+                              label: 'Net change',
+                              value:
+                                  '${card.metric.change > 0 ? '+' : ''}${_formatNumber(card.metric.change)}',
+                              accent: accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: Dimensions.height18),
+                      _MetricSectionCard(
+                        title: 'Trend pulse',
+                        subtitle:
+                            'A quick comparison of the current period against the previous window.',
+                        child: _MetricComparisonChart(
+                          metric: card.metric,
+                          accent: accent,
+                        ),
+                      ),
+                      if (numericEntries.isNotEmpty) ...[
+                        SizedBox(height: Dimensions.height15),
+                        _MetricSectionCard(
+                          title: 'Breakdown map',
+                          subtitle:
+                              'See which signals are contributing most to ${card.title.toLowerCase()}.',
+                          child: _MetricBreakdownSection(
+                            entries: numericEntries,
+                            accent: accent,
+                          ),
+                        ),
+                      ],
+                      if (detailEntries.isNotEmpty) ...[
+                        SizedBox(height: Dimensions.height15),
+                        _MetricSectionCard(
+                          title: 'Signals',
+                          subtitle:
+                              'Detailed values feeding this metric in the selected timeframe.',
+                          child: Column(
+                            children:
+                                detailEntries
+                                    .map(
+                                      (entry) => _MetricBreakdownRow(
+                                        label: _labelizeBreakdownKey(entry.key),
+                                        value: _formatBreakdownValue(
+                                          entry.value,
+                                        ),
+                                        ratio:
+                                            numericEntries.isNotEmpty
+                                                ? _safeRatio(
+                                                  _toNumeric(entry.value),
+                                                  numericEntries
+                                                      .map(
+                                                        (item) => _toNumeric(
+                                                          item.value,
+                                                        ),
+                                                      )
+                                                      .fold<double>(
+                                                        0,
+                                                        (sum, value) =>
+                                                            sum + value,
+                                                      ),
+                                                )
+                                                : null,
+                                        accent: accent,
+                                      ),
+                                    )
+                                    .toList(),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricSheetHeader extends StatelessWidget {
+  const _MetricSheetHeader({
+    required this.card,
+    required this.range,
+    required this.accent,
+  });
+
+  final _AnalyticsCardData card;
+  final CompanyAnalyticsRangeModel range;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final change = card.metric.change;
+    final isPositive = change >= 0;
+    final trendColor =
+        change == 0
+            ? AppColors.grey5
+            : isPositive
+            ? const Color(0xFF239B56)
+            : const Color(0xFFD95040);
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(Dimensions.width20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(Dimensions.radius20),
-        border: Border.all(color: AppColors.grey3),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.18),
+            Colors.white,
+            const Color(0xFFFFF5EF),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(Dimensions.radius30),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.78),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  card.title,
+                  style: TextStyle(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: trendColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      change == 0
+                          ? Icons.remove_rounded
+                          : isPositive
+                          ? Icons.trending_up_rounded
+                          : Icons.trending_down_rounded,
+                      color: trendColor,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${card.metric.changePercentage.toStringAsFixed(card.metric.changePercentage.truncateToDouble() == card.metric.changePercentage ? 0 : 1)}%',
+                      style: TextStyle(
+                        color: trendColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: Dimensions.height18),
           Text(
-            card.title,
+            _formatNumber(card.metric.value),
             style: TextStyle(
-              fontSize: Dimensions.font18,
-              fontWeight: FontWeight.w700,
+              fontSize: Dimensions.font28,
+              fontWeight: FontWeight.w800,
+              color: AppColors.black1,
             ),
           ),
-          SizedBox(height: Dimensions.height10),
+          SizedBox(height: Dimensions.height8),
           Text(
             card.detailHint,
             style: TextStyle(
               fontSize: Dimensions.font13,
               color: AppColors.grey5,
+              height: 1.55,
+            ),
+          ),
+          SizedBox(height: Dimensions.height15),
+          Row(
+            children: [
+              _InsightChip(
+                icon: Icons.calendar_month_rounded,
+                label: _formatRangeLabel(range),
+              ),
+              SizedBox(width: Dimensions.width8),
+              _InsightChip(
+                icon: Icons.auto_graph_rounded,
+                label: _trendLabel(card.metric.trend),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricInfoTile extends StatelessWidget {
+  const _MetricInfoTile({
+    required this.label,
+    required this.value,
+    this.accent,
+  });
+
+  final String label;
+  final String value;
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: Dimensions.width15,
+        vertical: Dimensions.height15,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(Dimensions.radius20),
+        border: Border.all(color: AppColors.grey2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppColors.grey5,
+              fontSize: Dimensions.font12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: Dimensions.height8),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: Dimensions.font16,
+              color: accent ?? AppColors.black1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricSectionCard extends StatelessWidget {
+  const _MetricSectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(Dimensions.width18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(Dimensions.radius20),
+        border: Border.all(color: AppColors.grey2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: Dimensions.font16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: Dimensions.height5),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: Dimensions.font12,
+              color: AppColors.grey5,
               height: 1.5,
             ),
           ),
           SizedBox(height: Dimensions.height18),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricComparisonChart extends StatelessWidget {
+  const _MetricComparisonChart({required this.metric, required this.accent});
+
+  final CompanyAnalyticsTrendModel metric;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = math.max(
+      metric.value.toDouble(),
+      metric.previousValue.toDouble(),
+    );
+    final maxY = maxValue <= 0 ? 10.0 : maxValue * 1.25;
+
+    return SizedBox(
+      height: 210,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxY,
+          minY: 0,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY / 4,
+            getDrawingHorizontalLine:
+                (value) => FlLine(color: AppColors.grey2, strokeWidth: 1),
+          ),
+          borderData: FlBorderData(show: false),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 34,
+                interval: maxY / 4,
+                getTitlesWidget:
+                    (value, _) => Text(
+                      _compactNumber(value),
+                      style: TextStyle(
+                        fontSize: Dimensions.font10,
+                        color: AppColors.grey5,
+                      ),
+                    ),
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, _) {
+                  final labels = ['Previous', 'Current'];
+                  final index = value.toInt();
+                  if (index < 0 || index >= labels.length) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      labels[index],
+                      style: TextStyle(
+                        fontSize: Dimensions.font12,
+                        color: AppColors.grey5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          barGroups: [
+            _barGroup(
+              x: 0,
+              value: metric.previousValue.toDouble(),
+              color: const Color(0xFFE0D6CF),
+            ),
+            _barGroup(x: 1, value: metric.value.toDouble(), color: accent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  BarChartGroupData _barGroup({
+    required int x,
+    required double value,
+    required Color color,
+  }) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: value,
+          width: 28,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [color, color.withValues(alpha: 0.68)],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricBreakdownSection extends StatelessWidget {
+  const _MetricBreakdownSection({required this.entries, required this.accent});
+
+  final List<MapEntry<String, dynamic>> entries;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = entries.fold<double>(
+      0,
+      (sum, entry) => sum + _toNumeric(entry.value),
+    );
+    final palette = <Color>[
+      accent,
+      const Color(0xFFFF9A62),
+      const Color(0xFF6AC3B8),
+      const Color(0xFF8D77FF),
+      const Color(0xFFFFCF6A),
+      const Color(0xFFEF6A7B),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 150,
+          height: 150,
+          child: PieChart(
+            PieChartData(
+              centerSpaceRadius: 42,
+              sectionsSpace: 4,
+              sections: List.generate(entries.length, (index) {
+                final value = _toNumeric(entries[index].value);
+                return PieChartSectionData(
+                  value: value <= 0 ? 0.01 : value,
+                  color: palette[index % palette.length],
+                  radius: 18,
+                  title: '',
+                );
+              }),
+            ),
+          ),
+        ),
+        SizedBox(width: Dimensions.width15),
+        Expanded(
+          child: Column(
+            children: List.generate(entries.length, (index) {
+              final entry = entries[index];
+              return _MetricBreakdownRow(
+                label: _labelizeBreakdownKey(entry.key),
+                value: _formatBreakdownValue(entry.value),
+                ratio: _safeRatio(_toNumeric(entry.value), total),
+                accent: palette[index % palette.length],
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricBreakdownRow extends StatelessWidget {
+  const _MetricBreakdownRow({
+    required this.label,
+    required this.value,
+    required this.accent,
+    this.ratio,
+  });
+
+  final String label;
+  final String value;
+  final Color accent;
+  final double? ratio;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: Dimensions.height12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
             children: [
-              Expanded(
-                child: _MetricStatCell(
-                  label: 'Current',
-                  value: NumberFormat.decimalPattern().format(card.metric.value),
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
                 ),
               ),
+              SizedBox(width: Dimensions.width8),
               Expanded(
-                child: _MetricStatCell(
-                  label: 'Previous',
-                  value: NumberFormat.decimalPattern().format(
-                    card.metric.previousValue,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: Dimensions.font12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.black1,
                   ),
                 ),
               ),
-              Expanded(
-                child: _MetricStatCell(
-                  label: 'Change',
-                  value:
-                      '${card.metric.change > 0 ? '+' : ''}${NumberFormat.decimalPattern().format(card.metric.change)}',
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: Dimensions.font12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.grey5,
                 ),
               ),
             ],
           ),
-          if (breakdownEntries.isNotEmpty) ...[
-            SizedBox(height: Dimensions.height20),
-            Text(
-              'Details',
-              style: TextStyle(
-                fontSize: Dimensions.font14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: Dimensions.height12),
-            ...breakdownEntries.map(
-              (entry) => Padding(
-                padding: EdgeInsets.only(bottom: Dimensions.height10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _labelizeBreakdownKey(entry.key),
-                        style: TextStyle(
-                          color: AppColors.grey5,
-                          fontSize: Dimensions.font13,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      _formatBreakdownValue(entry.value),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: Dimensions.font13,
-                      ),
-                    ),
-                  ],
-                ),
+          if (ratio != null) ...[
+            SizedBox(height: Dimensions.height8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: ratio!.clamp(0, 1),
+                minHeight: 8,
+                backgroundColor: AppColors.grey1,
+                valueColor: AlwaysStoppedAnimation<Color>(accent),
               ),
             ),
           ],
@@ -692,55 +1279,125 @@ class _MetricDetailCard extends StatelessWidget {
       ),
     );
   }
-
-  String _labelizeBreakdownKey(String key) {
-    final withSpaces = key.replaceAllMapped(
-      RegExp(r'([a-z])([A-Z])'),
-      (match) => '${match.group(1)} ${match.group(2)}',
-    );
-    return withSpaces[0].toUpperCase() + withSpaces.substring(1);
-  }
-
-  String _formatBreakdownValue(dynamic value) {
-    if (value is num) {
-      return NumberFormat.decimalPattern().format(value);
-    }
-    return value.toString();
-  }
 }
 
-class _MetricStatCell extends StatelessWidget {
-  const _MetricStatCell({
-    required this.label,
-    required this.value,
-  });
+class _InsightChip extends StatelessWidget {
+  const _InsightChip({required this.icon, required this.label});
 
+  final IconData icon;
   final String label;
-  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppColors.grey5,
-            fontSize: Dimensions.font12,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.84),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.grey2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppColors.grey5),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: Dimensions.font12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.grey5,
+            ),
           ),
-        ),
-        SizedBox(height: Dimensions.height8),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: Dimensions.font16,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+Color _metricAccent(String metricId) {
+  switch (metricId) {
+    case 'engagement':
+      return const Color(0xFFCB6A2E);
+    case 'saved':
+      return const Color(0xFF3B8F6A);
+    case 'downloads':
+      return const Color(0xFF5864E8);
+    case 'events':
+      return const Color(0xFF9A4FD8);
+    case 'followers':
+      return const Color(0xFFEE7A5F);
+    case 'formulasUsage':
+      return const Color(0xFFB37431);
+    case 'views':
+    default:
+      return AppColors.primary5;
+  }
+}
+
+String _labelizeBreakdownKey(String key) {
+  final withSpaces = key.replaceAllMapped(
+    RegExp(r'([a-z])([A-Z])'),
+    (match) => '${match.group(1)} ${match.group(2)}',
+  );
+  return withSpaces[0].toUpperCase() + withSpaces.substring(1);
+}
+
+String _formatBreakdownValue(dynamic value) {
+  if (value is num) {
+    return NumberFormat.decimalPattern().format(value);
+  }
+  return value.toString();
+}
+
+String _formatNumber(num value) {
+  return NumberFormat.decimalPattern().format(value);
+}
+
+double _toNumeric(dynamic value) {
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double _safeRatio(double value, double total) {
+  if (total <= 0) {
+    return 0;
+  }
+  return value / total;
+}
+
+String _trendLabel(String trend) {
+  switch (trend.toLowerCase()) {
+    case 'up':
+      return 'Upward momentum';
+    case 'down':
+      return 'Cooling down';
+    case 'flat':
+    default:
+      return 'Holding steady';
+  }
+}
+
+String _compactNumber(double value) {
+  if (value >= 1000000) {
+    return '${(value / 1000000).toStringAsFixed(1)}M';
+  }
+  if (value >= 1000) {
+    return '${(value / 1000).toStringAsFixed(1)}K';
+  }
+  return value.toStringAsFixed(0);
+}
+
+String _formatRangeLabel(CompanyAnalyticsRangeModel range) {
+  final startAt = range.startAt;
+  final endAt = range.endAt;
+  if (startAt == null || endAt == null) {
+    return 'Current period';
+  }
+  final formatter = DateFormat('dd MMM');
+  return '${formatter.format(startAt.toLocal())} - ${formatter.format(endAt.toLocal())}';
 }
 
 class _CompanyCoachDialog extends StatefulWidget {
@@ -805,8 +1462,9 @@ class _CompanyCoachDialogState extends State<_CompanyCoachDialog> {
                     children: [
                       Expanded(
                         child: ClipRRect(
-                          borderRadius:
-                              BorderRadius.circular(Dimensions.radius20),
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radius20,
+                          ),
                           child: Image.asset(
                             slide.imageAsset,
                             width: double.infinity,
@@ -847,9 +1505,10 @@ class _CompanyCoachDialogState extends State<_CompanyCoachDialog> {
                   margin: EdgeInsets.only(right: Dimensions.width5),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _currentPage == index
-                        ? AppColors.primary5
-                        : AppColors.grey3,
+                    color:
+                        _currentPage == index
+                            ? AppColors.primary5
+                            : AppColors.grey3,
                   ),
                 ),
               ),
