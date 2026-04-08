@@ -273,18 +273,18 @@ class _FormulationPreviewState extends State<FormulationPreview> {
 
   String _neutralStatusCopy() {
     if (!isSavedFormulation) {
-      return 'This preview shows the recommended plan. AI preview image generation starts after you tap Save & Generate.';
+      return 'This preview shows the recommended plan. Preview image generation starts after you tap Save & Generate.';
     }
     if (isPredictionActive) {
-      return 'AI preview image generation is in progress. This screen refreshes automatically while the image is being prepared.';
+      return 'Preview image generation is in progress. This screen refreshes automatically while the image is being prepared.';
     }
     if (predictionStatus == 'failed') {
-      return 'AI preview image generation did not complete. You can retry the preview image from this screen.';
+      return 'Preview image generation did not complete. You can retry the preview image from this screen.';
     }
     if (predictionStatus == 'completed') {
-      return 'AI preview image generation completed successfully.';
+      return 'Preview image generation completed successfully.';
     }
-    return 'AI preview image generation has not started for this saved item yet.';
+    return 'Preview image generation has not started for this saved item yet.';
   }
 
   String _summaryText() {
@@ -470,8 +470,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                     SizedBox(height: Dimensions.height15),
                     FormulationAnalysisCard(
                       analysis: previewAnalysis,
-                      title: 'Preview Analysis',
-                      initiallyExpanded: true,
+                      title: 'Recommendations',
                     ),
                     if (previewAnalysis != null)
                       SizedBox(height: Dimensions.height15),

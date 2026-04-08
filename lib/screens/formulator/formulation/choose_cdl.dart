@@ -174,7 +174,7 @@ class _ChooseCdlState extends State<ChooseCdl> {
             SizedBox(height: Dimensions.height15),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'Preview Analysis',
+              title: 'Recommendations',
             ),
             if (suggestion != null) SizedBox(height: Dimensions.height15),
             ListView.builder(

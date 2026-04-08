@@ -83,7 +83,7 @@ class _UploadHairState extends State<UploadHair> {
             SizedBox(height: Dimensions.height5),
             Text(
               isCorrectionFlow
-                  ? 'Choose a clear photo of the client’s hair so AI can assess the current state before planning the correction.'
+                  ? 'Choose a clear photo of the client’s hair so the current state can be assessed before planning the correction.'
                   : 'Choose a clear photo of client’s hair to preview and try new colors.',
               style: TextStyle(
                 fontFamily: 'Poppins',

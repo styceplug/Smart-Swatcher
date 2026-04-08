@@ -77,8 +77,14 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppbar(leadingIcon: const BackButton()),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(
+          Dimensions.width20,
+          0,
+          Dimensions.width20,
+          Dimensions.height30,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -108,85 +114,77 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
             SizedBox(height: Dimensions.height15),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'Preview Analysis',
+              title: 'Recommendations',
             ),
             SizedBox(height: Dimensions.height15),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SelectorTile(
-                      label: 'Current color level',
-                      value:
-                          previousColorLevel == null
-                              ? 'Select level'
-                              : 'Level $previousColorLevel',
-                      onTap:
-                          () => _showLevelSheet(
-                            title: 'Current color level',
-                            selectedLevel: previousColorLevel,
-                            onSelected: (value) {
-                              setState(() => previousColorLevel = value);
-                            },
-                          ),
-                    ),
-                    SizedBox(height: Dimensions.height15),
-                    Text(
-                      'Current color tone',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: Dimensions.font13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.grey5,
-                      ),
-                    ),
-                    SizedBox(height: Dimensions.height10),
-                    _ToneWrap(
-                      tones: _tones,
-                      selectedTone: previousColorTone,
-                      onSelected: (tone) {
-                        setState(() => previousColorTone = tone);
-                      },
-                    ),
-                    SizedBox(height: Dimensions.height20),
-                    _SelectorTile(
-                      label: 'Target correction level',
-                      value:
-                          targetLevel == null
-                              ? 'Select level'
-                              : 'Level $targetLevel',
-                      onTap:
-                          () => _showLevelSheet(
-                            title: 'Target correction level',
-                            selectedLevel: targetLevel,
-                            onSelected: (value) {
-                              setState(() => targetLevel = value);
-                            },
-                          ),
-                    ),
-                    SizedBox(height: Dimensions.height15),
-                    Text(
-                      'Target tone',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: Dimensions.font13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.grey5,
-                      ),
-                    ),
-                    SizedBox(height: Dimensions.height10),
-                    _ToneWrap(
-                      tones: _mergedTargetTones(),
-                      selectedTone: targetTone,
-                      onSelected: (tone) {
-                        setState(() => targetTone = tone);
-                      },
-                    ),
-                  ],
-                ),
+            _SelectorTile(
+              label: 'Current color level',
+              value:
+                  previousColorLevel == null
+                      ? 'Select level'
+                      : 'Level $previousColorLevel',
+              onTap:
+                  () => _showLevelSheet(
+                    title: 'Current color level',
+                    selectedLevel: previousColorLevel,
+                    onSelected: (value) {
+                      setState(() => previousColorLevel = value);
+                    },
+                  ),
+            ),
+            SizedBox(height: Dimensions.height15),
+            Text(
+              'Current color tone',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: Dimensions.font13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.grey5,
               ),
             ),
+            SizedBox(height: Dimensions.height10),
+            _ToneWrap(
+              tones: _tones,
+              selectedTone: previousColorTone,
+              onSelected: (tone) {
+                setState(() => previousColorTone = tone);
+              },
+            ),
+            SizedBox(height: Dimensions.height20),
+            _SelectorTile(
+              label: 'Target correction level',
+              value:
+                  targetLevel == null
+                      ? 'Select level'
+                      : 'Level $targetLevel',
+              onTap:
+                  () => _showLevelSheet(
+                    title: 'Target correction level',
+                    selectedLevel: targetLevel,
+                    onSelected: (value) {
+                      setState(() => targetLevel = value);
+                    },
+                  ),
+            ),
+            SizedBox(height: Dimensions.height15),
+            Text(
+              'Target tone',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: Dimensions.font13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.grey5,
+              ),
+            ),
+            SizedBox(height: Dimensions.height10),
+            _ToneWrap(
+              tones: _mergedTargetTones(),
+              selectedTone: targetTone,
+              onSelected: (tone) {
+                setState(() => targetTone = tone);
+              },
+            ),
+            SizedBox(height: Dimensions.height30),
             Row(
               children: [
                 Expanded(
