@@ -10,7 +10,7 @@ import '../../../widgets/custom_button.dart';
 import '../../../widgets/formulation_analysis_card.dart';
 
 class GreyCoverage extends StatefulWidget {
-  const GreyCoverage({Key? key}) : super(key: key);
+  const GreyCoverage({super.key});
 
   @override
   State<GreyCoverage> createState() => _GreyCoverageState();
@@ -37,7 +37,7 @@ class _GreyCoverageState extends State<GreyCoverage> {
         wizardData['suggestion'],
       );
 
-      // Auto-fill from AI Suggestion if available
+      // Auto-fill from the upload suggestion if available
       if (wizardData['suggestion'] != null) {
         var suggestion = wizardData['suggestion'];
         int? estimated = suggestion['estimatedGreyPercentage'];
@@ -70,8 +70,14 @@ class _GreyCoverageState extends State<GreyCoverage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppbar(leadingIcon: const BackButton()),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(
+          Dimensions.width20,
+          0,
+          Dimensions.width20,
+          Dimensions.height30,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -103,7 +109,7 @@ class _GreyCoverageState extends State<GreyCoverage> {
             SizedBox(height: Dimensions.height20),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'Preview Analysis',
+              title: 'Recommendations',
             ),
             if (suggestion != null) SizedBox(height: Dimensions.height15),
 
@@ -145,8 +151,7 @@ class _GreyCoverageState extends State<GreyCoverage> {
                 ),
               ),
             ),
-
-            const Spacer(),
+            SizedBox(height: Dimensions.height40),
 
             // --- BUTTONS ---
             Row(

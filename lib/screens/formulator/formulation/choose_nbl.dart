@@ -184,7 +184,7 @@ class _ChooseNblState extends State<ChooseNbl> {
             SizedBox(height: Dimensions.height15),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'Preview Analysis',
+              title: 'Recommendations',
             ),
             if (suggestion != null) SizedBox(height: Dimensions.height15),
             ListView.builder(

@@ -55,8 +55,14 @@ class _GreyExceedsState extends State<GreyExceeds> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppbar(leadingIcon: const BackButton()),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(
+          Dimensions.width20,
+          0,
+          Dimensions.width20,
+          Dimensions.height30,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -88,7 +94,7 @@ class _GreyExceedsState extends State<GreyExceeds> {
             SizedBox(height: Dimensions.height20),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'Preview Analysis',
+              title: 'Recommendations',
             ),
             if (suggestion != null) SizedBox(height: Dimensions.height15),
 
@@ -162,8 +168,7 @@ class _GreyExceedsState extends State<GreyExceeds> {
                 onPressed: _showRatioModal,
               ),
             ),
-
-            const Spacer(),
+            SizedBox(height: Dimensions.height40),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
