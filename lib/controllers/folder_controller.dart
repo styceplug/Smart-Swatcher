@@ -372,13 +372,10 @@ class ClientFolderController extends GetxController {
       Response response = await repo.uploadClientImage(clientImage.value!);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        var data = response.body;
-        Map<String, dynamic> results; // Use a temp variable
-
-        if (data is String) {
-          results = jsonDecode(data);
-        } else {
-          results = data;
+        final results = _parseMapBody(response.body);
+        if (results == null) {
+          CustomSnackBar.failure(message: 'Upload failed');
+          return;
         }
 
         // --- THE FIX STARTS HERE ---
@@ -406,11 +403,7 @@ class ClientFolderController extends GetxController {
 
         // --- THE FIX ENDS HERE ---
       } else {
-        var errorBody =
-            response.body is String ? jsonDecode(response.body) : response.body;
-        CustomSnackBar.failure(
-          message: errorBody['message'] ?? "Upload failed",
-        );
+        CustomSnackBar.failure(message: _uploadErrorMessage(response));
       }
     } catch (e) {
       print("Upload Error: $e");
@@ -595,6 +588,7 @@ class ClientFolderController extends GetxController {
     required String phone,
     String? dob,
     String? appointmentDate,
+    bool setReminder = false,
     bool shouldSendConsent = false,
   }) async {
     if (name.isEmpty) {
@@ -611,18 +605,42 @@ class ClientFolderController extends GetxController {
       clientPhone: phone,
       dateOfBirth: dob,
       appointmentDate: appointmentDate,
+      setReminder: setReminder,
       shouldSendConsent: shouldSendConsent,
     );
 
     try {
       Response response = await repo.createFolder(newFolder);
 
-      if (response.statusCode == 201) {
-        CustomSnackBar.success(message: "Folder created successfully!");
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        EmailDeliveryResultModel? appointmentEmailDelivery;
+        EmailDeliveryResultModel? consentEmailDelivery;
+        if (response.body is Map &&
+            response.body['appointmentEmailDelivery'] is Map) {
+          appointmentEmailDelivery = EmailDeliveryResultModel.fromJson(
+            Map<String, dynamic>.from(response.body['appointmentEmailDelivery']),
+          );
+        }
+        if (response.body is Map &&
+            response.body['consentEmailDelivery'] is Map) {
+          consentEmailDelivery = EmailDeliveryResultModel.fromJson(
+            Map<String, dynamic>.from(response.body['consentEmailDelivery']),
+          );
+        }
+
+        _showFolderCreationFeedback(
+          appointmentEmailDelivery: appointmentEmailDelivery,
+          consentEmailDelivery: consentEmailDelivery,
+        );
         await getFolders();
         return true;
       } else {
-        String msg = response.body['message'] ?? response.statusText;
+        final String msg =
+            response.body is Map
+                ? response.body['message']?.toString() ??
+                    response.statusText ??
+                    'Failed to create folder'
+                : response.statusText ?? 'Failed to create folder';
         CustomSnackBar.failure(message: msg);
         return false;
       }
@@ -633,6 +651,157 @@ class ClientFolderController extends GetxController {
       isLoading.value = false;
       update();
     }
+  }
+
+  void _showFolderCreationFeedback(
+    {
+    EmailDeliveryResultModel? appointmentEmailDelivery,
+    EmailDeliveryResultModel? consentEmailDelivery,
+  }
+  ) {
+    final messages = <String>[];
+    final failures = <String>[];
+
+    final appointmentFeedback = _emailDeliveryFeedback(
+      delivery: appointmentEmailDelivery,
+      sentMessage: (destination) =>
+          'Appointment details sent${destination.isNotEmpty ? ' to $destination' : ''}',
+      skippedPrefix: 'Appointment email',
+      failedPrefix: 'Appointment email',
+    );
+    final consentFeedback = _emailDeliveryFeedback(
+      delivery: consentEmailDelivery,
+      sentMessage: (destination) =>
+          'Consent form sent${destination.isNotEmpty ? ' to $destination' : ''}',
+      skippedPrefix: 'Consent email',
+      failedPrefix: 'Consent email',
+    );
+
+    if (appointmentFeedback != null) {
+      if (appointmentFeedback.isFailure) {
+        failures.add(appointmentFeedback.message);
+      } else {
+        messages.add(appointmentFeedback.message);
+      }
+    }
+
+    if (consentFeedback != null) {
+      if (consentFeedback.isFailure) {
+        failures.add(consentFeedback.message);
+      } else {
+        messages.add(consentFeedback.message);
+      }
+    }
+
+    if (messages.isEmpty && failures.isEmpty) {
+      CustomSnackBar.success(message: 'Folder created successfully!');
+      return;
+    }
+
+    if (messages.isNotEmpty) {
+      CustomSnackBar.success(
+        message: ['Folder created successfully!', ...messages].join('\n'),
+      );
+    }
+
+    if (failures.isNotEmpty) {
+      CustomSnackBar.failure(
+        message: failures.join('\n'),
+      );
+    }
+  }
+
+  _DeliveryFeedback? _emailDeliveryFeedback({
+    required EmailDeliveryResultModel? delivery,
+    required String Function(String destination) sentMessage,
+    required String skippedPrefix,
+    required String failedPrefix,
+  }) {
+    if (delivery == null || delivery.status == 'not_requested') {
+      return null;
+    }
+
+    final destination = delivery.destination?.trim() ?? '';
+    switch (delivery.status) {
+      case 'sent':
+        return _DeliveryFeedback(
+          sentMessage(destination),
+          isFailure: false,
+        );
+      case 'skipped':
+        return _DeliveryFeedback(
+          '$skippedPrefix skipped: ${_emailSkippedMessage(delivery)}',
+          isFailure: false,
+        );
+      case 'failed':
+        final error =
+            delivery.error?.trim().isNotEmpty == true
+                ? delivery.error!.trim()
+                : '$failedPrefix could not be sent.';
+        return _DeliveryFeedback(error, isFailure: true);
+      default:
+        return null;
+    }
+  }
+
+  String _emailSkippedMessage(
+    EmailDeliveryResultModel delivery,
+  ) {
+    final reason = delivery.reason?.toLowerCase().trim() ?? '';
+    if (reason.contains('email')) {
+      return 'client email is missing.';
+    }
+    if (reason.contains('appointment') || reason.contains('date')) {
+      return 'no appointment date was set.';
+    }
+    if (reason.contains('not requested') ||
+        reason.contains('setreminder') ||
+        reason.contains('reminder') ||
+        reason.contains('consent')) {
+      return 'it was not requested.';
+    }
+    if (delivery.reason?.trim().isNotEmpty == true) {
+      return delivery.reason!.trim();
+    }
+    return 'delivery was skipped.';
+  }
+
+  Map<String, dynamic>? _parseMapBody(dynamic body) {
+    if (body is Map<String, dynamic>) {
+      return body;
+    }
+    if (body is Map) {
+      return body.map((key, value) => MapEntry(key.toString(), value));
+    }
+    if (body is String && body.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        if (decoded is Map) {
+          return decoded.map((key, value) => MapEntry(key.toString(), value));
+        }
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  String _uploadErrorMessage(Response response) {
+    final errorBody = _parseMapBody(response.body);
+    final backendMessage = errorBody?['message']?.toString().trim();
+    final maxSizeMb = errorBody?['maxSizeMb']?.toString().trim();
+
+    if (backendMessage != null && backendMessage.isNotEmpty) {
+      if (maxSizeMb != null && maxSizeMb.isNotEmpty) {
+        return '$backendMessage (max $maxSizeMb MB)';
+      }
+      return backendMessage;
+    }
+
+    return response.statusText ?? 'Upload failed';
   }
 
   Future<bool> deleteFormulation(String formulationId) async {
@@ -710,4 +879,11 @@ class ClientFolderController extends GetxController {
       return null;
     }
   }
+}
+
+class _DeliveryFeedback {
+  const _DeliveryFeedback(this.message, {required this.isFailure});
+
+  final String message;
+  final bool isFailure;
 }

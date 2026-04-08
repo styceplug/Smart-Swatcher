@@ -108,9 +108,9 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
             SizedBox(height: Dimensions.height15),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'AI Upload Reading',
+              title: 'Preview Analysis',
             ),
-            SizedBox(height: Dimensions.height20),
+            SizedBox(height: Dimensions.height15),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(

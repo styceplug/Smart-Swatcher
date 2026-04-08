@@ -470,7 +470,8 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                     SizedBox(height: Dimensions.height15),
                     FormulationAnalysisCard(
                       analysis: previewAnalysis,
-                      title: 'AI Preview Analysis',
+                      title: 'Preview Analysis',
+                      initiallyExpanded: true,
                     ),
                     if (previewAnalysis != null)
                       SizedBox(height: Dimensions.height15),

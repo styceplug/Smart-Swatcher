@@ -103,9 +103,9 @@ class _GreyCoverageState extends State<GreyCoverage> {
             SizedBox(height: Dimensions.height20),
             FormulationAnalysisCard(
               analysis: suggestion,
-              title: 'AI Upload Reading',
+              title: 'Preview Analysis',
             ),
-            if (suggestion != null) SizedBox(height: Dimensions.height20),
+            if (suggestion != null) SizedBox(height: Dimensions.height15),
 
             // --- DROPDOWN FIELD ---
             InkWell(
