@@ -35,12 +35,10 @@ class _AddDescriptionState extends State<AddDescription> {
     return Scaffold(
       appBar: CustomAppbar(
         leadingIcon: const BackButton(),
-        title: 'Description',
+        title: 'Client Notes',
         actionIcon: InkWell(
           onTap: () {
-            // RETURN DATA BACK && ADD TIME-STAMP
             Get.back(result: textController.text.trim());
-            print('Hello World');
           },
           child: Text(
             'Done',
@@ -65,7 +63,7 @@ class _AddDescriptionState extends State<AddDescription> {
           style: TextStyle(fontFamily: 'Poppins', fontSize: Dimensions.font16),
           decoration: InputDecoration(
             border: InputBorder.none,
-            hintText: "Add notes about this formulation...",
+            hintText: "Add notes about this client or formulation...",
             hintStyle: TextStyle(color: Colors.grey),
           ),
         ),

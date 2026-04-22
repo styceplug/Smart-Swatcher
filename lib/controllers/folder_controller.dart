@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:smart_swatcher/controllers/auth_controller.dart';
@@ -154,7 +155,7 @@ class ClientFolderController extends GetxController {
     refreshingPredictionIds.add(formulationId);
 
     try {
-      for (int attempt = 0; attempt < 12; attempt++) {
+      for (int attempt = 0; attempt < 90; attempt++) {
         final formulation = await _fetchFormulationById(
           formulationId,
           refreshPrediction: true,
@@ -272,12 +273,14 @@ class ClientFolderController extends GetxController {
 
         CustomSnackBar.success(message: successMessage);
 
-        Get.until((route) => Get.currentRoute == AppRoutes.folderScreen);
+        Get.until((route) => route.settings.name == AppRoutes.folderScreen);
 
         if (Get.isRegistered<ClientFolderController>()) {
-          String folderId = requestBody['folderId'];
-          Get.find<ClientFolderController>().fetchFormulations(folderId);
-          Get.find<ClientFolderController>().fetchRecentFormulations();
+          final folderId = requestBody['folderId']?.toString() ?? '';
+          if (folderId.isNotEmpty) {
+            await Get.find<ClientFolderController>().fetchFormulations(folderId);
+          }
+          await Get.find<ClientFolderController>().fetchRecentFormulations();
         }
 
         if (savedFormulation != null) {
@@ -356,10 +359,45 @@ class ClientFolderController extends GetxController {
   }
 
   Future<void> pickImage(ImageSource source) async {
-    final pickedFile = await ImagePicker().pickImage(source: source);
+    final pickedFile = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 88,
+      maxWidth: 2200,
+      maxHeight: 2200,
+      requestFullMetadata: false,
+    );
     if (pickedFile != null) {
-      clientImage.value = File(pickedFile.path);
+      clientImage.value = await _normalizeFormulationImage(File(pickedFile.path));
     }
+  }
+
+  Future<File> _normalizeFormulationImage(File sourceFile) async {
+    try {
+      final path = sourceFile.path;
+      final extensionIndex = path.lastIndexOf('.');
+      final basePath =
+          extensionIndex == -1 ? path : path.substring(0, extensionIndex);
+      final targetPath = '${basePath}_normalized.jpg';
+
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        sourceFile.absolute.path,
+        targetPath,
+        format: CompressFormat.jpeg,
+        quality: 90,
+        minWidth: 1800,
+        minHeight: 1800,
+        autoCorrectionAngle: true,
+        keepExif: false,
+      );
+
+      if (compressedFile != null) {
+        return File(compressedFile.path);
+      }
+    } catch (e) {
+      print('Formulation image normalization error: $e');
+    }
+
+    return sourceFile;
   }
 
   Future<void> uploadAndNext() async {

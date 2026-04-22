@@ -297,11 +297,22 @@ class _FormulationPreviewState extends State<FormulationPreview> {
       return 'Base $baseLevel • Current Lvl $previousLevel $previousTone → Target Lvl $targetLevel $targetTone';
     }
 
-    final nbl = inputs['naturalBaseLevel'] ?? 0;
-    final dl = inputs['desiredLevel'] ?? 0;
-    final lift = (dl is num && nbl is num && dl > nbl) ? dl - nbl : 0;
-    final grey = inputs['greyPercentage'] ?? 0;
-    return 'NBL $nbl - G%$grey - DL $dl = $lift Lvl Lift';
+    final nbl = inputs['naturalBaseLevel'];
+    final dl = inputs['desiredLevel'];
+    final grey = inputs['greyPercentage'];
+    final desiredTone = inputs['desiredTone']?.toString().trim();
+    final lift =
+        (dl is num && nbl is num && dl > nbl) ? (dl - nbl).toString() : '0';
+
+    final parts = <String>[
+      if (nbl != null) 'NBL $nbl',
+      if (grey != null) 'Grey $grey%',
+      if (dl != null) 'DL $dl',
+      'Lift $lift',
+      if (desiredTone?.isNotEmpty == true) desiredTone!,
+    ];
+
+    return parts.join(' • ');
   }
 
   List<dynamic> _steps() {
@@ -500,27 +511,18 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                         ),
                       ],
                     ),
-                    if (steps.isNotEmpty) ...[
-                      SizedBox(height: Dimensions.height20),
-                      Text(
-                        'Recommended Steps',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: Dimensions.font16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(height: Dimensions.height10),
-                      ...steps.map((step) => _PreviewStepCard(step: step)),
-                    ],
-                    SizedBox(height: Dimensions.height20),
-                    if (!isSavedFormulation && description.isEmpty)
+                    if (!isSavedFormulation) ...[
                       IntrinsicWidth(
                         child: CustomButton(
-                          text: 'Add description',
+                          text:
+                              description.isEmpty
+                                  ? 'Add client notes'
+                                  : 'Edit client notes',
                           onPressed: () async {
                             final result = await Get.toNamed(
                               AppRoutes.addDescription,
+                              arguments:
+                                  description.isEmpty ? null : description,
                             );
                             if (result != null && result is String) {
                               setState(() {
@@ -540,54 +542,43 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                             vertical: Dimensions.height10,
                           ),
                         ),
-                      )
-                    else if (description.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Description',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: Dimensions.font14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(height: Dimensions.height10),
-                          Text(
-                            description,
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: Dimensions.font13,
-                              color: AppColors.grey5,
-                              height: 1.5,
-                            ),
-                          ),
-                          SizedBox(height: Dimensions.height10),
-                          if (!isSavedFormulation)
-                            InkWell(
-                              onTap: () async {
-                                final result = await Get.toNamed(
-                                  AppRoutes.addDescription,
-                                  arguments: description,
-                                );
-                                if (result != null && result is String) {
-                                  setState(() {
-                                    description = result;
-                                  });
-                                }
-                              },
-                              child: Text(
-                                'Edit description',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  color: AppColors.primary5,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                        ],
                       ),
+                      SizedBox(height: Dimensions.height15),
+                    ],
+                    if (description.isNotEmpty) ...[
+                      Text(
+                        'Client Notes',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: Dimensions.font14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: Dimensions.height10),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: Dimensions.font13,
+                          color: AppColors.grey5,
+                          height: 1.5,
+                        ),
+                      ),
+                      SizedBox(height: Dimensions.height20),
+                    ],
+                    if (steps.isNotEmpty) ...[
+                      SizedBox(height: Dimensions.height20),
+                      Text(
+                        'Recommended Steps',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: Dimensions.font16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: Dimensions.height10),
+                      ...steps.map((step) => _PreviewStepCard(step: step)),
+                    ],
                     SizedBox(height: Dimensions.height40),
                   ],
                 ),

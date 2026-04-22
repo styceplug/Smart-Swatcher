@@ -17,6 +17,20 @@ class ChooseCdl extends StatefulWidget {
 }
 
 class _ChooseCdlState extends State<ChooseCdl> {
+  static const List<String> _toneOptions = <String>[
+    'Natural',
+    'Neutral',
+    'Warm',
+    'Cool',
+    'Gold',
+    'Ash',
+    'Copper',
+    'Beige',
+    'Pearl',
+    'Violet',
+    'Red',
+  ];
+
   // 1. Inject Controller
   final ClientFolderController controller = Get.find<ClientFolderController>();
 
@@ -25,6 +39,22 @@ class _ChooseCdlState extends State<ChooseCdl> {
   FormulationAnalysisModel? suggestion;
 
   int selectedLevel = 0;
+  String? selectedTone;
+
+  String? _displayTone(String? tone) {
+    final normalized = tone?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized
+        .split(RegExp(r'\s+'))
+        .map(
+          (part) => part.isEmpty
+              ? part
+              : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
 
   // Data List
   final List<Map<String, dynamic>> cdlOptions = [
@@ -111,14 +141,19 @@ class _ChooseCdlState extends State<ChooseCdl> {
       suggestion = FormulationAnalysisModel.fromJsonLike(
         wizardData['suggestion'],
       );
+      selectedTone = _displayTone(
+        wizardData['desiredTone']?.toString() ??
+            suggestion?.recommendedToneOrFirstFamily,
+      );
     }
   }
 
   void _onNext() {
-    if (selectedLevel == 0) return;
+    if (selectedLevel == 0 || (selectedTone?.trim().isEmpty ?? true)) return;
 
     // 1. Add final data point
     wizardData['desiredLevel'] = selectedLevel;
+    wizardData['desiredTone'] = selectedTone;
 
     wizardData['formulationType'] =
         wizardData['formulationType'] ?? 'color_formulation';
@@ -192,6 +227,66 @@ class _ChooseCdlState extends State<ChooseCdl> {
               },
             ),
             SizedBox(height: Dimensions.height20),
+            Text(
+              'Choose Tone',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: Dimensions.font14,
+                color: AppColors.grey5,
+              ),
+            ),
+            SizedBox(height: Dimensions.height15),
+            Wrap(
+              spacing: Dimensions.width15,
+              runSpacing: Dimensions.height15,
+              children:
+                  _toneOptions.map((tone) {
+                    final isSelected = selectedTone == tone;
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          selectedTone = tone;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Dimensions.width15,
+                          vertical: Dimensions.height10,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected
+                                  ? AppColors.primary5.withValues(alpha: 0.08)
+                                  : Colors.white,
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radius20,
+                          ),
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? AppColors.primary5
+                                    : AppColors.grey3,
+                          ),
+                        ),
+                        child: Text(
+                          tone,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                            fontSize: Dimensions.font13,
+                            color:
+                                isSelected
+                                    ? AppColors.primary5
+                                    : AppColors.grey5,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+            ),
+            SizedBox(height: Dimensions.height20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -209,7 +304,9 @@ class _ChooseCdlState extends State<ChooseCdl> {
                       text:
                           controller.isLoading.value ? 'Generating...' : 'Next',
                       isDisabled:
-                          controller.isLoading.value || selectedLevel == 0,
+                          controller.isLoading.value ||
+                          selectedLevel == 0 ||
+                          (selectedTone?.trim().isEmpty ?? true),
                       onPressed: _onNext,
                       backgroundColor: AppColors.primary4,
                     ),
