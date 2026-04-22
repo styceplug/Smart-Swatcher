@@ -181,6 +181,16 @@ class _ChooseNblState extends State<ChooseNbl> {
                 color: AppColors.grey4,
               ),
             ),
+            SizedBox(height: Dimensions.height5),
+            Text(
+              'If the client is fully grey, choose the natural base that best matches their youthful natural color.',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w400,
+                fontSize: Dimensions.font12,
+                color: AppColors.grey4,
+              ),
+            ),
             SizedBox(height: Dimensions.height15),
             FormulationAnalysisCard(
               analysis: suggestion,

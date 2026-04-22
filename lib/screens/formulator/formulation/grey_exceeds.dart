@@ -17,12 +17,41 @@ class GreyExceeds extends StatefulWidget {
 }
 
 class _GreyExceedsState extends State<GreyExceeds> {
+  static const List<String> _toneOptions = <String>[
+    'Natural',
+    'Neutral',
+    'Gold',
+    'Ash',
+    'Beige',
+    'Copper',
+    'Red',
+    'Cool',
+    'Warm',
+    'Pearl',
+    'Violet',
+  ];
+
   Map<String, dynamic> wizardData = {};
 
   String? selectedShadeType;
   String? selectedDesiredTone;
   String? selectedMixingRatio;
   FormulationAnalysisModel? suggestion;
+
+  String? _displayTone(String? tone) {
+    final normalized = tone?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized
+        .split(RegExp(r'\s+'))
+        .map(
+          (part) => part.isEmpty
+              ? part
+              : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
 
   @override
   void initState() {
@@ -34,13 +63,9 @@ class _GreyExceedsState extends State<GreyExceeds> {
       );
       selectedShadeType = suggestion?.recommendedShadeType;
 
-      final suggestedTone =
-          suggestion?.recommendedToneOrFirstFamily?.toLowerCase();
-      if (suggestedTone == 'natural') {
-        selectedDesiredTone = 'Natural';
-      } else if (suggestedTone == 'gold') {
-        selectedDesiredTone = 'Gold';
-      }
+      selectedDesiredTone = _displayTone(
+        suggestion?.recommendedToneOrFirstFamily,
+      );
     }
   }
 
@@ -128,7 +153,7 @@ class _GreyExceedsState extends State<GreyExceeds> {
 
             // --- DESIRED TONE SELECTION ---
             Text(
-              'Add Natural or Gold',
+              'Choose Tone',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w600,
@@ -138,19 +163,64 @@ class _GreyExceedsState extends State<GreyExceeds> {
             ),
             SizedBox(height: Dimensions.height20),
 
-            _radioOption(
-              label: 'Natural',
-              value: 'Natural',
-              groupValue: selectedDesiredTone,
-              onChanged: (val) => setState(() => selectedDesiredTone = val),
+            Wrap(
+              spacing: Dimensions.width15,
+              runSpacing: Dimensions.height15,
+              children:
+                  _toneOptions.map((tone) {
+                    final isSelected = selectedDesiredTone == tone;
+                    return InkWell(
+                      onTap: () => setState(() => selectedDesiredTone = tone),
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Dimensions.width15,
+                          vertical: Dimensions.height10,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected
+                                  ? AppColors.primary5.withValues(alpha: 0.08)
+                                  : Colors.white,
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radius20,
+                          ),
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? AppColors.primary5
+                                    : AppColors.grey3,
+                          ),
+                        ),
+                        child: Text(
+                          tone,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                            fontSize: Dimensions.font13,
+                            color:
+                                isSelected
+                                    ? AppColors.primary5
+                                    : AppColors.grey5,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
-            SizedBox(height: Dimensions.height20),
-            _radioOption(
-              label: 'Gold',
-              value: 'Gold',
-              groupValue: selectedDesiredTone,
-              onChanged: (val) => setState(() => selectedDesiredTone = val),
-            ),
+
+            if ((selectedDesiredTone ?? '').isNotEmpty) ...[
+              SizedBox(height: Dimensions.height20),
+              Text(
+                'Selected tone: $selectedDesiredTone',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                  fontSize: Dimensions.font12,
+                  color: AppColors.grey4,
+                ),
+              ),
+            ],
 
             SizedBox(height: Dimensions.height20),
 
