@@ -19,7 +19,7 @@ class RecommendedAccountsScreen extends StatelessWidget {
     return Scaffold(
       appBar: CustomAppbar(
         leadingIcon: const BackButton(),
-        title: 'Recommended Account',
+        title: 'Recommended Accounts',
       ),
       body: SafeArea(
         child: Column(
