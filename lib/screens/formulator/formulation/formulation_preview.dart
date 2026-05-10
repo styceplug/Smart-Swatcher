@@ -139,16 +139,28 @@ class _FormulationPreviewState extends State<FormulationPreview> {
           formulation.inputData?['desiredLevel'] ?? formulation.desiredLevel,
       'desiredTone':
           formulation.inputData?['desiredTone'] ?? formulation.desiredTone,
+      'toneProfile':
+          formulation.inputData?['toneProfile'] ??
+          formulation.toneProfile?.toJson(),
+      'desiredToneProfile':
+          formulation.inputData?['desiredToneProfile'] ??
+          formulation.desiredToneProfile?.toJson(),
       'previousColorLevel':
           formulation.inputData?['previousColorLevel'] ??
           formulation.previousColorLevel,
       'previousColorTone':
           formulation.inputData?['previousColorTone'] ??
           formulation.previousColorTone,
+      'previousToneProfile':
+          formulation.inputData?['previousToneProfile'] ??
+          formulation.previousToneProfile?.toJson(),
       'targetLevel':
           formulation.inputData?['targetLevel'] ?? formulation.targetLevel,
       'targetTone':
           formulation.inputData?['targetTone'] ?? formulation.targetTone,
+      'targetToneProfile':
+          formulation.inputData?['targetToneProfile'] ??
+          formulation.targetToneProfile?.toJson(),
       'longDescription':
           formulation.longDescription ??
           formulation.inputData?['longDescription'],
@@ -171,6 +183,15 @@ class _FormulationPreviewState extends State<FormulationPreview> {
           formulation.resultData?['mixingRatio'] ?? formulation.mixingRatio,
       'noteToStylist':
           formulation.resultData?['noteToStylist'] ?? formulation.noteToStylist,
+      'toneProfile':
+          formulation.resultData?['toneProfile'] ??
+          formulation.toneProfile?.toJson(),
+      'previousToneProfile':
+          formulation.resultData?['previousToneProfile'] ??
+          formulation.previousToneProfile?.toJson(),
+      'targetToneProfile':
+          formulation.resultData?['targetToneProfile'] ??
+          formulation.targetToneProfile?.toJson(),
     };
   }
 
@@ -242,10 +263,15 @@ class _FormulationPreviewState extends State<FormulationPreview> {
       'shadeType': inputs['shadeType'],
       'desiredLevel': inputs['desiredLevel'],
       'desiredTone': inputs['desiredTone'],
+      'toneProfile': inputs['toneProfile'] ?? inputs['desiredToneProfile'],
+      'desiredToneProfile':
+          inputs['desiredToneProfile'] ?? inputs['toneProfile'],
       'previousColorLevel': inputs['previousColorLevel'],
       'previousColorTone': inputs['previousColorTone'],
+      'previousToneProfile': inputs['previousToneProfile'],
       'targetLevel': inputs['targetLevel'],
       'targetTone': inputs['targetTone'],
+      'targetToneProfile': inputs['targetToneProfile'] ?? inputs['toneProfile'],
       'developerVolume': outputs['developerVolume'] ?? 0,
       'mixingRatio': outputs['mixingRatio'] ?? '1:1',
       'noteToStylist': outputs['noteToStylist'] ?? '',
@@ -290,9 +316,21 @@ class _FormulationPreviewState extends State<FormulationPreview> {
   String _summaryText() {
     if (isCorrection) {
       final previousLevel = inputs['previousColorLevel'] ?? '?';
-      final previousTone = inputs['previousColorTone'] ?? 'Current tone';
+      final previousToneProfile = FormulationToneProfile.fromJsonLike(
+        inputs['previousToneProfile'],
+      );
+      final targetToneProfile = FormulationToneProfile.fromJsonLike(
+        inputs['targetToneProfile'],
+      );
+      final previousTone =
+          previousToneProfile?.effectiveDisplay ??
+          inputs['previousColorTone'] ??
+          'Current tone';
       final targetLevel = inputs['targetLevel'] ?? '?';
-      final targetTone = inputs['targetTone'] ?? 'Target tone';
+      final targetTone =
+          targetToneProfile?.effectiveDisplay ??
+          inputs['targetTone'] ??
+          'Target tone';
       final baseLevel = inputs['naturalBaseLevel'] ?? '?';
       return 'Base $baseLevel • Current Lvl $previousLevel $previousTone → Target Lvl $targetLevel $targetTone';
     }
@@ -300,7 +338,12 @@ class _FormulationPreviewState extends State<FormulationPreview> {
     final nbl = inputs['naturalBaseLevel'];
     final dl = inputs['desiredLevel'];
     final grey = inputs['greyPercentage'];
-    final desiredTone = inputs['desiredTone']?.toString().trim();
+    final toneProfile = FormulationToneProfile.fromJsonLike(
+      inputs['desiredToneProfile'] ?? inputs['toneProfile'],
+    );
+    final desiredTone =
+        toneProfile?.effectiveDisplay ??
+        inputs['desiredTone']?.toString().trim();
     final lift =
         (dl is num && nbl is num && dl > nbl) ? (dl - nbl).toString() : '0';
 

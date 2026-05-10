@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/folder_controller.dart';
 import 'package:smart_swatcher/models/formulation_model.dart';
 
 import '../../../routes/routes.dart';
@@ -17,41 +18,15 @@ class GreyExceeds extends StatefulWidget {
 }
 
 class _GreyExceedsState extends State<GreyExceeds> {
-  static const List<String> _toneOptions = <String>[
-    'Natural',
-    'Neutral',
-    'Gold',
-    'Ash',
-    'Beige',
-    'Copper',
-    'Red',
-    'Cool',
-    'Warm',
-    'Pearl',
-    'Violet',
-  ];
+  final ClientFolderController controller = Get.find<ClientFolderController>();
 
   Map<String, dynamic> wizardData = {};
 
   String? selectedShadeType;
-  String? selectedDesiredTone;
+  String? selectedToneFamily;
+  List<String> selectedToneIds = <String>[];
   String? selectedMixingRatio;
   FormulationAnalysisModel? suggestion;
-
-  String? _displayTone(String? tone) {
-    final normalized = tone?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    return normalized
-        .split(RegExp(r'\s+'))
-        .map(
-          (part) => part.isEmpty
-              ? part
-              : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
-        )
-        .join(' ');
-  }
 
   @override
   void initState() {
@@ -62,16 +37,63 @@ class _GreyExceedsState extends State<GreyExceeds> {
         wizardData['suggestion'],
       );
       selectedShadeType = suggestion?.recommendedShadeType;
-
-      selectedDesiredTone = _displayTone(
-        suggestion?.recommendedToneOrFirstFamily,
+      final toneProfile = FormulationToneProfile.fromJsonLike(
+        wizardData['desiredToneProfile'] ??
+            wizardData['toneProfile'] ??
+            suggestion?.recommendedToneProfile,
+      );
+      selectedToneFamily =
+          toneProfile?.family ?? suggestion?.recommendedToneProfile?.family;
+      selectedToneIds = List<String>.from(
+        toneProfile?.tones ?? const <String>[],
       );
     }
+    controller.loadFormulationConfig();
+  }
+
+  int? get _selectedBaseLevel =>
+      int.tryParse(wizardData['naturalBaseLevel']?.toString() ?? '');
+
+  List<Map<String, dynamic>> get _toneFamilyOptions =>
+      controller.toneFamilyOptions;
+
+  List<Map<String, dynamic>> get _toneOptions => controller.toneOptionsForLevel(
+    _selectedBaseLevel ?? 1,
+    family: selectedToneFamily,
+  );
+
+  bool get _canContinue =>
+      selectedShadeType != null &&
+      (selectedToneFamily?.trim().isNotEmpty ?? false) &&
+      selectedToneIds.isNotEmpty;
+
+  void _toggleTone(String toneId) {
+    setState(() {
+      if (selectedToneIds.contains(toneId)) {
+        selectedToneIds.remove(toneId);
+        return;
+      }
+      if (selectedToneIds.length >= 3) {
+        return;
+      }
+      selectedToneIds.add(toneId);
+    });
   }
 
   void _onNext() {
+    final desiredLevel = int.tryParse(
+      wizardData['desiredLevel']?.toString() ?? '',
+    );
+    final toneProfile = controller.buildToneProfile(
+      family: selectedToneFamily!,
+      toneIds: selectedToneIds,
+      level: desiredLevel ?? _selectedBaseLevel,
+    );
+
     wizardData['shadeType'] = selectedShadeType;
-    wizardData['desiredTone'] = selectedDesiredTone;
+    wizardData['toneProfile'] = toneProfile.toJson();
+    wizardData['desiredToneProfile'] = toneProfile.toJson();
+    wizardData['desiredTone'] = controller.composeLegacyTone(toneProfile);
 
     Get.toNamed(AppRoutes.chooseCdl, arguments: wizardData);
   }
@@ -97,7 +119,6 @@ class _GreyExceedsState extends State<GreyExceeds> {
               color: AppColors.primary4,
             ),
             SizedBox(height: Dimensions.height20),
-
             Text(
               'Grey Hair Coverage Exceeds 10%',
               style: TextStyle(
@@ -107,7 +128,7 @@ class _GreyExceedsState extends State<GreyExceeds> {
             ),
             SizedBox(height: Dimensions.height5),
             Text(
-              'Please select the appropriate grey coverage shade for the client’s hair.',
+              'Select the series and tonal blend that should still cover resistant grey cleanly.',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w400,
@@ -115,15 +136,12 @@ class _GreyExceedsState extends State<GreyExceeds> {
                 color: AppColors.grey4,
               ),
             ),
-
             SizedBox(height: Dimensions.height20),
             FormulationAnalysisCard(
               analysis: suggestion,
               title: 'Recommendations',
             ),
             if (suggestion != null) SizedBox(height: Dimensions.height15),
-
-            // --- SHADE TYPE SELECTION ---
             Text(
               'Available Shades',
               style: TextStyle(
@@ -134,7 +152,6 @@ class _GreyExceedsState extends State<GreyExceeds> {
               ),
             ),
             SizedBox(height: Dimensions.height20),
-
             _radioOption(
               label: 'Fashion Shade',
               value: 'fashion',
@@ -148,12 +165,9 @@ class _GreyExceedsState extends State<GreyExceeds> {
               groupValue: selectedShadeType,
               onChanged: (val) => setState(() => selectedShadeType = val),
             ),
-
-            SizedBox(height: Dimensions.height40),
-
-            // --- DESIRED TONE SELECTION ---
+            SizedBox(height: Dimensions.height30),
             Text(
-              'Choose Tone',
+              'Choose Tone Family',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w600,
@@ -161,16 +175,57 @@ class _GreyExceedsState extends State<GreyExceeds> {
                 color: AppColors.grey5,
               ),
             ),
+            SizedBox(height: Dimensions.height12),
+            Wrap(
+              spacing: Dimensions.width15,
+              runSpacing: Dimensions.height12,
+              children:
+                  _toneFamilyOptions.map((family) {
+                    final familyId = family['id']?.toString() ?? 'natural';
+                    final label = family['label']?.toString() ?? familyId;
+                    final isSelected = selectedToneFamily == familyId;
+                    return _ChoiceChipButton(
+                      label: label,
+                      selected: isSelected,
+                      onTap: () {
+                        setState(() {
+                          selectedToneFamily = familyId;
+                          selectedToneIds =
+                              selectedToneIds
+                                  .where(
+                                    (toneId) => _toneOptions.any(
+                                      (tone) =>
+                                          tone['id']?.toString() == toneId,
+                                    ),
+                                  )
+                                  .toList();
+                        });
+                      },
+                    );
+                  }).toList(),
+            ),
             SizedBox(height: Dimensions.height20),
-
+            Text(
+              'Choose up to 3 ordered tones',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: Dimensions.font14,
+                color: AppColors.grey5,
+              ),
+            ),
+            SizedBox(height: Dimensions.height12),
             Wrap(
               spacing: Dimensions.width15,
               runSpacing: Dimensions.height15,
               children:
                   _toneOptions.map((tone) {
-                    final isSelected = selectedDesiredTone == tone;
+                    final toneId = tone['id']?.toString() ?? '';
+                    final label = tone['label']?.toString() ?? toneId;
+                    final selectionIndex = selectedToneIds.indexOf(toneId);
+                    final isSelected = selectionIndex >= 0;
                     return InkWell(
-                      onTap: () => setState(() => selectedDesiredTone = tone),
+                      onTap: () => _toggleTone(toneId),
                       borderRadius: BorderRadius.circular(Dimensions.radius20),
                       child: Container(
                         padding: EdgeInsets.symmetric(
@@ -192,39 +247,48 @@ class _GreyExceedsState extends State<GreyExceeds> {
                                     : AppColors.grey3,
                           ),
                         ),
-                        child: Text(
-                          tone,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                            fontSize: Dimensions.font13,
-                            color:
-                                isSelected
-                                    ? AppColors.primary5
-                                    : AppColors.grey5,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isSelected) ...[
+                              Container(
+                                width: 18,
+                                height: 18,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary5,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  '${selectionIndex + 1}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: Dimensions.font12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: Dimensions.width8),
+                            ],
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w500,
+                                fontSize: Dimensions.font13,
+                                color:
+                                    isSelected
+                                        ? AppColors.primary5
+                                        : AppColors.grey5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
                   }).toList(),
             ),
-
-            if ((selectedDesiredTone ?? '').isNotEmpty) ...[
-              SizedBox(height: Dimensions.height20),
-              Text(
-                'Selected tone: $selectedDesiredTone',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w500,
-                  fontSize: Dimensions.font12,
-                  color: AppColors.grey4,
-                ),
-              ),
-            ],
-
             SizedBox(height: Dimensions.height20),
-
-            // --- MIXING RATIO MODAL ---
             IntrinsicWidth(
               child: CustomButton(
                 text: selectedMixingRatio ?? 'Mixing Ratios',
@@ -239,7 +303,6 @@ class _GreyExceedsState extends State<GreyExceeds> {
               ),
             ),
             SizedBox(height: Dimensions.height40),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -254,10 +317,9 @@ class _GreyExceedsState extends State<GreyExceeds> {
                 Expanded(
                   child: CustomButton(
                     text: 'Next',
-                    isDisabled:
-                        selectedShadeType == null ||
-                        selectedDesiredTone == null,
+                    isDisabled: !_canContinue,
                     onPressed: _onNext,
+                    backgroundColor: AppColors.primary4,
                   ),
                 ),
               ],
@@ -273,17 +335,16 @@ class _GreyExceedsState extends State<GreyExceeds> {
     required String label,
     required String value,
     required String? groupValue,
-    required Function(String) onChanged,
+    required ValueChanged<String> onChanged,
   }) {
-    bool isSelected = groupValue == value;
+    final selected = groupValue == value;
     return InkWell(
       onTap: () => onChanged(value),
       child: Row(
         children: [
           Icon(
-            isSelected ? Icons.radio_button_checked : Icons.circle_outlined,
-            size: Dimensions.iconSize20,
-            color: isSelected ? AppColors.primary4 : AppColors.grey4,
+            selected ? Icons.radio_button_checked : Icons.radio_button_off,
+            color: selected ? AppColors.primary5 : AppColors.grey4,
           ),
           SizedBox(width: Dimensions.width10),
           Text(
@@ -291,7 +352,8 @@ class _GreyExceedsState extends State<GreyExceeds> {
             style: TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w500,
-              fontSize: Dimensions.font15,
+              fontSize: Dimensions.font14,
+              color: AppColors.grey5,
             ),
           ),
         ],
@@ -302,83 +364,110 @@ class _GreyExceedsState extends State<GreyExceeds> {
   void _showRatioModal() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(Dimensions.radius15),
         ),
       ),
       builder: (context) {
-        final List<String> percents = ['Up to 25%', '25% - 50%', '50% - 100%'];
-        final List<String> ratios = ['2:1', '1:1', '1:1'];
-
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.4,
-          padding: EdgeInsets.all(Dimensions.width20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '% Grey',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                    ),
+        final rules = controller.formulationConfig.value?['greyMixingRules'];
+        final items =
+            rules is List
+                ? rules
+                    .map(
+                      (item) =>
+                          item is Map ? Map<String, dynamic>.from(item) : null,
+                    )
+                    .whereType<Map<String, dynamic>>()
+                    .toList()
+                : <Map<String, dynamic>>[];
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(Dimensions.width20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Grey Mixing Ratios',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: Dimensions.font17,
+                    fontWeight: FontWeight.w600,
                   ),
-                  Text(
-                    'Mixing ratio (DL:N/G)',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              Divider(),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: percents.length,
-                  itemBuilder: (context, index) {
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          selectedMixingRatio =
-                              "${percents[index]} (${ratios[index]})";
-                        });
-                        Get.back();
-                      },
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: Dimensions.height15,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              percents[index],
-                              style: TextStyle(fontFamily: 'Poppins'),
-                            ),
-                            Text(
-                              ratios[index],
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
                 ),
-              ),
-            ],
+                SizedBox(height: Dimensions.height10),
+                ...items.map(
+                  (item) => Padding(
+                    padding: EdgeInsets.only(bottom: Dimensions.height12),
+                    child: Text(
+                      item['label']?.toString() ?? '',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: Dimensions.font13,
+                        color: AppColors.grey5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Get.back(),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+class _ChoiceChipButton extends StatelessWidget {
+  const _ChoiceChipButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Dimensions.radius20),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: Dimensions.width15,
+          vertical: Dimensions.height10,
+        ),
+        decoration: BoxDecoration(
+          color:
+              selected
+                  ? AppColors.primary5.withValues(alpha: 0.08)
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(Dimensions.radius20),
+          border: Border.all(
+            color: selected ? AppColors.primary5 : AppColors.grey3,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w500,
+            fontSize: Dimensions.font13,
+            color: selected ? AppColors.primary5 : AppColors.grey5,
+          ),
+        ),
+      ),
     );
   }
 }

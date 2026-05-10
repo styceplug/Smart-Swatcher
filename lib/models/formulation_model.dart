@@ -37,6 +37,10 @@ class FormulationModel {
   Map<String, dynamic>? resultData;
   String? logicVersion;
   String? createdAt;
+  FormulationToneProfile? toneProfile;
+  FormulationToneProfile? desiredToneProfile;
+  FormulationToneProfile? previousToneProfile;
+  FormulationToneProfile? targetToneProfile;
 
   FormulationModel({
     this.id = "",
@@ -72,9 +76,35 @@ class FormulationModel {
     this.resultData,
     this.logicVersion,
     this.createdAt,
+    this.toneProfile,
+    this.desiredToneProfile,
+    this.previousToneProfile,
+    this.targetToneProfile,
   });
 
   factory FormulationModel.fromJson(Map<String, dynamic> json) {
+    final inputData = _mapFromJsonLike(json['inputData']);
+    final resultData = _mapFromJsonLike(json['resultData']);
+    final toneProfile = FormulationToneProfile.fromJsonLike(
+      json['toneProfile'] ??
+          inputData?['toneProfile'] ??
+          resultData?['toneProfile'],
+    );
+    final desiredToneProfile = FormulationToneProfile.fromJsonLike(
+      json['desiredToneProfile'] ??
+          inputData?['desiredToneProfile'] ??
+          toneProfile,
+    );
+    final previousToneProfile = FormulationToneProfile.fromJsonLike(
+      json['previousToneProfile'] ?? inputData?['previousToneProfile'],
+    );
+    final targetToneProfile = FormulationToneProfile.fromJsonLike(
+      json['targetToneProfile'] ??
+          inputData?['targetToneProfile'] ??
+          resultData?['targetToneProfile'] ??
+          toneProfile,
+    );
+
     return FormulationModel(
       id: json['id'] ?? "",
       folderId: json['folderId'] ?? "",
@@ -99,19 +129,30 @@ class FormulationModel {
       targetLevel: json['targetLevel'],
 
       shadeType: json['shadeType'],
-      desiredTone: json['desiredTone'],
-      previousColorTone: json['previousColorTone'],
-      targetTone: json['targetTone'],
+      desiredTone:
+          json['desiredTone'] ??
+          desiredToneProfile?.display ??
+          toneProfile?.display,
+      previousColorTone:
+          json['previousColorTone'] ?? previousToneProfile?.display,
+      targetTone:
+          json['targetTone'] ??
+          targetToneProfile?.display ??
+          toneProfile?.display,
       mixingRatio: json['mixingRatio'],
       noteToStylist: json['noteToStylist'],
       longDescription: json['longDescription'],
 
       steps: _listFromJsonLike(json['steps']),
       media: _listFromJsonLike(json['media']),
-      inputData: _mapFromJsonLike(json['inputData']),
-      resultData: _mapFromJsonLike(json['resultData']),
+      inputData: inputData,
+      resultData: resultData,
       logicVersion: json['logicVersion'],
       createdAt: json['createdAt'],
+      toneProfile: toneProfile,
+      desiredToneProfile: desiredToneProfile,
+      previousToneProfile: previousToneProfile,
+      targetToneProfile: targetToneProfile,
     );
   }
 
@@ -123,6 +164,19 @@ class FormulationModel {
       predictionImageUrl != null && predictionImageUrl!.trim().isNotEmpty;
 
   bool get isCorrection => formulationType == 'color_correction';
+
+  FormulationToneProfile? get effectiveToneProfile {
+    if (isCorrection) {
+      return targetToneProfile ?? toneProfile;
+    }
+    return desiredToneProfile ?? toneProfile;
+  }
+
+  String? get toneDisplay =>
+      effectiveToneProfile?.display ??
+      targetToneProfile?.display ??
+      desiredTone ??
+      targetTone;
 
   FormulationAnalysisModel? get analysis =>
       FormulationAnalysisModel.fromJsonLike(resultData?['analysis']);
@@ -174,6 +228,11 @@ class FormulationAnalysisModel {
   final String? recommendedShadeType;
   final String? recommendedTone;
   final List<String> recommendedToneFamilies;
+  final FormulationToneProfile? recommendedToneProfile;
+  final String? serviceType;
+  final int? liftLevels;
+  final String? neutralizer;
+  final String? fillerRecommendation;
   final double? confidence;
   final String? analysisSummary;
   final List<String> cautions;
@@ -187,6 +246,11 @@ class FormulationAnalysisModel {
     this.recommendedShadeType,
     this.recommendedTone,
     this.recommendedToneFamilies = const [],
+    this.recommendedToneProfile,
+    this.serviceType,
+    this.liftLevels,
+    this.neutralizer,
+    this.fillerRecommendation,
     this.confidence,
     this.analysisSummary,
     this.cautions = const [],
@@ -202,6 +266,13 @@ class FormulationAnalysisModel {
       recommendedShadeType: _asString(json['recommendedShadeType']),
       recommendedTone: _asString(json['recommendedTone']),
       recommendedToneFamilies: _asStringList(json['recommendedToneFamilies']),
+      recommendedToneProfile: FormulationToneProfile.fromJsonLike(
+        json['recommendedToneProfile'],
+      ),
+      serviceType: _asString(json['serviceType']),
+      liftLevels: _asInt(json['liftLevels']),
+      neutralizer: _asString(json['neutralizer']),
+      fillerRecommendation: _asString(json['fillerRecommendation']),
       confidence: _asDouble(json['confidence']),
       analysisSummary: _asString(json['analysisSummary']),
       cautions: _asStringList(json['cautions']),
@@ -230,6 +301,9 @@ class FormulationAnalysisModel {
   }
 
   String? get recommendedToneOrFirstFamily {
+    if (recommendedToneProfile?.display?.trim().isNotEmpty == true) {
+      return recommendedToneProfile!.display;
+    }
     if (recommendedTone != null && recommendedTone!.trim().isNotEmpty) {
       return recommendedTone;
     }
@@ -254,6 +328,11 @@ class FormulationAnalysisModel {
       'recommendedShadeType': recommendedShadeType,
       'recommendedTone': recommendedTone,
       'recommendedToneFamilies': recommendedToneFamilies,
+      'recommendedToneProfile': recommendedToneProfile?.toJson(),
+      'serviceType': serviceType,
+      'liftLevels': liftLevels,
+      'neutralizer': neutralizer,
+      'fillerRecommendation': fillerRecommendation,
       'confidence': confidence,
       'analysisSummary': analysisSummary,
       'cautions': cautions,
@@ -269,6 +348,14 @@ class FormulationAnalysisModel {
     }
     if (recommendedTone != null && recommendedTone!.trim().isNotEmpty) {
       chips.add(_titleCase(recommendedTone!));
+    }
+    if (recommendedToneProfile != null) {
+      for (final tone in recommendedToneProfile!.toneLabels) {
+        final normalized = _titleCase(tone);
+        if (!chips.contains(normalized)) {
+          chips.add(normalized);
+        }
+      }
     }
     for (final tone in recommendedToneFamilies) {
       final normalized = _titleCase(tone);
@@ -326,5 +413,82 @@ class FormulationAnalysisModel {
               '${part[0].toUpperCase()}${part.length > 1 ? part.substring(1).toLowerCase() : ''}',
         )
         .join(' ');
+  }
+}
+
+class FormulationToneProfile {
+  final String family;
+  final List<String> tones;
+  final List<String> toneCodes;
+  final List<String> toneLabels;
+  final String? display;
+  final String? familyLabel;
+
+  const FormulationToneProfile({
+    required this.family,
+    this.tones = const [],
+    this.toneCodes = const [],
+    this.toneLabels = const [],
+    this.display,
+    this.familyLabel,
+  });
+
+  factory FormulationToneProfile.fromJson(Map<String, dynamic> json) {
+    return FormulationToneProfile(
+      family:
+          (json['family']?.toString().trim().isNotEmpty ?? false)
+              ? json['family'].toString().trim()
+              : 'natural',
+      tones: FormulationAnalysisModel._asStringList(json['tones']),
+      toneCodes: FormulationAnalysisModel._asStringList(json['toneCodes']),
+      toneLabels: FormulationAnalysisModel._asStringList(json['toneLabels']),
+      display: FormulationAnalysisModel._asString(json['display']),
+      familyLabel: FormulationAnalysisModel._asString(json['familyLabel']),
+    );
+  }
+
+  static FormulationToneProfile? fromJsonLike(dynamic value) {
+    if (value == null) return null;
+    if (value is FormulationToneProfile) return value;
+    if (value is Map<String, dynamic>) {
+      return FormulationToneProfile.fromJson(value);
+    }
+    if (value is Map) {
+      return FormulationToneProfile.fromJson(
+        value.map((key, item) => MapEntry(key.toString(), item)),
+      );
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        return fromJsonLike(decoded);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'family': family,
+      'tones': tones,
+      'toneCodes': toneCodes,
+      'toneLabels': toneLabels,
+      'display': display,
+      'familyLabel': familyLabel,
+    };
+  }
+
+  String get effectiveDisplay {
+    if (display?.trim().isNotEmpty == true) {
+      return display!;
+    }
+    final familyText =
+        familyLabel ?? FormulationAnalysisModel._titleCase(family);
+    if (toneLabels.isEmpty) {
+      return familyText;
+    }
+    return '$familyText ${toneLabels.join(' ')}';
   }
 }

@@ -32,6 +32,12 @@ class FormulationAnalysisCard extends StatelessWidget {
         _InsightFact('Undertone', analysis!.estimatedUndertone!),
       if (analysis!.underlyingPigment != null)
         _InsightFact('Pigment', analysis!.underlyingPigment!),
+      if (analysis!.serviceType != null)
+        _InsightFact('Service', analysis!.serviceType!),
+      if (analysis!.neutralizer != null)
+        _InsightFact('Neutralizer', analysis!.neutralizer!),
+      if (analysis!.fillerRecommendation != null)
+        _InsightFact('Filler', analysis!.fillerRecommendation!),
     ];
 
     final guidanceChips = analysis!.guidanceChips;

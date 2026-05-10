@@ -22,24 +22,11 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
   Map<String, dynamic> wizardData = {};
   int? previousColorLevel;
   int? targetLevel;
-  String? previousColorTone;
-  String? targetTone;
+  String? previousToneFamily;
+  String? targetToneFamily;
+  List<String> previousToneIds = <String>[];
+  List<String> targetToneIds = <String>[];
   FormulationAnalysisModel? suggestion;
-
-  static const List<int> _levels = <int>[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-  static const List<String> _tones = <String>[
-    'Natural',
-    'Neutral',
-    'Warm',
-    'Cool',
-    'Gold',
-    'Ash',
-    'Copper',
-    'Beige',
-    'Pearl',
-    'Violet',
-    'Red',
-  ];
 
   @override
   void initState() {
@@ -49,24 +36,89 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
       suggestion = FormulationAnalysisModel.fromJsonLike(
         wizardData['suggestion'],
       );
+      final previousProfile = FormulationToneProfile.fromJsonLike(
+        wizardData['previousToneProfile'],
+      );
+      final targetProfile = FormulationToneProfile.fromJsonLike(
+        wizardData['targetToneProfile'] ?? suggestion?.recommendedToneProfile,
+      );
+      previousToneFamily = previousProfile?.family;
+      targetToneFamily =
+          targetProfile?.family ?? suggestion?.recommendedToneProfile?.family;
+      previousToneIds = List<String>.from(previousProfile?.tones ?? const []);
+      targetToneIds = List<String>.from(targetProfile?.tones ?? const []);
     }
+    controller.loadFormulationConfig();
+  }
+
+  List<int> get _levels =>
+      controller.baseLevelOptions
+              .map((item) => int.tryParse(item['level']?.toString() ?? ''))
+              .whereType<int>()
+              .toList()
+              .isNotEmpty
+          ? controller.baseLevelOptions
+              .map((item) => int.tryParse(item['level']?.toString() ?? ''))
+              .whereType<int>()
+              .toList()
+          : const <int>[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  List<Map<String, dynamic>> get _toneFamilies => controller.toneFamilyOptions;
+
+  List<Map<String, dynamic>> _tonesFor(int? level, String? family) =>
+      controller.toneOptionsForLevel(level ?? 1, family: family);
+
+  bool get _canPreview =>
+      previousColorLevel != null &&
+      targetLevel != null &&
+      (previousToneFamily?.trim().isNotEmpty ?? false) &&
+      (targetToneFamily?.trim().isNotEmpty ?? false) &&
+      previousToneIds.isNotEmpty &&
+      targetToneIds.isNotEmpty;
+
+  void _toggleTone({
+    required List<String> current,
+    required String toneId,
+    required ValueChanged<List<String>> onChanged,
+  }) {
+    final next = List<String>.from(current);
+    if (next.contains(toneId)) {
+      next.remove(toneId);
+    } else if (next.length < 3) {
+      next.add(toneId);
+    }
+    onChanged(next);
   }
 
   void _onPreview() {
-    if (previousColorLevel == null ||
-        targetLevel == null ||
-        previousColorTone == null ||
-        targetTone == null) {
+    if (!_canPreview) {
       return;
     }
 
+    final previousProfile = controller.buildToneProfile(
+      family: previousToneFamily!,
+      toneIds: previousToneIds,
+      level: previousColorLevel,
+    );
+    final targetProfile = controller.buildToneProfile(
+      family: targetToneFamily!,
+      toneIds: targetToneIds,
+      level: targetLevel,
+    );
+
     wizardData['formulationType'] = 'color_correction';
     wizardData['previousColorLevel'] = previousColorLevel;
-    wizardData['previousColorTone'] = previousColorTone;
+    wizardData['previousColorTone'] = controller.composeLegacyTone(
+      previousProfile,
+    );
+    wizardData['previousToneProfile'] = previousProfile.toJson();
     wizardData['targetLevel'] = targetLevel;
-    wizardData['targetTone'] = targetTone;
+    wizardData['targetTone'] = controller.composeLegacyTone(targetProfile);
+    wizardData['targetToneProfile'] = targetProfile.toJson();
+    wizardData['toneProfile'] = targetProfile.toJson();
     wizardData.remove('desiredLevel');
     wizardData.remove('desiredTone');
+    wizardData.remove('desiredToneProfile');
     wizardData.remove('greyPercentage');
     wizardData.remove('shadeType');
 
@@ -133,30 +185,41 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
                   ),
             ),
             SizedBox(height: Dimensions.height15),
-            Text(
-              'Current color tone',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: Dimensions.font13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.grey5,
-              ),
-            ),
-            SizedBox(height: Dimensions.height10),
-            _ToneWrap(
-              tones: _tones,
-              selectedTone: previousColorTone,
-              onSelected: (tone) {
-                setState(() => previousColorTone = tone);
+            _ToneSelectionCard(
+              title: 'Current tone family',
+              familyOptions: _toneFamilies,
+              selectedFamily: previousToneFamily,
+              onFamilyChanged: (value) {
+                setState(() {
+                  previousToneFamily = value;
+                  previousToneIds =
+                      previousToneIds
+                          .where(
+                            (toneId) => _tonesFor(
+                              previousColorLevel,
+                              previousToneFamily,
+                            ).any((tone) => tone['id']?.toString() == toneId),
+                          )
+                          .toList();
+                });
+              },
+              tones: _tonesFor(previousColorLevel, previousToneFamily),
+              selectedToneIds: previousToneIds,
+              onToggleTone: (toneId) {
+                setState(() {
+                  _toggleTone(
+                    current: previousToneIds,
+                    toneId: toneId,
+                    onChanged: (value) => previousToneIds = value,
+                  );
+                });
               },
             ),
             SizedBox(height: Dimensions.height20),
             _SelectorTile(
               label: 'Target correction level',
               value:
-                  targetLevel == null
-                      ? 'Select level'
-                      : 'Level $targetLevel',
+                  targetLevel == null ? 'Select level' : 'Level $targetLevel',
               onTap:
                   () => _showLevelSheet(
                     title: 'Target correction level',
@@ -167,21 +230,34 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
                   ),
             ),
             SizedBox(height: Dimensions.height15),
-            Text(
-              'Target tone',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: Dimensions.font13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.grey5,
-              ),
-            ),
-            SizedBox(height: Dimensions.height10),
-            _ToneWrap(
-              tones: _mergedTargetTones(),
-              selectedTone: targetTone,
-              onSelected: (tone) {
-                setState(() => targetTone = tone);
+            _ToneSelectionCard(
+              title: 'Target tone family',
+              familyOptions: _toneFamilies,
+              selectedFamily: targetToneFamily,
+              onFamilyChanged: (value) {
+                setState(() {
+                  targetToneFamily = value;
+                  targetToneIds =
+                      targetToneIds
+                          .where(
+                            (toneId) => _tonesFor(
+                              targetLevel,
+                              targetToneFamily,
+                            ).any((tone) => tone['id']?.toString() == toneId),
+                          )
+                          .toList();
+                });
+              },
+              tones: _tonesFor(targetLevel, targetToneFamily),
+              selectedToneIds: targetToneIds,
+              onToggleTone: (toneId) {
+                setState(() {
+                  _toggleTone(
+                    current: targetToneIds,
+                    toneId: toneId,
+                    onChanged: (value) => targetToneIds = value,
+                  );
+                });
               },
             ),
             SizedBox(height: Dimensions.height30),
@@ -202,12 +278,7 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
                           controller.isLoading.value
                               ? 'Generating...'
                               : 'Preview',
-                      isDisabled:
-                          controller.isLoading.value ||
-                          previousColorLevel == null ||
-                          previousColorTone == null ||
-                          targetLevel == null ||
-                          targetTone == null,
+                      isDisabled: controller.isLoading.value || !_canPreview,
                       onPressed: _onPreview,
                     ),
                   ),
@@ -219,21 +290,6 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
         ),
       ),
     );
-  }
-
-  List<String> _mergedTargetTones() {
-    final tones = <String>[...?suggestion?.recommendedToneFamilies, ..._tones];
-
-    final unique = <String>[];
-    for (final tone in tones) {
-      final trimmed = tone.trim();
-      if (trimmed.isEmpty) continue;
-      final normalized = _normalizeTone(trimmed);
-      if (!unique.any((item) => _normalizeTone(item) == normalized)) {
-        unique.add(_displayTone(trimmed));
-      }
-    }
-    return unique;
   }
 
   void _showLevelSheet({
@@ -313,15 +369,6 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
       },
     );
   }
-
-  String _normalizeTone(String value) => value.trim().toLowerCase();
-
-  String _displayTone(String value) {
-    final normalized = value.trim();
-    if (normalized.isEmpty) return normalized;
-    return normalized[0].toUpperCase() +
-        (normalized.length > 1 ? normalized.substring(1).toLowerCase() : '');
-  }
 }
 
 class _SelectorTile extends StatelessWidget {
@@ -337,11 +384,81 @@ class _SelectorTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(
+          horizontal: Dimensions.width15,
+          vertical: Dimensions.height15,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(Dimensions.radius15),
+          border: Border.all(color: AppColors.grey3),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: Dimensions.font12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.grey4,
+                    ),
+                  ),
+                  SizedBox(height: Dimensions.height5),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: Dimensions.font14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.grey5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, color: AppColors.grey4),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToneSelectionCard extends StatelessWidget {
+  const _ToneSelectionCard({
+    required this.title,
+    required this.familyOptions,
+    required this.selectedFamily,
+    required this.onFamilyChanged,
+    required this.tones,
+    required this.selectedToneIds,
+    required this.onToggleTone,
+  });
+
+  final String title;
+  final List<Map<String, dynamic>> familyOptions;
+  final String? selectedFamily;
+  final ValueChanged<String> onFamilyChanged;
+  final List<Map<String, dynamic>> tones;
+  final List<String> selectedToneIds;
+  final ValueChanged<String> onToggleTone;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          title,
           style: TextStyle(
             fontFamily: 'Poppins',
             fontSize: Dimensions.font13,
@@ -350,89 +467,116 @@ class _SelectorTile extends StatelessWidget {
           ),
         ),
         SizedBox(height: Dimensions.height10),
-        InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimensions.width15,
-              vertical: Dimensions.height15,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(Dimensions.radius15),
-              border: Border.all(color: AppColors.grey3),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: Dimensions.font14,
-                      color: AppColors.black1,
+        Wrap(
+          spacing: Dimensions.width15,
+          runSpacing: Dimensions.height12,
+          children:
+              familyOptions.map((family) {
+                final familyId = family['id']?.toString() ?? 'natural';
+                final label = family['label']?.toString() ?? familyId;
+                final isSelected = selectedFamily == familyId;
+                return InkWell(
+                  onTap: () => onFamilyChanged(familyId),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width15,
+                      vertical: Dimensions.height10,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected
+                              ? AppColors.primary5.withValues(alpha: 0.08)
+                              : Colors.white,
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                      border: Border.all(
+                        color:
+                            isSelected ? AppColors.primary5 : AppColors.grey3,
+                      ),
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                        fontSize: Dimensions.font13,
+                        color:
+                            isSelected ? AppColors.primary5 : AppColors.grey5,
+                      ),
                     ),
                   ),
-                ),
-                const Icon(
-                  Icons.arrow_drop_down_outlined,
-                  color: AppColors.grey4,
-                ),
-              ],
-            ),
-          ),
+                );
+              }).toList(),
+        ),
+        SizedBox(height: Dimensions.height12),
+        Wrap(
+          spacing: Dimensions.width15,
+          runSpacing: Dimensions.height15,
+          children:
+              tones.map((tone) {
+                final toneId = tone['id']?.toString() ?? '';
+                final label = tone['label']?.toString() ?? toneId;
+                final selectionIndex = selectedToneIds.indexOf(toneId);
+                final isSelected = selectionIndex >= 0;
+                return InkWell(
+                  onTap: () => onToggleTone(toneId),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width15,
+                      vertical: Dimensions.height10,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected
+                              ? AppColors.primary5.withValues(alpha: 0.08)
+                              : Colors.white,
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                      border: Border.all(
+                        color:
+                            isSelected ? AppColors.primary5 : AppColors.grey3,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isSelected) ...[
+                          Container(
+                            width: 18,
+                            height: 18,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary5,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${selectionIndex + 1}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: Dimensions.font12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: Dimensions.width8),
+                        ],
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                            fontSize: Dimensions.font13,
+                            color:
+                                isSelected
+                                    ? AppColors.primary5
+                                    : AppColors.grey5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
         ),
       ],
-    );
-  }
-}
-
-class _ToneWrap extends StatelessWidget {
-  const _ToneWrap({
-    required this.tones,
-    required this.selectedTone,
-    required this.onSelected,
-  });
-
-  final List<String> tones;
-  final String? selectedTone;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: Dimensions.width10,
-      runSpacing: Dimensions.height10,
-      children:
-          tones
-              .map(
-                (tone) => ChoiceChip(
-                  label: Text(tone),
-                  selected:
-                      selectedTone?.trim().toLowerCase() ==
-                      tone.trim().toLowerCase(),
-                  onSelected: (_) => onSelected(tone),
-                  selectedColor: AppColors.primary1,
-                  side: BorderSide(
-                    color:
-                        selectedTone?.trim().toLowerCase() ==
-                                tone.trim().toLowerCase()
-                            ? AppColors.primary5
-                            : AppColors.grey3,
-                  ),
-                  labelStyle: TextStyle(
-                    fontFamily: 'Poppins',
-                    color:
-                        selectedTone?.trim().toLowerCase() ==
-                                tone.trim().toLowerCase()
-                            ? AppColors.primary5
-                            : AppColors.grey5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  backgroundColor: Colors.white,
-                ),
-              )
-              .toList(),
     );
   }
 }

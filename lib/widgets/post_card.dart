@@ -248,8 +248,8 @@ class FormulasCard extends StatelessWidget {
         MapEntry("Grey", '${formula!.greyPercentage}%'),
       if (formula?.desiredLevel != null)
         MapEntry("Desired Level", formula!.desiredLevel.toString()),
-      if (formula?.desiredTone?.trim().isNotEmpty == true)
-        MapEntry("Tone", formula!.desiredTone!),
+      if (formula?.toneDisplay?.trim().isNotEmpty == true)
+        MapEntry("Tone", formula!.toneDisplay!),
       if (formula?.developerVolume != null)
         MapEntry("Developer", '${formula!.developerVolume} Vol'),
       if (formula?.mixingRatio?.trim().isNotEmpty == true)

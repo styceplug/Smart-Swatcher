@@ -255,13 +255,23 @@ class _StudioScreenState extends State<StudioScreen>
                                     : 'Lvl ${formulation.naturalBaseLevel} to ${formulation.desiredLevel}';
                             final subtitle =
                                 formulation.isCorrection
-                                    ? (formulation.targetTone
+                                    ? (formulation.toneDisplay
+                                                ?.trim()
+                                                .isNotEmpty ==
+                                            true
+                                        ? formulation.toneDisplay!
+                                        : formulation.targetTone
                                                 ?.trim()
                                                 .isNotEmpty ==
                                             true
                                         ? formulation.targetTone!
                                         : 'Color correction')
-                                    : (formulation.desiredTone
+                                    : (formulation.toneDisplay
+                                                ?.trim()
+                                                .isNotEmpty ==
+                                            true
+                                        ? formulation.toneDisplay!
+                                        : formulation.desiredTone
                                                 ?.trim()
                                                 .isNotEmpty ==
                                             true

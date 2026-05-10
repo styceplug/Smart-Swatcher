@@ -17,149 +17,109 @@ class ChooseCdl extends StatefulWidget {
 }
 
 class _ChooseCdlState extends State<ChooseCdl> {
-  static const List<String> _toneOptions = <String>[
-    'Natural',
-    'Neutral',
-    'Warm',
-    'Cool',
-    'Gold',
-    'Ash',
-    'Copper',
-    'Beige',
-    'Pearl',
-    'Violet',
-    'Red',
-  ];
-
-  // 1. Inject Controller
   final ClientFolderController controller = Get.find<ClientFolderController>();
 
-  // 2. Data Pile
   Map<String, dynamic> wizardData = {};
   FormulationAnalysisModel? suggestion;
 
   int selectedLevel = 0;
-  String? selectedTone;
+  String? selectedToneFamily;
+  List<String> selectedToneIds = <String>[];
 
-  String? _displayTone(String? tone) {
-    final normalized = tone?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    return normalized
-        .split(RegExp(r'\s+'))
-        .map(
-          (part) => part.isEmpty
-              ? part
-              : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
-        )
-        .join(' ');
-  }
-
-  // Data List
-  final List<Map<String, dynamic>> cdlOptions = [
-    {
-      'level': 1,
-      'title': '1. Black',
-      'subtitle': 'Underlying pigment: Black/Blue',
-      'asset': 'black',
-    },
-    {
-      'level': 2,
-      'title': '2. Dark Brown',
-      'subtitle': 'Underlying pigment: Dark Red',
-      'asset': 'dark-brown',
-    },
-    {
-      'level': 3,
-      'title': '3. Medium Brown',
-      'subtitle': 'Underlying pigment: Red',
-      'asset': 'medium-brown',
-    },
-    {
-      'level': 4,
-      'title': '4. Light Brown',
-      'subtitle': 'Underlying pigment: Orange',
-      'asset': 'light-brown',
-    },
-    {
-      'level': 5,
-      'title': '5. Dark Blonde',
-      'subtitle': 'Underlying pigment: Gold',
-      'asset': 'dark-blonde',
-    },
-    {
-      'level': 6,
-      'title': '6. Blonde',
-      'subtitle': 'Underlying pigment: Yellow/Gold',
-      'asset': 'blonde',
-    },
-    {
-      'level': 7,
-      'title': '7. Light Blonde',
-      'subtitle': 'Underlying pigment: Yellow',
-      'asset': 'light-blonde',
-    },
-    {
-      'level': 8,
-      'title': '8. Very Light Blonde',
-      'subtitle': 'Underlying pigment: Pale Yellow',
-      'asset': 'very-light-blonde',
-    },
-    {
-      'level': 9,
-      'title': '9. Platinum Blonde',
-      'subtitle': 'Underlying pigment: Pale Yellow/White',
-      'asset': 'plat-blonde',
-    },
-    {
-      'level': 10,
-      'title': '10. Extra Light Blonde',
-      'subtitle': 'Underlying pigment: White',
-      'asset': 'extra-light-blonde',
-    },
-    {
-      'level': 11,
-      'title': '11. Lightest Blonde',
-      'subtitle': 'Underlying pigment: White',
-      'asset': 'lightest-blonde',
-    },
-    {
-      'level': 12,
-      'title': '12. Extremely Light Blonde',
-      'subtitle': 'Underlying pigment: White',
-      'asset': 'extrem-light-blonde',
-    },
-  ];
+  final Map<int, String> _baseAssets = const {
+    1: 'black',
+    2: 'dark-brown',
+    3: 'medium-brown',
+    4: 'light-brown',
+    5: 'dark-blonde',
+    6: 'blonde',
+    7: 'light-blonde',
+    8: 'very-light-blonde',
+    9: 'plat-blonde',
+    10: 'extra-light-blonde',
+    11: 'lightest-blonde',
+    12: 'extrem-light-blonde',
+  };
 
   @override
   void initState() {
     super.initState();
-    // Retrieve data from previous steps
     if (Get.arguments is Map) {
       wizardData = Map<String, dynamic>.from(Get.arguments as Map);
       suggestion = FormulationAnalysisModel.fromJsonLike(
         wizardData['suggestion'],
       );
-      selectedTone = _displayTone(
-        wizardData['desiredTone']?.toString() ??
-            suggestion?.recommendedToneOrFirstFamily,
+      final toneProfile = FormulationToneProfile.fromJsonLike(
+        wizardData['desiredToneProfile'] ??
+            wizardData['toneProfile'] ??
+            suggestion?.recommendedToneProfile,
+      );
+      selectedToneFamily =
+          toneProfile?.family ?? suggestion?.recommendedToneProfile?.family;
+      selectedToneIds = List<String>.from(
+        toneProfile?.tones ?? const <String>[],
       );
     }
+    controller.loadFormulationConfig();
+  }
+
+  List<Map<String, dynamic>> get _levelOptions {
+    final configItems = controller.baseLevelOptions;
+    if (configItems.isNotEmpty) {
+      return configItems;
+    }
+    return List.generate(
+      12,
+      (index) => {
+        'level': index + 1,
+        'label': 'Level ${index + 1}',
+        'undertone': '',
+      },
+    );
+  }
+
+  List<Map<String, dynamic>> get _toneFamilyOptions =>
+      controller.toneFamilyOptions;
+
+  List<Map<String, dynamic>> get _toneOptions => controller.toneOptionsForLevel(
+    selectedLevel == 0 ? 1 : selectedLevel,
+    family: selectedToneFamily,
+  );
+
+  bool get _canPreview =>
+      selectedLevel > 0 &&
+      (selectedToneFamily?.trim().isNotEmpty ?? false) &&
+      selectedToneIds.isNotEmpty;
+
+  void _toggleTone(String toneId) {
+    setState(() {
+      if (selectedToneIds.contains(toneId)) {
+        selectedToneIds.remove(toneId);
+        return;
+      }
+      if (selectedToneIds.length >= 3) {
+        return;
+      }
+      selectedToneIds.add(toneId);
+    });
   }
 
   void _onNext() {
-    if (selectedLevel == 0 || (selectedTone?.trim().isEmpty ?? true)) return;
+    if (!_canPreview) return;
 
-    // 1. Add final data point
+    final toneProfile = controller.buildToneProfile(
+      family: selectedToneFamily!,
+      toneIds: selectedToneIds,
+      level: selectedLevel,
+    );
+
     wizardData['desiredLevel'] = selectedLevel;
-    wizardData['desiredTone'] = selectedTone;
-
+    wizardData['toneProfile'] = toneProfile.toJson();
+    wizardData['desiredToneProfile'] = toneProfile.toJson();
+    wizardData['desiredTone'] = controller.composeLegacyTone(toneProfile);
     wizardData['formulationType'] =
         wizardData['formulationType'] ?? 'color_formulation';
 
-    // 2. Trigger API Call via Controller
-    // The controller will handle the navigation to the Preview Screen on success
     controller.getPreview(wizardData);
   }
 
@@ -167,7 +127,7 @@ class _ChooseCdlState extends State<ChooseCdl> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppbar(
-        leadingIcon: BackButton(),
+        leadingIcon: const BackButton(),
         actionIcon: Text(
           'Preview',
           style: TextStyle(
@@ -188,9 +148,8 @@ class _ChooseCdlState extends State<ChooseCdl> {
               color: AppColors.primary4,
             ),
             SizedBox(height: Dimensions.height20),
-
             Text(
-              'Choose your client\'s Desired Level ',
+              'Choose your client\'s Desired Level',
               style: TextStyle(
                 fontSize: Dimensions.font20,
                 fontWeight: FontWeight.w500,
@@ -215,20 +174,23 @@ class _ChooseCdlState extends State<ChooseCdl> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: cdlOptions.length,
+              itemCount: _levelOptions.length,
               itemBuilder: (context, index) {
-                final option = cdlOptions[index];
-                return cdlCard(
-                  option['title'],
-                  option['subtitle'],
-                  option['asset'],
-                  option['level'],
+                final option = _levelOptions[index];
+                final level =
+                    int.tryParse(option['level']?.toString() ?? '') ?? 0;
+                return _cdlCard(
+                  title: option['label']?.toString() ?? 'Level $level',
+                  subtitle:
+                      'Underlying pigment: ${option['underlyingPigment'] ?? option['undertone'] ?? 'Review visually'}',
+                  imageAsset: _baseAssets[level] ?? 'blonde',
+                  level: level,
                 );
               },
             ),
             SizedBox(height: Dimensions.height20),
             Text(
-              'Choose Tone',
+              'Choose Tone Family',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w600,
@@ -236,19 +198,67 @@ class _ChooseCdlState extends State<ChooseCdl> {
                 color: AppColors.grey5,
               ),
             ),
-            SizedBox(height: Dimensions.height15),
+            SizedBox(height: Dimensions.height12),
+            Wrap(
+              spacing: Dimensions.width15,
+              runSpacing: Dimensions.height12,
+              children:
+                  _toneFamilyOptions.map((family) {
+                    final familyId = family['id']?.toString() ?? 'natural';
+                    final label = family['label']?.toString() ?? familyId;
+                    final isSelected = selectedToneFamily == familyId;
+                    return _ChoiceChipButton(
+                      label: label,
+                      selected: isSelected,
+                      onTap: () {
+                        setState(() {
+                          selectedToneFamily = familyId;
+                          selectedToneIds =
+                              selectedToneIds
+                                  .where(
+                                    (toneId) => _toneOptions.any(
+                                      (tone) =>
+                                          tone['id']?.toString() == toneId,
+                                    ),
+                                  )
+                                  .toList();
+                        });
+                      },
+                    );
+                  }).toList(),
+            ),
+            SizedBox(height: Dimensions.height20),
+            Text(
+              'Choose up to 3 ordered tones',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: Dimensions.font14,
+                color: AppColors.grey5,
+              ),
+            ),
+            SizedBox(height: Dimensions.height8),
+            Text(
+              'Tap tones in the order you want them read, for example Red Copper vs Copper Red.',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w400,
+                fontSize: Dimensions.font12,
+                color: AppColors.grey4,
+              ),
+            ),
+            SizedBox(height: Dimensions.height12),
             Wrap(
               spacing: Dimensions.width15,
               runSpacing: Dimensions.height15,
               children:
                   _toneOptions.map((tone) {
-                    final isSelected = selectedTone == tone;
+                    final toneId = tone['id']?.toString() ?? '';
+                    final label = tone['label']?.toString() ?? toneId;
+                    final selectionIndex = selectedToneIds.indexOf(toneId);
+                    final isSelected = selectionIndex >= 0;
                     return InkWell(
-                      onTap: () {
-                        setState(() {
-                          selectedTone = tone;
-                        });
-                      },
+                      onTap: () => _toggleTone(toneId),
                       borderRadius: BorderRadius.circular(Dimensions.radius20),
                       child: Container(
                         padding: EdgeInsets.symmetric(
@@ -270,22 +280,62 @@ class _ChooseCdlState extends State<ChooseCdl> {
                                     : AppColors.grey3,
                           ),
                         ),
-                        child: Text(
-                          tone,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                            fontSize: Dimensions.font13,
-                            color:
-                                isSelected
-                                    ? AppColors.primary5
-                                    : AppColors.grey5,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isSelected) ...[
+                              Container(
+                                width: 18,
+                                height: 18,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary5,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  '${selectionIndex + 1}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: Dimensions.font12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: Dimensions.width8),
+                            ],
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w500,
+                                fontSize: Dimensions.font13,
+                                color:
+                                    isSelected
+                                        ? AppColors.primary5
+                                        : AppColors.grey5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
                   }).toList(),
             ),
+            if (selectedToneIds.isNotEmpty) ...[
+              SizedBox(height: Dimensions.height15),
+              Text(
+                'Selected order: ${selectedToneIds.asMap().entries.map((entry) {
+                  final tone = _toneOptions.firstWhere((item) => item['id']?.toString() == entry.value, orElse: () => {'label': entry.value});
+                  return '${entry.key + 1}. ${tone['label']}';
+                }).join('  •  ')}',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                  fontSize: Dimensions.font12,
+                  color: AppColors.grey4,
+                ),
+              ),
+            ],
             SizedBox(height: Dimensions.height20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -299,17 +349,11 @@ class _ChooseCdlState extends State<ChooseCdl> {
                 ),
                 SizedBox(width: Dimensions.width20),
                 Expanded(
-                  child: Obx(
-                    () => CustomButton(
-                      text:
-                          controller.isLoading.value ? 'Generating...' : 'Next',
-                      isDisabled:
-                          controller.isLoading.value ||
-                          selectedLevel == 0 ||
-                          (selectedTone?.trim().isEmpty ?? true),
-                      onPressed: _onNext,
-                      backgroundColor: AppColors.primary4,
-                    ),
+                  child: CustomButton(
+                    text: 'Next',
+                    isDisabled: !_canPreview,
+                    onPressed: _onNext,
+                    backgroundColor: AppColors.primary4,
                   ),
                 ),
               ],
@@ -321,67 +365,117 @@ class _ChooseCdlState extends State<ChooseCdl> {
     );
   }
 
-  Widget cdlCard(String title, String subtitle, String imageAsset, int level) {
-    bool isSelected = selectedLevel == level;
-
+  Widget _cdlCard({
+    required String title,
+    required String subtitle,
+    required String imageAsset,
+    required int level,
+  }) {
+    final isSelected = selectedLevel == level;
     return InkWell(
       onTap: () {
         setState(() {
           selectedLevel = level;
+          selectedToneIds =
+              selectedToneIds
+                  .where(
+                    (toneId) => controller
+                        .toneOptionsForLevel(level, family: selectedToneFamily)
+                        .any((tone) => tone['id']?.toString() == toneId),
+                  )
+                  .toList();
         });
       },
       child: Container(
         height: Dimensions.height100,
         width: Dimensions.screenWidth,
         padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
-        margin: EdgeInsets.only(bottom: 2),
+        margin: const EdgeInsets.only(bottom: 2),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.white, width: 2)),
+          border: const Border(
+            bottom: BorderSide(color: Colors.white, width: 2),
+          ),
           image: DecorationImage(
             fit: BoxFit.cover,
             image: AssetImage(AppConstants.getBaseAsset(imageAsset)),
-            colorFilter:
-                isSelected
-                    ? null
-                    : ColorFilter.mode(
-                      Colors.black.withValues(alpha: 0.3),
-                      BlendMode.darken,
-                    ),
           ),
         ),
         child: Row(
           children: [
-            Icon(
-              isSelected ? Icons.circle : Icons.circle_outlined,
-              color: AppColors.primary1,
-              size: Dimensions.iconSize20,
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: Dimensions.font16,
+                    ),
+                  ),
+                  SizedBox(height: Dimensions.height5),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: Dimensions.font12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            SizedBox(width: Dimensions.width10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: Dimensions.font15,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w500,
-                    fontSize: Dimensions.font12,
-                  ),
-                ),
-              ],
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: Colors.white,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChoiceChipButton extends StatelessWidget {
+  const _ChoiceChipButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Dimensions.radius20),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: Dimensions.width15,
+          vertical: Dimensions.height10,
+        ),
+        decoration: BoxDecoration(
+          color:
+              selected
+                  ? AppColors.primary5.withValues(alpha: 0.08)
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(Dimensions.radius20),
+          border: Border.all(
+            color: selected ? AppColors.primary5 : AppColors.grey3,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w500,
+            fontSize: Dimensions.font13,
+            color: selected ? AppColors.primary5 : AppColors.grey5,
+          ),
         ),
       ),
     );

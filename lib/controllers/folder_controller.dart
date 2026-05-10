@@ -31,6 +31,9 @@ class ClientFolderController extends GetxController {
   final RxSet<String> refreshingPredictionIds = <String>{}.obs;
   var clientImage = Rxn<File>();
   Map<String, dynamic>? suggestedMetrics;
+  final Rxn<Map<String, dynamic>> formulationConfig =
+      Rxn<Map<String, dynamic>>();
+  final isLoadingFormulationConfig = false.obs;
 
   void resetFormulationDraft() {
     clientImage.value = null;
@@ -57,6 +60,160 @@ class ClientFolderController extends GetxController {
     }
 
     await getFolders();
+  }
+
+  Future<Map<String, dynamic>?> loadFormulationConfig({
+    bool force = false,
+  }) async {
+    if (!force && formulationConfig.value != null) {
+      return formulationConfig.value;
+    }
+
+    if (isLoadingFormulationConfig.value) {
+      return formulationConfig.value;
+    }
+
+    isLoadingFormulationConfig.value = true;
+    try {
+      final response = await repo.getFormulationConfig();
+      if (response.statusCode == 200) {
+        final body = _parseMapBody(response.body);
+        final config = _parseMapBody(body?['config']);
+        if (config != null) {
+          formulationConfig.value = config;
+          return config;
+        }
+      }
+      return formulationConfig.value;
+    } catch (error) {
+      print('Formulation config error: $error');
+      return formulationConfig.value;
+    } finally {
+      isLoadingFormulationConfig.value = false;
+      update();
+    }
+  }
+
+  List<Map<String, dynamic>> get baseLevelOptions {
+    final items = formulationConfig.value?['baseLevels'];
+    if (items is! List) {
+      return const [];
+    }
+    return items
+        .map((item) => _parseMapBody(item))
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  List<int> get greyPercentageOptions {
+    final items = formulationConfig.value?['greyPercentageOptions'];
+    if (items is! List) {
+      return const [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    }
+    return items
+        .map((item) => int.tryParse(item.toString()))
+        .whereType<int>()
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get toneFamilyOptions {
+    final items = formulationConfig.value?['toneFamilies'];
+    if (items is! List) {
+      return const [
+        {'id': 'natural', 'label': 'Natural'},
+        {'id': 'warm', 'label': 'Warm'},
+        {'id': 'cool', 'label': 'Cool'},
+      ];
+    }
+    return items
+        .map((item) => _parseMapBody(item))
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  List<Map<String, dynamic>> toneOptionsForLevel(int level, {String? family}) {
+    final tonesByLevel = formulationConfig.value?['tonesByLevel'];
+    if (tonesByLevel is! List) {
+      return const [];
+    }
+
+    final entries =
+        tonesByLevel
+            .map((item) => _parseMapBody(item))
+            .whereType<Map<String, dynamic>>()
+            .toList();
+    final entry = _firstWhereOrNull<Map<String, dynamic>>(
+      entries,
+      (item) => int.tryParse(item['level']?.toString() ?? '') == level,
+    );
+    final tones = entry?['tones'];
+    if (tones is! List) {
+      return const [];
+    }
+
+    return tones
+        .map((item) => _parseMapBody(item))
+        .whereType<Map<String, dynamic>>()
+        .where((item) {
+          if (family == null || family.trim().isEmpty) return true;
+          return item['family']?.toString().trim().toLowerCase() ==
+              family.trim().toLowerCase();
+        })
+        .toList();
+  }
+
+  FormulationToneProfile buildToneProfile({
+    required String family,
+    required List<String> toneIds,
+    required int? level,
+  }) {
+    final normalizedFamily =
+        family.trim().isEmpty ? 'natural' : family.trim().toLowerCase();
+    final selected = <Map<String, dynamic>>[];
+    final available =
+        level == null ? <Map<String, dynamic>>[] : toneOptionsForLevel(level);
+    for (final toneId in toneIds.take(3)) {
+      final match = _firstWhereOrNull<Map<String, dynamic>>(
+        available,
+        (item) => item['id']?.toString() == toneId,
+      );
+      if (match != null) {
+        selected.add(match);
+      }
+    }
+
+    final toneLabels =
+        selected
+            .map((item) => item['label']?.toString().trim())
+            .whereType<String>()
+            .where((value) => value.isNotEmpty)
+            .toList();
+    final toneCodes =
+        selected
+            .map((item) => item['code']?.toString().trim())
+            .whereType<String>()
+            .where((value) => value.isNotEmpty)
+            .toList();
+
+    return FormulationToneProfile(
+      family: normalizedFamily,
+      tones: toneIds.take(3).toList(),
+      toneCodes: toneCodes,
+      toneLabels: toneLabels,
+      display:
+          [
+            _titleCase(normalizedFamily),
+            if (toneLabels.isNotEmpty) toneLabels.join(' '),
+          ].join(' ').trim(),
+      familyLabel: _titleCase(normalizedFamily),
+    );
+  }
+
+  String composeLegacyTone(FormulationToneProfile? profile) {
+    if (profile == null) {
+      return '';
+    }
+    return profile.effectiveDisplay;
   }
 
   void _replaceInList(
@@ -278,7 +435,9 @@ class ClientFolderController extends GetxController {
         if (Get.isRegistered<ClientFolderController>()) {
           final folderId = requestBody['folderId']?.toString() ?? '';
           if (folderId.isNotEmpty) {
-            await Get.find<ClientFolderController>().fetchFormulations(folderId);
+            await Get.find<ClientFolderController>().fetchFormulations(
+              folderId,
+            );
           }
           await Get.find<ClientFolderController>().fetchRecentFormulations();
         }
@@ -367,7 +526,9 @@ class ClientFolderController extends GetxController {
       requestFullMetadata: false,
     );
     if (pickedFile != null) {
-      clientImage.value = await _normalizeFormulationImage(File(pickedFile.path));
+      clientImage.value = await _normalizeFormulationImage(
+        File(pickedFile.path),
+      );
     }
   }
 
@@ -410,6 +571,7 @@ class ClientFolderController extends GetxController {
       Response response = await repo.uploadClientImage(clientImage.value!);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        await loadFormulationConfig();
         final results = _parseMapBody(response.body);
         if (results == null) {
           CustomSnackBar.failure(message: 'Upload failed');
@@ -656,7 +818,9 @@ class ClientFolderController extends GetxController {
         if (response.body is Map &&
             response.body['appointmentEmailDelivery'] is Map) {
           appointmentEmailDelivery = EmailDeliveryResultModel.fromJson(
-            Map<String, dynamic>.from(response.body['appointmentEmailDelivery']),
+            Map<String, dynamic>.from(
+              response.body['appointmentEmailDelivery'],
+            ),
           );
         }
         if (response.body is Map &&
@@ -691,26 +855,26 @@ class ClientFolderController extends GetxController {
     }
   }
 
-  void _showFolderCreationFeedback(
-    {
+  void _showFolderCreationFeedback({
     EmailDeliveryResultModel? appointmentEmailDelivery,
     EmailDeliveryResultModel? consentEmailDelivery,
-  }
-  ) {
+  }) {
     final messages = <String>[];
     final failures = <String>[];
 
     final appointmentFeedback = _emailDeliveryFeedback(
       delivery: appointmentEmailDelivery,
-      sentMessage: (destination) =>
-          'Appointment details sent${destination.isNotEmpty ? ' to $destination' : ''}',
+      sentMessage:
+          (destination) =>
+              'Appointment details sent${destination.isNotEmpty ? ' to $destination' : ''}',
       skippedPrefix: 'Appointment email',
       failedPrefix: 'Appointment email',
     );
     final consentFeedback = _emailDeliveryFeedback(
       delivery: consentEmailDelivery,
-      sentMessage: (destination) =>
-          'Consent form sent${destination.isNotEmpty ? ' to $destination' : ''}',
+      sentMessage:
+          (destination) =>
+              'Consent form sent${destination.isNotEmpty ? ' to $destination' : ''}',
       skippedPrefix: 'Consent email',
       failedPrefix: 'Consent email',
     );
@@ -743,9 +907,7 @@ class ClientFolderController extends GetxController {
     }
 
     if (failures.isNotEmpty) {
-      CustomSnackBar.failure(
-        message: failures.join('\n'),
-      );
+      CustomSnackBar.failure(message: failures.join('\n'));
     }
   }
 
@@ -762,10 +924,7 @@ class ClientFolderController extends GetxController {
     final destination = delivery.destination?.trim() ?? '';
     switch (delivery.status) {
       case 'sent':
-        return _DeliveryFeedback(
-          sentMessage(destination),
-          isFailure: false,
-        );
+        return _DeliveryFeedback(sentMessage(destination), isFailure: false);
       case 'skipped':
         return _DeliveryFeedback(
           '$skippedPrefix skipped: ${_emailSkippedMessage(delivery)}',
@@ -782,9 +941,7 @@ class ClientFolderController extends GetxController {
     }
   }
 
-  String _emailSkippedMessage(
-    EmailDeliveryResultModel delivery,
-  ) {
+  String _emailSkippedMessage(EmailDeliveryResultModel delivery) {
     final reason = delivery.reason?.toLowerCase().trim() ?? '';
     if (reason.contains('email')) {
       return 'client email is missing.';
@@ -924,4 +1081,28 @@ class _DeliveryFeedback {
 
   final String message;
   final bool isFailure;
+}
+
+String _titleCase(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) {
+    return trimmed;
+  }
+  return trimmed
+      .split(RegExp(r'[\s_-]+'))
+      .where((part) => part.isNotEmpty)
+      .map(
+        (part) =>
+            '${part[0].toUpperCase()}${part.length > 1 ? part.substring(1).toLowerCase() : ''}',
+      )
+      .join(' ');
+}
+
+T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T item) test) {
+  for (final item in items) {
+    if (test(item)) {
+      return item;
+    }
+  }
+  return null;
 }

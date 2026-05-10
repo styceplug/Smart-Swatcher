@@ -678,10 +678,14 @@ class _FormulationCard extends StatelessWidget {
             : 'NBL ${formulation.naturalBaseLevel} • DL ${formulation.desiredLevel}';
     final subtitle =
         formulation.isCorrection
-            ? (formulation.targetTone?.trim().isNotEmpty == true
+            ? (formulation.toneDisplay?.trim().isNotEmpty == true
+                ? formulation.toneDisplay!
+                : formulation.targetTone?.trim().isNotEmpty == true
                 ? formulation.targetTone!
                 : 'Color correction')
-            : (formulation.desiredTone?.trim().isNotEmpty == true
+            : (formulation.toneDisplay?.trim().isNotEmpty == true
+                ? formulation.toneDisplay!
+                : formulation.desiredTone?.trim().isNotEmpty == true
                 ? formulation.desiredTone!
                 : 'Formulation');
 

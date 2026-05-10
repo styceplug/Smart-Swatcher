@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/folder_controller.dart';
 import 'package:smart_swatcher/models/formulation_model.dart';
 
 import '../../../routes/routes.dart';
@@ -17,6 +18,7 @@ class GreyCoverage extends StatefulWidget {
 }
 
 class _GreyCoverageState extends State<GreyCoverage> {
+  final ClientFolderController controller = Get.find<ClientFolderController>();
   // 1. Data Pile
   Map<String, dynamic> wizardData = {};
 
@@ -25,7 +27,7 @@ class _GreyCoverageState extends State<GreyCoverage> {
   FormulationAnalysisModel? suggestion;
 
   // Data Options (0 to 100)
-  final List<int> percents = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  List<int> get percents => controller.greyPercentageOptions;
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _GreyCoverageState extends State<GreyCoverage> {
         }
       }
     }
+    controller.loadFormulationConfig();
   }
 
   void _onNext() {

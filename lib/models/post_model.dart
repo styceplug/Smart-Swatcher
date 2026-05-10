@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
+import '../models/formulation_model.dart';
 import '../utils/app_constants.dart';
 
 class PostModel {
@@ -145,6 +146,8 @@ class PostFormula {
   final Map<String, dynamic>? resultData;
   final List<PostFormulaStep> steps;
   final List<MediaItem> media;
+  final FormulationToneProfile? toneProfile;
+  final FormulationToneProfile? targetToneProfile;
 
   const PostFormula({
     required this.id,
@@ -164,9 +167,20 @@ class PostFormula {
     this.resultData,
     this.steps = const [],
     this.media = const [],
+    this.toneProfile,
+    this.targetToneProfile,
   });
 
   factory PostFormula.fromJson(Map<String, dynamic> json) {
+    final resultData = _mapFromJsonLike(json['resultData']);
+    final toneProfile = FormulationToneProfile.fromJsonLike(
+      json['toneProfile'] ?? resultData?['toneProfile'],
+    );
+    final targetToneProfile = FormulationToneProfile.fromJsonLike(
+      json['targetToneProfile'] ??
+          resultData?['targetToneProfile'] ??
+          toneProfile,
+    );
     return PostFormula(
       id: json['id']?.toString() ?? '',
       formulationType: json['formulationType']?.toString(),
@@ -179,10 +193,13 @@ class PostFormula {
       desiredLevel: _asInt(json['desiredLevel']),
       developerVolume: _asInt(json['developerVolume']),
       shadeType: json['shadeType']?.toString(),
-      desiredTone: json['desiredTone']?.toString(),
+      desiredTone:
+          json['desiredTone']?.toString() ??
+          targetToneProfile?.effectiveDisplay ??
+          toneProfile?.effectiveDisplay,
       mixingRatio: json['mixingRatio']?.toString(),
       noteToStylist: json['noteToStylist']?.toString(),
-      resultData: _mapFromJsonLike(json['resultData']),
+      resultData: resultData,
       steps:
           json['steps'] is List
               ? (json['steps'] as List)
@@ -197,12 +214,19 @@ class PostFormula {
                   .map(MediaItem.fromJson)
                   .toList()
               : const [],
+      toneProfile: toneProfile,
+      targetToneProfile: targetToneProfile,
     );
   }
 
   bool get isGenerating =>
       predictionImageStatus == 'queued' ||
       predictionImageStatus == 'in_progress';
+
+  String? get toneDisplay =>
+      targetToneProfile?.effectiveDisplay ??
+      toneProfile?.effectiveDisplay ??
+      desiredTone;
 
   String? get displayImageUrl {
     final preferred = predictionImageUrl;

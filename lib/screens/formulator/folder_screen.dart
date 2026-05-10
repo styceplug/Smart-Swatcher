@@ -217,8 +217,14 @@ class _FolderScreenState extends State<FolderScreen> {
 
     String subtitleFor(FormulationModel form) {
       if (form.isCorrection) {
-        final previousTone = form.previousColorTone?.trim();
-        final targetTone = form.targetTone?.trim();
+        final previousTone =
+            form.previousToneProfile?.effectiveDisplay.trim().isNotEmpty == true
+                ? form.previousToneProfile!.effectiveDisplay.trim()
+                : form.previousColorTone?.trim();
+        final targetTone =
+            form.targetToneProfile?.effectiveDisplay.trim().isNotEmpty == true
+                ? form.targetToneProfile!.effectiveDisplay.trim()
+                : form.targetTone?.trim();
         if ((previousTone?.isNotEmpty ?? false) &&
             (targetTone?.isNotEmpty ?? false)) {
           return '${previousTone!} → ${targetTone!}';
@@ -229,7 +235,10 @@ class _FolderScreenState extends State<FolderScreen> {
         return 'Color correction';
       }
 
-      final desiredTone = form.desiredTone?.trim();
+      final desiredTone =
+          form.toneDisplay?.trim().isNotEmpty == true
+              ? form.toneDisplay!.trim()
+              : form.desiredTone?.trim();
       return desiredTone?.isNotEmpty == true ? desiredTone! : 'Formulation';
     }
 
@@ -326,16 +335,28 @@ class _FolderScreenState extends State<FolderScreen> {
                           form.inputData?['desiredLevel'] ?? form.desiredLevel,
                       'desiredTone':
                           form.inputData?['desiredTone'] ?? form.desiredTone,
+                      'toneProfile':
+                          form.inputData?['toneProfile'] ??
+                          form.toneProfile?.toJson(),
+                      'desiredToneProfile':
+                          form.inputData?['desiredToneProfile'] ??
+                          form.desiredToneProfile?.toJson(),
                       'previousColorLevel':
                           form.inputData?['previousColorLevel'] ??
                           form.previousColorLevel,
                       'previousColorTone':
                           form.inputData?['previousColorTone'] ??
                           form.previousColorTone,
+                      'previousToneProfile':
+                          form.inputData?['previousToneProfile'] ??
+                          form.previousToneProfile?.toJson(),
                       'targetLevel':
                           form.inputData?['targetLevel'] ?? form.targetLevel,
                       'targetTone':
                           form.inputData?['targetTone'] ?? form.targetTone,
+                      'targetToneProfile':
+                          form.inputData?['targetToneProfile'] ??
+                          form.targetToneProfile?.toJson(),
                       'longDescription':
                           form.longDescription ??
                           form.inputData?['longDescription'],

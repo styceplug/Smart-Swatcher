@@ -24,6 +24,10 @@ class FolderRepo {
     return await apiClient.postData('/api/corrections/preview', body);
   }
 
+  Future<Response> getFormulationConfig() async {
+    return await apiClient.getData('/api/formulations/config');
+  }
+
   Future<Response> saveCorrection(Map<String, dynamic> body) async {
     return await apiClient.postData('/api/corrections/save', body);
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_swatcher/controllers/folder_controller.dart';
 import 'package:smart_swatcher/models/formulation_model.dart';
 import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
@@ -17,86 +18,27 @@ class ChooseNbl extends StatefulWidget {
 }
 
 class _ChooseNblState extends State<ChooseNbl> {
+  final ClientFolderController controller = Get.find<ClientFolderController>();
   Map<String, dynamic>? previousData;
   FormulationAnalysisModel? suggestion;
 
   int selectedLevel = 0;
   String imageUrl = "";
 
-  final List<Map<String, dynamic>> nblOptions = [
-    {
-      'level': 1,
-      'title': '1. Black',
-      'subtitle': 'Underlying pigment: Black/Blue',
-      'asset': 'black',
-    },
-    {
-      'level': 2,
-      'title': '2. Dark Brown',
-      'subtitle': 'Underlying pigment: Dark Red',
-      'asset': 'dark-brown',
-    },
-    {
-      'level': 3,
-      'title': '3. Medium Brown',
-      'subtitle': 'Underlying pigment: Red',
-      'asset': 'medium-brown',
-    },
-    {
-      'level': 4,
-      'title': '4. Light Brown',
-      'subtitle': 'Underlying pigment: Orange',
-      'asset': 'light-brown',
-    },
-    {
-      'level': 5,
-      'title': '5. Dark Blonde',
-      'subtitle': 'Underlying pigment: Gold',
-      'asset': 'dark-blonde',
-    },
-    {
-      'level': 6,
-      'title': '6. Blonde',
-      'subtitle': 'Underlying pigment: Yellow/Gold',
-      'asset': 'blonde',
-    },
-    {
-      'level': 7,
-      'title': '7. Light Blonde',
-      'subtitle': 'Underlying pigment: Yellow',
-      'asset': 'light-blonde',
-    },
-    {
-      'level': 8,
-      'title': '8. Very Light Blonde',
-      'subtitle': 'Underlying pigment: Pale Yellow',
-      'asset': 'very-light-blonde',
-    },
-    {
-      'level': 9,
-      'title': '9. Platinum Blonde',
-      'subtitle': 'Underlying pigment: Pale Yellow/White',
-      'asset': 'plat-blonde',
-    },
-    {
-      'level': 10,
-      'title': '10. Extra Light Blonde',
-      'subtitle': 'Underlying pigment: White',
-      'asset': 'extra-light-blonde',
-    },
-    {
-      'level': 11,
-      'title': '11. Lightest Blonde',
-      'subtitle': 'Underlying pigment: White',
-      'asset': 'lightest-blonde',
-    },
-    {
-      'level': 12,
-      'title': '12. Extremely Light Blonde',
-      'subtitle': 'Underlying pigment: White',
-      'asset': 'extrem-light-blonde',
-    },
-  ];
+  final Map<int, String> _baseAssets = const {
+    1: 'black',
+    2: 'dark-brown',
+    3: 'medium-brown',
+    4: 'light-brown',
+    5: 'dark-blonde',
+    6: 'blonde',
+    7: 'light-blonde',
+    8: 'very-light-blonde',
+    9: 'plat-blonde',
+    10: 'extra-light-blonde',
+    11: 'lightest-blonde',
+    12: 'extrem-light-blonde',
+  };
 
   @override
   void initState() {
@@ -117,6 +59,7 @@ class _ChooseNblState extends State<ChooseNbl> {
         }
       }
     }
+    controller.loadFormulationConfig();
   }
 
   void _onNext() {
@@ -200,9 +143,9 @@ class _ChooseNblState extends State<ChooseNbl> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: nblOptions.length,
+              itemCount: _nblOptions.length,
               itemBuilder: (context, index) {
-                final option = nblOptions[index];
+                final option = _nblOptions[index];
                 return nblCard(
                   option['title'],
                   option['subtitle'],
@@ -237,6 +180,32 @@ class _ChooseNblState extends State<ChooseNbl> {
           ],
         ),
       ),
+    );
+  }
+
+  List<Map<String, dynamic>> get _nblOptions {
+    final configured = controller.baseLevelOptions;
+    if (configured.isNotEmpty) {
+      return configured.map((item) {
+        final level = int.tryParse(item['level']?.toString() ?? '') ?? 0;
+        return {
+          'level': level,
+          'title': '$level. ${item['label'] ?? 'Level $level'}',
+          'subtitle':
+              'Underlying pigment: ${item['underlyingPigment'] ?? item['undertone'] ?? 'Review visually'}',
+          'asset': _baseAssets[level] ?? 'blonde',
+        };
+      }).toList();
+    }
+
+    return List.generate(
+      12,
+      (index) => {
+        'level': index + 1,
+        'title': '${index + 1}. Level ${index + 1}',
+        'subtitle': 'Underlying pigment: Review visually',
+        'asset': _baseAssets[index + 1] ?? 'blonde',
+      },
     );
   }
 
