@@ -280,10 +280,15 @@ class FormulationAnalysisModel {
   }
 
   static FormulationAnalysisModel? fromJsonLike(dynamic value) {
-    if (value == null) return null;
-    if (value is FormulationAnalysisModel) return value;
-    if (value is Map<String, dynamic>)
+    if (value == null) {
+      return null;
+    }
+    if (value is FormulationAnalysisModel) {
+      return value;
+    }
+    if (value is Map<String, dynamic>) {
       return FormulationAnalysisModel.fromJson(value);
+    }
     if (value is Map) {
       return FormulationAnalysisModel.fromJson(
         value.map((key, item) => MapEntry(key.toString(), item)),
@@ -341,26 +346,41 @@ class FormulationAnalysisModel {
 
   List<String> get guidanceChips {
     final chips = <String>[];
+    final seen = <String>{};
+
+    void addChip(String value) {
+      final normalized = value.trim();
+      if (normalized.isEmpty) {
+        return;
+      }
+      final key = normalized.toLowerCase();
+      if (seen.contains(key)) {
+        return;
+      }
+      seen.add(key);
+      chips.add(normalized);
+    }
 
     if (recommendedShadeType != null &&
         recommendedShadeType!.trim().isNotEmpty) {
-      chips.add(_titleCase(recommendedShadeType!));
-    }
-    if (recommendedTone != null && recommendedTone!.trim().isNotEmpty) {
-      chips.add(_titleCase(recommendedTone!));
+      addChip('${_titleCase(recommendedShadeType!)} series');
     }
     if (recommendedToneProfile != null) {
+      addChip('${recommendedToneProfile!.familyLabel} family');
       for (final tone in recommendedToneProfile!.toneLabels) {
-        final normalized = _titleCase(tone);
-        if (!chips.contains(normalized)) {
-          chips.add(normalized);
-        }
+        addChip(_titleCase(tone));
       }
+    } else if (recommendedTone != null && recommendedTone!.trim().isNotEmpty) {
+      addChip(_titleCase(recommendedTone!));
     }
     for (final tone in recommendedToneFamilies) {
-      final normalized = _titleCase(tone);
-      if (!chips.contains(normalized)) {
-        chips.add(normalized);
+      final normalized = tone.trim().toLowerCase();
+      if (normalized == 'natural' ||
+          normalized == 'warm' ||
+          normalized == 'cool') {
+        addChip('${_titleCase(tone)} family');
+      } else {
+        addChip(_titleCase(tone));
       }
     }
 

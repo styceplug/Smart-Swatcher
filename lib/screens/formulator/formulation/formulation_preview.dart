@@ -313,6 +313,38 @@ class _FormulationPreviewState extends State<FormulationPreview> {
     return 'Preview image generation has not started for this saved item yet.';
   }
 
+  String? _friendlyPredictionError(String? value) {
+    final raw = value?.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+
+    if (raw.startsWith('Prediction validation failed after retry:')) {
+      return 'The preview image did not match the requested level or tone closely enough after two attempts. Adjust the target or retry again.';
+    }
+    if (raw.contains('did not return an image payload')) {
+      return 'The AI service responded without a usable preview image. Please retry.';
+    }
+    if (raw.contains('not configured on the server')) {
+      return 'Preview generation is currently unavailable on the server.';
+    }
+
+    return raw;
+  }
+
+  String? _technicalPredictionError(String? value) {
+    final raw = value?.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    if (raw.startsWith('Prediction validation failed after retry:')) {
+      return raw
+          .replaceFirst('Prediction validation failed after retry:', '')
+          .trim();
+    }
+    return null;
+  }
+
   String _summaryText() {
     if (isCorrection) {
       final previousLevel = inputs['previousColorLevel'] ?? '?';
@@ -368,6 +400,8 @@ class _FormulationPreviewState extends State<FormulationPreview> {
     final originalImg = _fullUrl(inputs['imageUrl']?.toString());
     final predictionImg = _fullUrl(outputs['predictionImageUrl']?.toString());
     final predictionError = outputs['predictionImageError']?.toString();
+    final friendlyPredictionError = _friendlyPredictionError(predictionError);
+    final technicalPredictionError = _technicalPredictionError(predictionError);
     final steps = _steps();
 
     return Scaffold(
@@ -509,15 +543,46 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                         ),
                       ),
                     ),
-                    if (predictionError != null &&
-                        predictionError.trim().isNotEmpty) ...[
+                    if (friendlyPredictionError != null) ...[
                       SizedBox(height: Dimensions.height10),
-                      Text(
-                        predictionError,
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: Dimensions.font12,
-                          color: Colors.red,
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(Dimensions.width10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radius12,
+                          ),
+                          border: Border.all(
+                            color: Colors.red.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              friendlyPredictionError,
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: Dimensions.font12,
+                                color: Colors.red.shade700,
+                                fontWeight: FontWeight.w500,
+                                height: 1.45,
+                              ),
+                            ),
+                            if (technicalPredictionError != null) ...[
+                              SizedBox(height: Dimensions.height8),
+                              Text(
+                                technicalPredictionError,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: Dimensions.font12,
+                                  color: AppColors.grey5,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
