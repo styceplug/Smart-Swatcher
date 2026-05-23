@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_swatcher/controllers/folder_controller.dart';
-import 'package:smart_swatcher/models/formulation_model.dart';
 import 'package:smart_swatcher/routes/routes.dart';
 import 'package:smart_swatcher/utils/app_constants.dart';
 import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
-import 'package:smart_swatcher/widgets/formulation_analysis_card.dart';
 
 class ChooseNbl extends StatefulWidget {
   const ChooseNbl({super.key});
@@ -20,10 +18,11 @@ class ChooseNbl extends StatefulWidget {
 class _ChooseNblState extends State<ChooseNbl> {
   final ClientFolderController controller = Get.find<ClientFolderController>();
   Map<String, dynamic>? previousData;
-  FormulationAnalysisModel? suggestion;
 
   int selectedLevel = 0;
   String imageUrl = "";
+  bool isYouthBaseSelection = false;
+  String nextRouteAfterSelection = AppRoutes.greyCoverage;
 
   final Map<int, String> _baseAssets = const {
     1: 'black',
@@ -46,17 +45,24 @@ class _ChooseNblState extends State<ChooseNbl> {
     if (Get.arguments != null && Get.arguments is Map) {
       previousData = Map<String, dynamic>.from(Get.arguments as Map);
       imageUrl = previousData?['imageUrl'] ?? "";
-      suggestion = FormulationAnalysisModel.fromJsonLike(
-        previousData?['suggestion'],
-      );
-
-      if (previousData?['suggestion'] != null) {
-        var suggestion = previousData!['suggestion'];
-        int estimated = suggestion['estimatedBaseLevel'] ?? 0;
-
-        if (estimated > 0 && estimated <= 12) {
-          selectedLevel = estimated;
-        }
+      isYouthBaseSelection =
+          previousData?['selectionMode']?.toString() == 'youth_base';
+      nextRouteAfterSelection =
+          previousData?['nextRouteAfterYouthBase']?.toString() ??
+          AppRoutes.chooseCdl;
+      final existingLevelRaw =
+          isYouthBaseSelection
+              ? (previousData == null
+                  ? null
+                  : previousData!['youthNaturalBaseLevel'])
+              : (previousData == null
+                  ? null
+                  : previousData!['naturalBaseLevel']);
+      final existingLevel =
+          int.tryParse(existingLevelRaw?.toString() ?? '') ??
+          0;
+      if (existingLevel > 0 && existingLevel <= 12) {
+        selectedLevel = existingLevel;
       }
     }
     controller.loadFormulationConfig();
@@ -66,10 +72,17 @@ class _ChooseNblState extends State<ChooseNbl> {
     Map<String, dynamic> wizardData = {
       ...?previousData,
       'imageUrl': imageUrl,
-      'naturalBaseLevel': selectedLevel,
-      'suggestion': previousData?['suggestion'],
     };
 
+    if (isYouthBaseSelection) {
+      wizardData['youthNaturalBaseLevel'] = selectedLevel;
+      wizardData.remove('selectionMode');
+      wizardData.remove('nextRouteAfterYouthBase');
+      Get.toNamed(nextRouteAfterSelection, arguments: wizardData);
+      return;
+    }
+
+    wizardData['naturalBaseLevel'] = selectedLevel;
     final formulationType =
         wizardData['formulationType']?.toString() ?? 'color_formulation';
 
@@ -108,7 +121,9 @@ class _ChooseNblState extends State<ChooseNbl> {
             SizedBox(height: Dimensions.height20),
 
             Text(
-              'Choose Natural Base Color (NBL)',
+              isYouthBaseSelection
+                  ? 'Choose Youthful Natural Base'
+                  : 'Choose Natural Base Color (NBL)',
               style: TextStyle(
                 fontSize: Dimensions.font20,
                 fontWeight: FontWeight.w500,
@@ -116,7 +131,9 @@ class _ChooseNblState extends State<ChooseNbl> {
             ),
             SizedBox(height: Dimensions.height5),
             Text(
-              'Pick the base color that matches your client’s hair.',
+              isYouthBaseSelection
+                  ? 'For a fully grey client, choose the natural base that best matches their hair before it turned grey.'
+                  : 'Pick the base color that matches your client’s hair.',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w400,
@@ -124,22 +141,19 @@ class _ChooseNblState extends State<ChooseNbl> {
                 color: AppColors.grey4,
               ),
             ),
-            SizedBox(height: Dimensions.height5),
-            Text(
-              'If the client is fully grey, choose the natural base that best matches their youthful natural color.',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w400,
-                fontSize: Dimensions.font12,
-                color: AppColors.grey4,
+            if (!isYouthBaseSelection) ...[
+              SizedBox(height: Dimensions.height5),
+              Text(
+                'If the client is fully grey, you will be asked for their youthful natural level before preview.',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w400,
+                  fontSize: Dimensions.font12,
+                  color: AppColors.grey4,
+                ),
               ),
-            ),
+            ],
             SizedBox(height: Dimensions.height15),
-            FormulationAnalysisCard(
-              analysis: suggestion,
-              title: 'Recommendations',
-            ),
-            if (suggestion != null) SizedBox(height: Dimensions.height15),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),

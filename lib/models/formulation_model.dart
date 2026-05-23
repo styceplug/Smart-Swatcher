@@ -12,6 +12,10 @@ class FormulationModel {
   String? predictionImageRevisedPrompt;
   String? predictionOpenAiResponseId;
   String? predictionImageError;
+  String? predictionErrorCategory;
+  String? predictionErrorCode;
+  int predictionRetryCount;
+  String? predictionRetryNextAt;
   String? predictionRequestedAt;
   String? predictionCompletedAt;
   String? finalImageUrl;
@@ -54,6 +58,10 @@ class FormulationModel {
     this.predictionImageRevisedPrompt,
     this.predictionOpenAiResponseId,
     this.predictionImageError,
+    this.predictionErrorCategory,
+    this.predictionErrorCode,
+    this.predictionRetryCount = 0,
+    this.predictionRetryNextAt,
     this.predictionRequestedAt,
     this.predictionCompletedAt,
     this.finalImageUrl,
@@ -117,6 +125,11 @@ class FormulationModel {
       predictionImageRevisedPrompt: json['predictionImageRevisedPrompt'],
       predictionOpenAiResponseId: json['predictionOpenAiResponseId'],
       predictionImageError: json['predictionImageError'],
+      predictionErrorCategory: json['predictionErrorCategory'],
+      predictionErrorCode: json['predictionErrorCode'],
+      predictionRetryCount:
+          FormulationAnalysisModel._asInt(json['predictionRetryCount']) ?? 0,
+      predictionRetryNextAt: json['predictionRetryNextAt'],
       predictionRequestedAt: json['predictionRequestedAt'],
       predictionCompletedAt: json['predictionCompletedAt'],
       finalImageUrl: json['finalImageUrl'],
@@ -160,8 +173,20 @@ class FormulationModel {
       predictionImageStatus == 'queued' ||
       predictionImageStatus == 'in_progress';
 
+  bool get isPredictionDelayed =>
+      predictionImageStatus == 'queued' &&
+      (predictionRetryNextAt?.trim().isNotEmpty ?? false);
+
   bool get hasPredictionImage =>
       predictionImageUrl != null && predictionImageUrl!.trim().isNotEmpty;
+
+  DateTime? get predictionRetryNextDate {
+    final raw = predictionRetryNextAt?.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(raw);
+  }
 
   bool get isCorrection => formulationType == 'color_correction';
 
@@ -501,14 +526,11 @@ class FormulationToneProfile {
   }
 
   String get effectiveDisplay {
-    if (display?.trim().isNotEmpty == true) {
-      return display!;
-    }
     final familyText =
         familyLabel ?? FormulationAnalysisModel._titleCase(family);
     if (toneLabels.isEmpty) {
-      return familyText;
+      return display?.trim().isNotEmpty == true ? display! : familyText;
     }
-    return '$familyText ${toneLabels.join(' ')}';
+    return '$familyText: ${toneLabels.join(', ')}';
   }
 }

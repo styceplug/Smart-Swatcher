@@ -201,10 +201,9 @@ class ClientFolderController extends GetxController {
       toneCodes: toneCodes,
       toneLabels: toneLabels,
       display:
-          [
-            _titleCase(normalizedFamily),
-            if (toneLabels.isNotEmpty) toneLabels.join(' '),
-          ].join(' ').trim(),
+          toneLabels.isEmpty
+              ? _titleCase(normalizedFamily)
+              : '${_titleCase(normalizedFamily)}: ${toneLabels.join(', ')}',
       familyLabel: _titleCase(normalizedFamily),
     );
   }
@@ -284,7 +283,8 @@ class ClientFolderController extends GetxController {
       '[FORMULATION_CTRL] prediction.state '
       '{formulationId: ${formulation.id}, '
       'status: ${formulation.predictionImageStatus}, '
-      'error: ${formulation.predictionImageError}}',
+      'error: ${formulation.predictionImageError}, '
+      'retryNextAt: ${formulation.predictionRetryNextAt}}',
     );
     _upsertFormulation(formulation);
     return formulation;
@@ -320,6 +320,19 @@ class ClientFolderController extends GetxController {
 
         if (formulation == null) {
           break;
+        }
+
+        if (formulation.isPredictionDelayed) {
+          final retryAt = formulation.predictionRetryNextDate;
+          final waitSeconds =
+              retryAt == null
+                  ? 10
+                  : retryAt
+                      .difference(DateTime.now())
+                      .inSeconds
+                      .clamp(4, 60);
+          await Future.delayed(Duration(seconds: waitSeconds));
+          continue;
         }
 
         if (!formulation.isPredictionActive) {

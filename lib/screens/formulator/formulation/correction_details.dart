@@ -6,7 +6,6 @@ import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
-import 'package:smart_swatcher/widgets/formulation_analysis_card.dart';
 
 class CorrectionDetailsScreen extends StatefulWidget {
   const CorrectionDetailsScreen({super.key});
@@ -26,27 +25,26 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
   String? targetToneFamily;
   List<String> previousToneIds = <String>[];
   List<String> targetToneIds = <String>[];
-  FormulationAnalysisModel? suggestion;
 
   @override
   void initState() {
     super.initState();
     if (Get.arguments is Map) {
       wizardData = Map<String, dynamic>.from(Get.arguments as Map);
-      suggestion = FormulationAnalysisModel.fromJsonLike(
-        wizardData['suggestion'],
-      );
       final previousProfile = FormulationToneProfile.fromJsonLike(
         wizardData['previousToneProfile'],
       );
       final targetProfile = FormulationToneProfile.fromJsonLike(
-        wizardData['targetToneProfile'] ?? suggestion?.recommendedToneProfile,
+        wizardData['targetToneProfile'],
       );
       previousToneFamily = previousProfile?.family;
-      targetToneFamily =
-          targetProfile?.family ?? suggestion?.recommendedToneProfile?.family;
+      targetToneFamily = targetProfile?.family ?? 'natural';
       previousToneIds = List<String>.from(previousProfile?.tones ?? const []);
       targetToneIds = List<String>.from(targetProfile?.tones ?? const []);
+      previousColorLevel = int.tryParse(
+        wizardData['previousColorLevel']?.toString() ?? '',
+      );
+      targetLevel = int.tryParse(wizardData['targetLevel']?.toString() ?? '');
     }
     controller.loadFormulationConfig();
   }
@@ -162,11 +160,6 @@ class _CorrectionDetailsScreenState extends State<CorrectionDetailsScreen> {
                 fontSize: Dimensions.font14,
                 color: AppColors.grey4,
               ),
-            ),
-            SizedBox(height: Dimensions.height15),
-            FormulationAnalysisCard(
-              analysis: suggestion,
-              title: 'Recommendations',
             ),
             SizedBox(height: Dimensions.height15),
             _SelectorTile(

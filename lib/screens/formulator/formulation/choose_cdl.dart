@@ -7,7 +7,6 @@ import 'package:smart_swatcher/utils/colors.dart';
 import 'package:smart_swatcher/utils/dimensions.dart';
 import 'package:smart_swatcher/widgets/custom_appbar.dart';
 import 'package:smart_swatcher/widgets/custom_button.dart';
-import 'package:smart_swatcher/widgets/formulation_analysis_card.dart';
 
 class ChooseCdl extends StatefulWidget {
   const ChooseCdl({super.key});
@@ -20,7 +19,6 @@ class _ChooseCdlState extends State<ChooseCdl> {
   final ClientFolderController controller = Get.find<ClientFolderController>();
 
   Map<String, dynamic> wizardData = {};
-  FormulationAnalysisModel? suggestion;
 
   int selectedLevel = 0;
   String? selectedToneFamily;
@@ -46,16 +44,12 @@ class _ChooseCdlState extends State<ChooseCdl> {
     super.initState();
     if (Get.arguments is Map) {
       wizardData = Map<String, dynamic>.from(Get.arguments as Map);
-      suggestion = FormulationAnalysisModel.fromJsonLike(
-        wizardData['suggestion'],
-      );
       final toneProfile = FormulationToneProfile.fromJsonLike(
-        wizardData['desiredToneProfile'] ??
-            wizardData['toneProfile'] ??
-            suggestion?.recommendedToneProfile,
+        wizardData['desiredToneProfile'] ?? wizardData['toneProfile'],
       );
-      selectedToneFamily =
-          toneProfile?.family ?? suggestion?.recommendedToneProfile?.family;
+      selectedLevel =
+          int.tryParse(wizardData['desiredLevel']?.toString() ?? '') ?? 0;
+      selectedToneFamily = toneProfile?.family ?? 'natural';
       selectedToneIds = List<String>.from(
         toneProfile?.tones ?? const <String>[],
       );
@@ -166,11 +160,6 @@ class _ChooseCdlState extends State<ChooseCdl> {
               ),
             ),
             SizedBox(height: Dimensions.height15),
-            FormulationAnalysisCard(
-              analysis: suggestion,
-              title: 'Recommendations',
-            ),
-            if (suggestion != null) SizedBox(height: Dimensions.height15),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),

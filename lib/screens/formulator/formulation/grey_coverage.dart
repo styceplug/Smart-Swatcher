@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_swatcher/controllers/folder_controller.dart';
-import 'package:smart_swatcher/models/formulation_model.dart';
 
 import '../../../routes/routes.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/custom_button.dart';
-import '../../../widgets/formulation_analysis_card.dart';
 
 class GreyCoverage extends StatefulWidget {
   const GreyCoverage({super.key});
@@ -24,7 +22,6 @@ class _GreyCoverageState extends State<GreyCoverage> {
 
   // 2. State
   int? selectedValue; // Store as int (10, 20...) for API
-  FormulationAnalysisModel? suggestion;
 
   // Data Options (0 to 100)
   List<int> get percents => controller.greyPercentageOptions;
@@ -35,23 +32,9 @@ class _GreyCoverageState extends State<GreyCoverage> {
     // Retrieve previous data
     if (Get.arguments is Map) {
       wizardData = Map<String, dynamic>.from(Get.arguments as Map);
-      suggestion = FormulationAnalysisModel.fromJsonLike(
-        wizardData['suggestion'],
-      );
-
-      // Auto-fill from the upload suggestion if available
-      if (wizardData['suggestion'] != null) {
-        var suggestion = wizardData['suggestion'];
-        int? estimated = suggestion['estimatedGreyPercentage'];
-
-        // Round to nearest 10 if needed, or just set if matches
-        if (estimated != null && percents.contains(estimated)) {
-          selectedValue = estimated;
-        } else if (estimated != null) {
-          final rounded = ((estimated / 10).round() * 10).clamp(0, 100);
-          selectedValue = rounded;
-        }
-      }
+      selectedValue =
+          int.tryParse(wizardData['greyPercentage']?.toString() ?? '') ??
+          selectedValue;
     }
     controller.loadFormulationConfig();
   }
@@ -60,6 +43,18 @@ class _GreyCoverageState extends State<GreyCoverage> {
     if (selectedValue == null) return;
 
     wizardData['greyPercentage'] = selectedValue;
+
+    if ((selectedValue ?? 0) == 100) {
+      Get.toNamed(
+        AppRoutes.chooseNbl,
+        arguments: {
+          ...wizardData,
+          'selectionMode': 'youth_base',
+          'nextRouteAfterYouthBase': AppRoutes.chooseCdl,
+        },
+      );
+      return;
+    }
 
     if ((selectedValue ?? 0) > 10) {
       Get.toNamed(AppRoutes.greyExceeds, arguments: wizardData);
@@ -110,11 +105,6 @@ class _GreyCoverageState extends State<GreyCoverage> {
               ),
             ),
             SizedBox(height: Dimensions.height20),
-            FormulationAnalysisCard(
-              analysis: suggestion,
-              title: 'Recommendations',
-            ),
-            if (suggestion != null) SizedBox(height: Dimensions.height15),
 
             // --- DROPDOWN FIELD ---
             InkWell(

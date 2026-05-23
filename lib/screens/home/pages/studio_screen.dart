@@ -351,7 +351,9 @@ class _StudioScreenState extends State<StudioScreen>
                                     SizedBox(height: Dimensions.height5),
                                     Text(
                                       formulation.isPredictionActive
-                                          ? 'Generating preview...'
+                                          ? (formulation.isPredictionDelayed
+                                              ? 'Preview delayed'
+                                              : 'Generating preview...')
                                           : formulation.predictionImageStatus ==
                                               'failed'
                                           ? 'Preview failed'

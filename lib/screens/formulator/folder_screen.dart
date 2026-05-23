@@ -326,6 +326,8 @@ class _FolderScreenState extends State<FolderScreen> {
                       'naturalBaseLevel':
                           form.inputData?['naturalBaseLevel'] ??
                           form.naturalBaseLevel,
+                      'youthNaturalBaseLevel':
+                          form.inputData?['youthNaturalBaseLevel'],
                       'greyPercentage':
                           form.inputData?['greyPercentage'] ??
                           form.greyPercentage,
@@ -371,6 +373,10 @@ class _FolderScreenState extends State<FolderScreen> {
                           form.resultData?['predictionImageUrl'],
                       'predictionImageStatus': form.predictionImageStatus,
                       'predictionImageError': form.predictionImageError,
+                      'predictionErrorCategory': form.predictionErrorCategory,
+                      'predictionErrorCode': form.predictionErrorCode,
+                      'predictionRetryCount': form.predictionRetryCount,
+                      'predictionRetryNextAt': form.predictionRetryNextAt,
                       'developerVolume':
                           form.resultData?['developerVolume'] ??
                           form.developerVolume,
@@ -495,7 +501,9 @@ class _FolderScreenState extends State<FolderScreen> {
                             SizedBox(height: 4),
                             Text(
                               form.isPredictionActive
-                                  ? 'Generating preview...'
+                                  ? (form.isPredictionDelayed
+                                      ? 'Preview delayed, retry scheduled'
+                                      : 'Generating preview...')
                                   : form.predictionImageStatus == 'failed'
                                   ? 'Preview failed'
                                   : form.hasPredictionImage

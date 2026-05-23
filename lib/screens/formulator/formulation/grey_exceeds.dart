@@ -8,7 +8,6 @@ import '../../../utils/colors.dart';
 import '../../../utils/dimensions.dart';
 import '../../../widgets/custom_appbar.dart';
 import '../../../widgets/custom_button.dart';
-import '../../../widgets/formulation_analysis_card.dart';
 
 class GreyExceeds extends StatefulWidget {
   const GreyExceeds({super.key});
@@ -26,24 +25,17 @@ class _GreyExceedsState extends State<GreyExceeds> {
   String? selectedToneFamily;
   List<String> selectedToneIds = <String>[];
   String? selectedMixingRatio;
-  FormulationAnalysisModel? suggestion;
 
   @override
   void initState() {
     super.initState();
     if (Get.arguments is Map) {
       wizardData = Map<String, dynamic>.from(Get.arguments as Map);
-      suggestion = FormulationAnalysisModel.fromJsonLike(
-        wizardData['suggestion'],
-      );
-      selectedShadeType = suggestion?.recommendedShadeType;
       final toneProfile = FormulationToneProfile.fromJsonLike(
-        wizardData['desiredToneProfile'] ??
-            wizardData['toneProfile'] ??
-            suggestion?.recommendedToneProfile,
+        wizardData['desiredToneProfile'] ?? wizardData['toneProfile'],
       );
-      selectedToneFamily =
-          toneProfile?.family ?? suggestion?.recommendedToneProfile?.family;
+      selectedShadeType = wizardData['shadeType']?.toString() ?? 'natural';
+      selectedToneFamily = toneProfile?.family ?? 'natural';
       selectedToneIds = List<String>.from(
         toneProfile?.tones ?? const <String>[],
       );
@@ -54,11 +46,14 @@ class _GreyExceedsState extends State<GreyExceeds> {
   int? get _selectedBaseLevel =>
       int.tryParse(wizardData['naturalBaseLevel']?.toString() ?? '');
 
+  int? get _selectedDesiredLevel =>
+      int.tryParse(wizardData['desiredLevel']?.toString() ?? '');
+
   List<Map<String, dynamic>> get _toneFamilyOptions =>
       controller.toneFamilyOptions;
 
   List<Map<String, dynamic>> get _toneOptions => controller.toneOptionsForLevel(
-    _selectedBaseLevel ?? 1,
+    _selectedDesiredLevel ?? _selectedBaseLevel ?? 1,
     family: selectedToneFamily,
   );
 
@@ -87,7 +82,7 @@ class _GreyExceedsState extends State<GreyExceeds> {
     final toneProfile = controller.buildToneProfile(
       family: selectedToneFamily!,
       toneIds: selectedToneIds,
-      level: desiredLevel ?? _selectedBaseLevel,
+      level: desiredLevel ?? _selectedDesiredLevel ?? _selectedBaseLevel,
     );
 
     wizardData['shadeType'] = selectedShadeType;
@@ -137,11 +132,6 @@ class _GreyExceedsState extends State<GreyExceeds> {
               ),
             ),
             SizedBox(height: Dimensions.height20),
-            FormulationAnalysisCard(
-              analysis: suggestion,
-              title: 'Recommendations',
-            ),
-            if (suggestion != null) SizedBox(height: Dimensions.height15),
             Text(
               'Available Shades',
               style: TextStyle(

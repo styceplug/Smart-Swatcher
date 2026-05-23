@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,9 @@ class _FormulationPreviewState extends State<FormulationPreview> {
       formulationId != null && formulationId!.trim().isNotEmpty;
   bool get isPredictionActive =>
       predictionStatus == 'queued' || predictionStatus == 'in_progress';
+  bool get isPredictionDelayed =>
+      predictionStatus == 'queued' &&
+      (outputs['predictionRetryNextAt']?.toString().trim().isNotEmpty ?? false);
   bool get canRetryPrediction =>
       isSavedFormulation &&
       (predictionStatus == 'failed' || predictionStatus == 'not_requested') &&
@@ -46,6 +50,12 @@ class _FormulationPreviewState extends State<FormulationPreview> {
 
   String get predictionStatus =>
       outputs['predictionImageStatus']?.toString() ?? 'not_requested';
+
+  String? get predictionErrorCategory =>
+      outputs['predictionErrorCategory']?.toString().trim();
+
+  String? get predictionErrorCode =>
+      outputs['predictionErrorCode']?.toString().trim();
 
   FormulationAnalysisModel? get previewAnalysis =>
       FormulationAnalysisModel.fromJsonLike(outputs['analysis']);
@@ -131,6 +141,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
       'naturalBaseLevel':
           formulation.inputData?['naturalBaseLevel'] ??
           formulation.naturalBaseLevel,
+      'youthNaturalBaseLevel': formulation.inputData?['youthNaturalBaseLevel'],
       'greyPercentage':
           formulation.inputData?['greyPercentage'] ??
           formulation.greyPercentage,
@@ -176,6 +187,10 @@ class _FormulationPreviewState extends State<FormulationPreview> {
           formulation.resultData?['predictionImageUrl'],
       'predictionImageStatus': formulation.predictionImageStatus,
       'predictionImageError': formulation.predictionImageError,
+      'predictionErrorCategory': formulation.predictionErrorCategory,
+      'predictionErrorCode': formulation.predictionErrorCode,
+      'predictionRetryCount': formulation.predictionRetryCount,
+      'predictionRetryNextAt': formulation.predictionRetryNextAt,
       'developerVolume':
           formulation.resultData?['developerVolume'] ??
           formulation.developerVolume,
@@ -259,6 +274,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
       'predictionImageUrl': null,
       'finalImageUrl': '',
       'naturalBaseLevel': inputs['naturalBaseLevel'],
+      'youthNaturalBaseLevel': inputs['youthNaturalBaseLevel'],
       'greyPercentage': inputs['greyPercentage'],
       'shadeType': inputs['shadeType'],
       'desiredLevel': inputs['desiredLevel'],
@@ -285,7 +301,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
         'longDescription': description,
       },
       'resultData': outputs,
-      'logicVersion': 'vertex-ai-v1',
+      'logicVersion': 'formulation-engine-v3-docs',
     };
 
     if (isCorrection) {
@@ -300,6 +316,9 @@ class _FormulationPreviewState extends State<FormulationPreview> {
   String _neutralStatusCopy() {
     if (!isSavedFormulation) {
       return 'This preview shows the recommended plan. Preview image generation starts after you tap Save & Generate.';
+    }
+    if (isPredictionDelayed) {
+      return 'Preview image generation is delayed for this saved formulation. The app will retry automatically, and you can leave this screen while it continues in the background.';
     }
     if (isPredictionActive) {
       return 'Preview image generation is in progress. This screen refreshes automatically while the image is being prepared.';
@@ -319,17 +338,70 @@ class _FormulationPreviewState extends State<FormulationPreview> {
       return null;
     }
 
+    final category = predictionErrorCategory?.toLowerCase();
+    final code = predictionErrorCode?.toUpperCase();
+
+    if (category == 'transient_provider' ||
+        code == 'RESOURCE_EXHAUSTED' ||
+        _rawErrorLooksLikeQuotaPayload(raw)) {
+      return 'Preview image generation is delayed because the image service is temporarily busy. Your formulation is saved and you can retry later.';
+    }
+
+    if (category == 'server_configuration' || code == 'CONFIG_MISSING') {
+      return 'Preview generation is currently unavailable on the server.';
+    }
+
+    if (category == 'input_validation' || code == 'INVALID_IMAGE') {
+      return 'The source image could not be used for preview generation. Please upload a clear JPEG or PNG and try again.';
+    }
+
+    if (category == 'provider_validation' || code == 'VALIDATION_MISMATCH') {
+      return 'The preview image did not match the requested level or tone closely enough after two attempts. Adjust the target or retry again.';
+    }
+
+    if (raw.contains('will retry automatically')) {
+      return raw;
+    }
     if (raw.startsWith('Prediction validation failed after retry:')) {
       return 'The preview image did not match the requested level or tone closely enough after two attempts. Adjust the target or retry again.';
     }
     if (raw.contains('did not return an image payload')) {
-      return 'The AI service responded without a usable preview image. Please retry.';
+      return 'The preview service responded without a usable preview image. Please retry.';
     }
     if (raw.contains('not configured on the server')) {
       return 'Preview generation is currently unavailable on the server.';
     }
 
     return raw;
+  }
+
+  bool _rawErrorLooksLikeQuotaPayload(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('resource_exhausted') ||
+        lower.contains('quota') ||
+        lower.contains('rate limit') ||
+        lower.contains('"code":429')) {
+      return true;
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        final error = decoded['error'];
+        final payload = error is Map ? error : decoded;
+        final status = payload['status']?.toString().toUpperCase();
+        final code = payload['code']?.toString();
+        final message = payload['message']?.toString().toLowerCase() ?? '';
+        return status == 'RESOURCE_EXHAUSTED' ||
+            code == '429' ||
+            message.contains('quota') ||
+            message.contains('resource has been exhausted');
+      }
+    } catch (_) {
+      return false;
+    }
+
+    return false;
   }
 
   String? _technicalPredictionError(String? value) {
@@ -370,6 +442,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
     final nbl = inputs['naturalBaseLevel'];
     final dl = inputs['desiredLevel'];
     final grey = inputs['greyPercentage'];
+    final greyValue = int.tryParse(grey?.toString() ?? '');
     final toneProfile = FormulationToneProfile.fromJsonLike(
       inputs['desiredToneProfile'] ?? inputs['toneProfile'],
     );
@@ -378,10 +451,12 @@ class _FormulationPreviewState extends State<FormulationPreview> {
         inputs['desiredTone']?.toString().trim();
     final lift =
         (dl is num && nbl is num && dl > nbl) ? (dl - nbl).toString() : '0';
+    final youthBase = inputs['youthNaturalBaseLevel'];
 
     final parts = <String>[
       if (nbl != null) 'NBL $nbl',
       if (grey != null) 'Grey $grey%',
+      if (greyValue == 100 && youthBase != null) 'Youth NBL $youthBase',
       if (dl != null) 'DL $dl',
       'Lift $lift',
       if (desiredTone?.isNotEmpty == true) desiredTone!,
@@ -402,6 +477,8 @@ class _FormulationPreviewState extends State<FormulationPreview> {
     final predictionError = outputs['predictionImageError']?.toString();
     final friendlyPredictionError = _friendlyPredictionError(predictionError);
     final technicalPredictionError = _technicalPredictionError(predictionError);
+    final showPredictionErrorBox =
+        predictionStatus == 'failed' && friendlyPredictionError != null;
     final steps = _steps();
 
     return Scaffold(
@@ -488,6 +565,8 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                           emptyMessage:
                               predictionStatus == 'failed'
                                   ? 'Preview failed'
+                                  : isPredictionDelayed
+                                  ? 'Retry scheduled'
                                   : isPredictionActive
                                   ? 'Generating preview'
                                   : 'Preview not ready',
@@ -543,7 +622,7 @@ class _FormulationPreviewState extends State<FormulationPreview> {
                         ),
                       ),
                     ),
-                    if (friendlyPredictionError != null) ...[
+                    if (showPredictionErrorBox) ...[
                       SizedBox(height: Dimensions.height10),
                       Container(
                         width: double.infinity,
